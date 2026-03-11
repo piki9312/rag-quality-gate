@@ -1,0 +1,7 @@
+# .rqg.yml — Example gate configuration
+thresholds:
+  s1_pass_rate: 100.0
+  overall_pass_rate: 80.0
+  retrieval_precision: 70.0
+  max_latency_p95_ms: 5000
+  max_cost_per_query_usd: 0.05
