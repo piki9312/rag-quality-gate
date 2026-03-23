@@ -51,12 +51,93 @@ What you should see:
 - `runs/quality/gate-report.md`: gate report
 - `runs/quality/gate-decision.json`: `GateDecision`
 
+## Initial Case Generation
+
+You can generate reviewable initial `EvalCase` candidates from a document snapshot.
+
+```bash
+# 1. create a snapshot JSON
+rqg init-snapshot \
+  --snapshot-id snapshot_001 \
+  --doc-id hr_rules \
+  --title "HR Rules" \
+  --source-path packs/demo_cycle/documents/leave_policy.md \
+  --content "Paid leave requests must be submitted 5 business days in advance." \
+  --output artifacts/doc_snapshot.json
+
+# 2. generate case candidates
+qgate gen-cases \
+  --snapshot artifacts/doc_snapshot.json \
+  --output artifacts/eval_cases.json \
+  --review-output artifacts/eval_cases.md \
+  --mode rule
+```
+
+Generated cases are saved in `EvalCase` JSON form, and the review output can be emitted as `.md` or `.csv`.
+
+## Impact Analysis (Phase 1.5)
+
+When documents are updated, the `impact` command helps identify which evaluation cases should be reviewed.
+
+Purpose:
+
+- compare old and new document snapshots
+- detect changed evidence IDs (section-level)
+- extract impacted `EvalCase` entries from `expected_evidence`
+
+Example:
+
+```bash
+qgate impact \
+  --old-snapshot artifacts/old_snapshot.json \
+  --new-snapshot artifacts/new_snapshot.json \
+  --cases artifacts/eval_cases.json \
+  --output artifacts/impact_report.json \
+  --review-output artifacts/impact_review.md
+```
+
+Input notes:
+
+- `--old-snapshot`: previous `DocumentSnapshot` JSON
+- `--new-snapshot`: updated `DocumentSnapshot` JSON
+- `--cases`: `EvalCase` JSON (or CSV)
+
+Output:
+
+- `impact_report.json` (`ImpactReport`)
+  - `old_snapshot_id`
+  - `new_snapshot_id`
+  - `changed_evidence_ids`
+  - `impacted_case_ids`
+  - `details` (`case_id`, `matched_evidence_id`, `question`)
+  - `created_at`
+- optional review text or markdown (`--review-output`)
+
+### Document Update Operation Flow
+
+Use this as a standard update workflow:
+
+1. ingest current document and keep snapshot
+2. generate or maintain eval cases
+3. update document
+4. ingest updated document and keep snapshot
+5. run `qgate impact` with old/new snapshots
+6. review impacted cases first
+7. run `rqg eval` and `rqg check`
+8. apply document fixes and confirm pass
+
 ## Demo
 
 The repository includes one fixed fail -> fix -> pass demo:
 
 ```bash
 python -m rqg.demo.fail_fix_cycle
+```
+
+For Phase 1.5 (impact analysis), use:
+
+```bash
+python -m rqg.demo.impact_cycle
 ```
 
 This runs three phases against `packs/demo_cycle/`:
@@ -72,6 +153,7 @@ Artifacts are written under:
 See also:
 
 - [docs/demo/fail-fix-cycle.md](docs/demo/fail-fix-cycle.md)
+- [docs/demo/impact-cycle.md](docs/demo/impact-cycle.md)
 - [docs/adr/0001-model-boundaries.md](docs/adr/0001-model-boundaries.md)
 
 ## Phase 1 Status

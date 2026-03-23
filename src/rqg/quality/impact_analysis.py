@@ -1,0 +1,195 @@
+"""Impact analysis utilities for snapshot updates."""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from pydantic import ValidationError
+
+from rqg.casegen.sections import extract_sections_from_snapshot
+from rqg.domain import DocumentSnapshot, EvalCase, ImpactReport
+from rqg.quality.loader import load_eval_cases
+
+
+def _section_hash(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _extract_section_hashes(
+    snapshot: DocumentSnapshot,
+    *,
+    snapshot_path: str | Path | None = None,
+) -> dict[str, str]:
+    try:
+        sections = extract_sections_from_snapshot(snapshot, snapshot_path=snapshot_path)
+    except Exception as exc:  # pragma: no cover - branch covered by error tests
+        raise ValueError(
+            f"Failed to extract sections from snapshot '{snapshot.snapshot_id}': {exc}"
+        ) from exc
+
+    hashes: dict[str, str] = {}
+    for section in sections:
+        normalized = f"{section.heading}\n{section.content}".strip()
+        hashes[section.section_id] = _section_hash(normalized)
+    return hashes
+
+
+def detect_changed_evidence_ids(
+    old_snapshot: DocumentSnapshot,
+    new_snapshot: DocumentSnapshot,
+    *,
+    old_snapshot_path: str | Path | None = None,
+    new_snapshot_path: str | Path | None = None,
+) -> list[str]:
+    """Detect changed section-level evidence IDs between two snapshots."""
+    old_hashes = _extract_section_hashes(old_snapshot, snapshot_path=old_snapshot_path)
+    new_hashes = _extract_section_hashes(new_snapshot, snapshot_path=new_snapshot_path)
+
+    changed_ids: list[str] = []
+    for evidence_id in sorted(set(old_hashes) | set(new_hashes)):
+        if old_hashes.get(evidence_id) != new_hashes.get(evidence_id):
+            changed_ids.append(evidence_id)
+    return changed_ids
+
+
+def extract_impacted_cases(
+    cases: list[EvalCase],
+    changed_evidence_ids: list[str],
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Extract impacted case IDs based on expected_evidence overlap."""
+    if not changed_evidence_ids:
+        return [], []
+
+    changed_set = set(changed_evidence_ids)
+    impacted_case_ids: list[str] = []
+    details: list[dict[str, str]] = []
+
+    for case in cases:
+        matched = [evidence_id for evidence_id in case.expected_evidence if evidence_id in changed_set]
+        if not matched:
+            continue
+        impacted_case_ids.append(case.case_id)
+        for evidence_id in matched:
+            details.append(
+                {
+                    "case_id": case.case_id,
+                    "matched_evidence_id": evidence_id,
+                    "question": case.question,
+                }
+            )
+
+    return impacted_case_ids, details
+
+
+def build_impact_report(
+    old_snapshot: DocumentSnapshot,
+    new_snapshot: DocumentSnapshot,
+    cases: list[EvalCase],
+    *,
+    old_snapshot_path: str | Path | None = None,
+    new_snapshot_path: str | Path | None = None,
+) -> ImpactReport:
+    """Build an impact report from snapshots and eval cases."""
+    changed_evidence_ids = detect_changed_evidence_ids(
+        old_snapshot,
+        new_snapshot,
+        old_snapshot_path=old_snapshot_path,
+        new_snapshot_path=new_snapshot_path,
+    )
+    impacted_case_ids, details = extract_impacted_cases(cases, changed_evidence_ids)
+
+    return ImpactReport(
+        old_snapshot_id=old_snapshot.snapshot_id,
+        new_snapshot_id=new_snapshot.snapshot_id,
+        changed_evidence_ids=changed_evidence_ids,
+        impacted_case_ids=impacted_case_ids,
+        details=details,
+        created_at=datetime.now(timezone.utc),
+    )
+
+
+def load_eval_cases_from_path(path: str | Path) -> list[EvalCase]:
+    """Load EvalCase list from JSON or CSV."""
+    file_path = Path(path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Cases file not found: {file_path}")
+
+    if file_path.suffix.lower() == ".csv":
+        try:
+            return load_eval_cases(str(file_path))
+        except ValidationError as exc:
+            raise ValueError(f"Invalid case row in CSV: {exc}") from exc
+        except csv.Error as exc:
+            raise ValueError(f"Invalid CSV format: {exc}") from exc
+
+    try:
+        payload = json.loads(file_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Cases JSON parse error: {exc}") from exc
+
+    rows: list[object]
+    if isinstance(payload, list):
+        rows = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("cases"), list):
+        rows = payload["cases"]
+    elif isinstance(payload, dict):
+        rows = [payload]
+    else:
+        raise ValueError("Cases JSON must be a list, a single object, or an object with 'cases'.")
+
+    cases: list[EvalCase] = []
+    for row in rows:
+        try:
+            cases.append(EvalCase.model_validate(row))
+        except ValidationError as exc:
+            raise ValueError(f"Invalid EvalCase in cases file: {exc}") from exc
+    return cases
+
+
+def render_impact_review_text(report: ImpactReport) -> str:
+    """Render impact report in review-friendly plain text."""
+    lines = [
+        "Impact Analysis Report",
+        f"old_snapshot_id: {report.old_snapshot_id}",
+        f"new_snapshot_id: {report.new_snapshot_id}",
+        f"changed_evidence_count: {len(report.changed_evidence_ids)}",
+        f"impacted_case_count: {len(report.impacted_case_ids)}",
+        "",
+        "Changed Evidence IDs:",
+    ]
+
+    if report.changed_evidence_ids:
+        lines.extend(f"- {evidence_id}" for evidence_id in report.changed_evidence_ids)
+    else:
+        lines.append("- (none)")
+
+    lines.extend(["", "Impacted Cases:"])
+    if report.details:
+        for detail in report.details:
+            lines.append(
+                "- case_id={case_id} matched_evidence_id={matched_evidence_id} question={question}".format(
+                    case_id=detail.get("case_id", ""),
+                    matched_evidence_id=detail.get("matched_evidence_id", ""),
+                    question=detail.get("question", ""),
+                )
+            )
+    else:
+        lines.append("- (none)")
+
+    return "\n".join(lines) + "\n"
+
+
+def write_impact_review(path: str | Path, report: ImpactReport) -> Path:
+    """Write impact review output (.txt or .md)."""
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    suffix = output_path.suffix.lower()
+    if suffix not in {".txt", ".md"}:
+        raise ValueError("Impact review output must use .txt or .md")
+
+    output_path.write_text(render_impact_review_text(report), encoding="utf-8")
+    return output_path

@@ -17,6 +17,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
+from .casegen import generate_eval_cases_from_snapshot, write_review_output
 from .domain import DocumentSnapshot, EvalCase, GateDecision
 
 
@@ -25,6 +28,21 @@ def _write_json_output(path: str | Path, model: object) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(model.model_dump_json(indent=2), encoding="utf-8")
     return output_path
+
+
+def _write_json_list_output(path: str | Path, models: list[object]) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = [model.model_dump(mode="json") for model in models]
+    import json
+
+    output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return output_path
+
+
+def _load_snapshot_from_file(path: str | Path) -> DocumentSnapshot:
+    snapshot_path = Path(path)
+    return DocumentSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
 
 
 def _build_document_snapshot(
@@ -94,6 +112,76 @@ def cmd_create_sample_gate(args: argparse.Namespace) -> int:
     )
     output_path = _write_json_output(args.output, gate)
     print(f"Saved gate decision JSON to {output_path}")
+    return 0
+
+
+def cmd_gen_cases(args: argparse.Namespace) -> int:
+    snapshot_path = Path(args.snapshot)
+    snapshot = _load_snapshot_from_file(snapshot_path)
+    bundle = generate_eval_cases_from_snapshot(
+        snapshot,
+        snapshot_path=snapshot_path,
+        mode=args.mode,
+        max_cases=args.max_cases,
+        use_llm=args.use_llm,
+    )
+    output_path = _write_json_list_output(args.output, bundle.cases)
+    print(f"Saved {len(bundle.cases)} eval cases to {output_path}")
+
+    if args.review_output:
+        review_path = write_review_output(args.review_output, bundle.cases)
+        print(f"Saved review output to {review_path}")
+    return 0
+
+
+def cmd_impact(args: argparse.Namespace) -> int:
+    from .quality.impact_analysis import (
+        build_impact_report,
+        load_eval_cases_from_path,
+        write_impact_review,
+    )
+
+    try:
+        old_snapshot = _load_snapshot_from_file(args.old_snapshot)
+    except (FileNotFoundError, ValidationError, ValueError) as exc:
+        print(f"[ERROR] Failed to load old snapshot: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        new_snapshot = _load_snapshot_from_file(args.new_snapshot)
+    except (FileNotFoundError, ValidationError, ValueError) as exc:
+        print(f"[ERROR] Failed to load new snapshot: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        cases = load_eval_cases_from_path(args.cases)
+    except (FileNotFoundError, ValueError, ValidationError) as exc:
+        print(f"[ERROR] Failed to load cases: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        report = build_impact_report(
+            old_snapshot,
+            new_snapshot,
+            cases,
+            old_snapshot_path=args.old_snapshot,
+            new_snapshot_path=args.new_snapshot,
+        )
+    except ValueError as exc:
+        print(f"[ERROR] Impact analysis failed: {exc}", file=sys.stderr)
+        return 1
+
+    output_path = _write_json_output(args.output, report)
+    print(f"Saved impact report JSON to {output_path}")
+
+    if args.review_output:
+        try:
+            review_path = write_impact_review(args.review_output, report)
+        except ValueError as exc:
+            print(f"[ERROR] Failed to write review output: {exc}", file=sys.stderr)
+            return 1
+        print(f"Saved impact review output to {review_path}")
+
     return 0
 
 
@@ -309,6 +397,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--output-file", default=None)
     p_check.add_argument("--decision-file", default=None)
 
+    # --- gen-cases ---
+    p_gen_cases = sub.add_parser("gen-cases", help="Generate EvalCase candidates from a snapshot")
+    p_gen_cases.add_argument("--snapshot", required=True, help="Path to DocumentSnapshot JSON")
+    p_gen_cases.add_argument("--output", required=True, help="Path to generated EvalCase JSON")
+    p_gen_cases.add_argument("--review-output", default=None, help="Optional .md or .csv review output")
+    p_gen_cases.add_argument("--mode", choices=["rule", "hybrid"], default="rule")
+    p_gen_cases.add_argument("--max-cases", type=int, default=50)
+    p_gen_cases.add_argument("--use-llm", action="store_true", help="Use LLM question generation in addition to rule generation")
+
+    # --- impact ---
+    p_impact = sub.add_parser("impact", help="Analyze impacted eval cases between two snapshots")
+    p_impact.add_argument("--old-snapshot", required=True, help="Path to old DocumentSnapshot JSON")
+    p_impact.add_argument("--new-snapshot", required=True, help="Path to new DocumentSnapshot JSON")
+    p_impact.add_argument("--cases", required=True, help="Path to EvalCase JSON or CSV")
+    p_impact.add_argument("--output", required=True, help="Path to impact report JSON")
+    p_impact.add_argument(
+        "--review-output",
+        default=None,
+        help="Optional .txt or .md review output",
+    )
+
     # --- init-snapshot ---
     p_init_snapshot = sub.add_parser(
         "init-snapshot", help="Create a document snapshot JSON file"
@@ -359,6 +468,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_create_sample_case(args)
     elif args.command == "create-sample-gate":
         return cmd_create_sample_gate(args)
+    elif args.command == "gen-cases":
+        return cmd_gen_cases(args)
+    elif args.command == "impact":
+        return cmd_impact(args)
     else:
         parser.print_help()
         return 0

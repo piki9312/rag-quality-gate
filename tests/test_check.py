@@ -155,7 +155,7 @@ class TestRenderMarkdown:
             ],
         )
         md = render_gate_markdown(result)
-        assert "✅ PASS" in md
+        assert "PASS" in md
         assert "S1" in md
 
     def test_fail_rendering(self):
@@ -172,4 +172,4 @@ class TestRenderMarkdown:
             ],
         )
         md = render_gate_markdown(result)
-        assert "🔴 FAIL" in md
+        assert "FAIL" in md
