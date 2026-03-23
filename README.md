@@ -1,5 +1,89 @@
 # RAG Quality Gate
 
+Minimal quality-gate scaffold for RAG and agent systems.
+
+This repository can already do five things end to end:
+
+- ingest documents and emit `DocumentSnapshot`
+- normalize CSV case input into `EvalCase`
+- run evaluation from the CLI
+- build `GateDecision` from gate checks
+- fail or pass CI on pull requests
+
+## Minimal Setup
+
+Requirements:
+
+- Python `3.11+`
+- `pip`
+
+Install:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Show CLI help:
+
+```bash
+rqg --help
+```
+
+## Minimal Flow
+
+Run the smallest real flow with the bundled HR pack:
+
+```bash
+# 1. ingest documents and create snapshots
+rqg ingest packs/hr/documents/ --index-dir index
+
+# 2. run eval
+rqg eval packs/hr/cases.csv --docs packs/hr/documents/ --mock --index-dir index --log-dir runs/quality
+
+# 3. run gate check and emit GateDecision
+rqg check --log-dir runs/quality --config .rqg.yml --output-file runs/quality/gate-report.md --decision-file runs/quality/gate-decision.json
+```
+
+What you should see:
+
+- `index/snapshots/*.json`: `DocumentSnapshot`
+- `runs/quality/*.jsonl`: eval run records
+- `runs/quality/gate-report.md`: gate report
+- `runs/quality/gate-decision.json`: `GateDecision`
+
+## Demo
+
+The repository includes one fixed fail -> fix -> pass demo:
+
+```bash
+python -m rqg.demo.fail_fix_cycle
+```
+
+This runs three phases against `packs/demo_cycle/`:
+
+1. pass with the expected document
+2. fail after breaking the document
+3. pass again after restoring the document
+
+Artifacts are written under:
+
+`demo_runs/fail_fix_cycle/<run-id>/`
+
+See also:
+
+- [docs/demo/fail-fix-cycle.md](docs/demo/fail-fix-cycle.md)
+- [docs/adr/0001-model-boundaries.md](docs/adr/0001-model-boundaries.md)
+
+## Phase 1 Status
+
+Checklist:
+
+- `[x]` `ingest` auto-generates `DocumentSnapshot`
+- `[x]` existing case CSV can be normalized into `EvalCase`
+- `[x]` `rqg eval` runs from the CLI
+- `[x]` `rqg check` produces `GateDecision`
+- `[x]` CI can fail or pass a PR through the quality gate
+
 RAG システムの品質を自動検証し、リリース可否を判定するプラットフォーム。
 
 ## What is this?

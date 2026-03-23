@@ -52,7 +52,7 @@ class RAGQualityRunner:
 
     def run_case(self, case: QATestCase) -> EvalResult:
         """1件のテストケースを実行して評価する。"""
-        t0 = time.time()
+        t0 = time.perf_counter()
         failure_type = None
         failure_reason = ""
         answer = ""
@@ -106,7 +106,7 @@ class RAGQualityRunner:
             failure_reason = str(e)
             logger.error("Case %s failed: %s", case.case_id, e)
 
-        latency_ms = (time.time() - t0) * 1000
+        latency_ms = (time.perf_counter() - t0) * 1000
 
         # 4) 品質評価
         passed = True

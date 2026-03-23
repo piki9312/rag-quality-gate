@@ -20,6 +20,7 @@ from sentence_transformers import SentenceTransformer
 logger = logging.getLogger(__name__)
 
 DEFAULT_EMB_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+FALLBACK_EMB_DIM = 256
 
 
 def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> list[str]:
@@ -75,7 +76,7 @@ class RAGStore:
         os.makedirs(index_dir, exist_ok=True)
 
         self.emb_model_name = emb_model or os.getenv("EMB_MODEL", DEFAULT_EMB_MODEL)
-        self.model = SentenceTransformer(self.emb_model_name)
+        self.model = self._load_embedding_model()
         self.index: Optional[faiss.Index] = None
         self.metas: list[dict[str, Any]] = []
         self.doc_ids: set[str] = set()
@@ -88,7 +89,39 @@ class RAGStore:
     # Embedding
     # ------------------------------------------------------------------
 
+    def _load_embedding_model(self):
+        try:
+            return SentenceTransformer(self.emb_model_name)
+        except Exception as exc:
+            logger.warning(
+                "failed to load embedding model '%s'; using local fallback embeddings: %s",
+                self.emb_model_name,
+                exc,
+            )
+            self.emb_model_name = "local-fallback-hash-embedding"
+            return None
+
+    def _fallback_embed(self, texts: list[str]) -> np.ndarray:
+        vecs = np.zeros((len(texts), FALLBACK_EMB_DIM), dtype=np.float32)
+        for row_idx, text in enumerate(texts):
+            tokens = re.findall(r"\w+", text.lower())
+            if not tokens:
+                continue
+            for token in tokens:
+                digest = hashlib.sha256(token.encode("utf-8")).digest()
+                bucket = int.from_bytes(digest[:4], "big") % FALLBACK_EMB_DIM
+                sign = 1.0 if digest[4] % 2 == 0 else -1.0
+                vecs[row_idx, bucket] += sign
+
+            norm = np.linalg.norm(vecs[row_idx])
+            if norm > 0:
+                vecs[row_idx] /= norm
+        return vecs
+
     def _embed(self, texts: list[str]) -> np.ndarray:
+        if self.model is None:
+            return self._fallback_embed(texts)
+
         vecs = self.model.encode(
             texts,
             batch_size=32,
