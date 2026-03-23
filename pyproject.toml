@@ -22,10 +22,12 @@ dependencies = [
     "faiss-cpu>=1.7.4",
     "sentence-transformers>=2.2.0",
     "numpy>=1.24.0",
+    "pypdf>=5.0.0",
 ]
 
 [project.scripts]
 rqg = "rqg.cli:main"
+qgate = "rqg.cli:main"
 
 [project.optional-dependencies]
 dev = [
