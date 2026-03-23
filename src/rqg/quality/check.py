@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from rqg.domain import GateDecision
+
 from .aggregate import case_pass_rates, severity_pass_rate
 from .models import QARunRecord
 
@@ -59,6 +61,7 @@ class ThresholdResult:
 
 @dataclass
 class CheckResult:
+    run_id: str
     current_runs: int
     baseline_runs: int
     overall_rate: float
@@ -130,6 +133,7 @@ def run_check(
 
     if not current:
         return CheckResult(
+            run_id="check-no-data",
             current_runs=0,
             baseline_runs=len(baseline),
             overall_rate=0.0,
@@ -151,6 +155,7 @@ def run_check(
     total = len(current)
     passed = sum(1 for r in current if r.passed)
     overall_rate = (passed / total * 100) if total else 0.0
+    latest_record = max(current, key=lambda r: r.timestamp)
 
     s1 = [r for r in current if r.severity == "S1"]
     s1_passed = sum(1 for r in s1 if r.passed)
@@ -215,6 +220,7 @@ def run_check(
                 )
 
     return CheckResult(
+        run_id=latest_record.run_id,
         current_runs=total,
         baseline_runs=len(baseline),
         overall_rate=overall_rate,
@@ -223,6 +229,37 @@ def run_check(
         s1_total=s1_total,
         thresholds=checks,
         case_thresholds=case_checks,
+    )
+
+
+def build_gate_decision(result: CheckResult) -> GateDecision:
+    """Convert a gate check result into a GateDecision model."""
+    failed_thresholds = [t for t in result.thresholds if not t.passed]
+    failed_case_thresholds = [t for t in result.case_thresholds if not t.passed]
+
+    reasons = [
+        f"{t.name}: {t.actual:.1f} < {t.threshold:.1f} ({t.detail})".rstrip(" ()")
+        for t in failed_thresholds
+    ]
+    reasons.extend(
+        f"{t.name}: {t.actual:.1f} < {t.threshold:.1f} ({t.detail})".rstrip(" ()")
+        for t in failed_case_thresholds
+    )
+
+    status = "pass" if result.gate_passed else "fail"
+    metrics = {
+        "overall_pass_rate": result.overall_rate,
+        "s1_pass_rate": result.s1_rate,
+        "current_runs": float(result.current_runs),
+        "baseline_runs": float(result.baseline_runs),
+    }
+
+    return GateDecision(
+        run_id=result.run_id,
+        status=status,
+        reasons=reasons,
+        metrics=metrics,
+        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -240,6 +277,29 @@ def render_gate_markdown(result: CheckResult) -> str:
     lines.append("|--------|--------|-----------|--------|")
     for t in result.thresholds:
         icon = "✅" if t.passed else "❌"
+        lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {icon} |")
+
+    if result.case_thresholds:
+        failed = [t for t in result.case_thresholds if not t.passed]
+        if failed:
+            lines.append("\n### Per-case Failures")
+            lines.append("| Case | Actual | Threshold | Name |")
+            lines.append("|------|--------|-----------|------|")
+            for t in failed:
+                lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {t.detail} |")
+
+    return "\n".join(lines) + "\n"
+
+
+def render_gate_markdown(result: CheckResult) -> str:
+    """Render a gate check result as Markdown."""
+    status = "PASS" if result.gate_passed else "FAIL"
+    lines = [f"## RAG Quality Gate: {status}\n"]
+
+    lines.append("| Metric | Actual | Threshold | Status |")
+    lines.append("|--------|--------|-----------|--------|")
+    for t in result.thresholds:
+        icon = "OK" if t.passed else "NG"
         lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {icon} |")
 
     if result.case_thresholds:

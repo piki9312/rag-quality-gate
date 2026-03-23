@@ -9,11 +9,92 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
+
+from .domain import DocumentSnapshot, EvalCase, GateDecision
+
+
+def _write_json_output(path: str | Path, model: object) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(model.model_dump_json(indent=2), encoding="utf-8")
+    return output_path
+
+
+def _build_document_snapshot(
+    *,
+    source_path: Path,
+    text: str,
+    version: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> DocumentSnapshot:
+    content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    snapshot_id = f"{source_path.stem}-{content_hash[:12]}"
+    return DocumentSnapshot(
+        snapshot_id=snapshot_id,
+        doc_id=source_path.as_posix(),
+        title=source_path.stem,
+        source_path=source_path.as_posix(),
+        content_hash=content_hash,
+        created_at=datetime.now(timezone.utc),
+        version=version,
+        metadata=metadata or {},
+    )
+
+
+def _snapshot_output_path(index_dir: str | Path, snapshot: DocumentSnapshot) -> Path:
+    return Path(index_dir) / "snapshots" / f"{snapshot.snapshot_id}.json"
+
+
+def cmd_init_snapshot(args: argparse.Namespace) -> int:
+    content_hash = hashlib.sha256(args.content.encode("utf-8")).hexdigest()
+    snapshot = DocumentSnapshot(
+        snapshot_id=args.snapshot_id,
+        doc_id=args.doc_id,
+        title=args.title,
+        source_path=args.source_path,
+        content_hash=content_hash,
+        created_at=datetime.now(timezone.utc),
+        version=args.version,
+        metadata={},
+    )
+    output_path = _write_json_output(args.output, snapshot)
+    print(f"Saved snapshot JSON to {output_path}")
+    return 0
+
+
+def cmd_create_sample_case(args: argparse.Namespace) -> int:
+    case = EvalCase(
+        case_id="sample-case-001",
+        question="What policy applies to paid leave requests?",
+        expected_evidence=["Paid leave requests must be submitted in advance."],
+        expected_keywords=["paid leave", "advance"],
+        risk_level="S2",
+        doc_snapshot_id="sample-snapshot-001",
+        notes="Sample case for Phase 1 scaffolding.",
+    )
+    output_path = _write_json_output(args.output, case)
+    print(f"Saved eval case JSON to {output_path}")
+    return 0
+
+
+def cmd_create_sample_gate(args: argparse.Namespace) -> int:
+    gate = GateDecision(
+        run_id="sample-run-001",
+        status="warn",
+        reasons=["Sample gate decision for Phase 1 scaffolding."],
+        metrics={"pass_rate": 0.8, "s1_pass_rate": 1.0},
+        created_at=datetime.now(timezone.utc),
+    )
+    output_path = _write_json_output(args.output, gate)
+    print(f"Saved gate decision JSON to {output_path}")
+    return 0
 
 
 def cmd_ingest(args: argparse.Namespace) -> int:
@@ -32,6 +113,18 @@ def cmd_ingest(args: argparse.Namespace) -> int:
             continue
         text = f.read_text(encoding="utf-8", errors="ignore")
         n = store.add_text(source=f.name, text=text)
+        if n > 0:
+            snapshot = _build_document_snapshot(
+                source_path=f,
+                text=text,
+                metadata={"chunk_count": n, "ingest_index_dir": args.index_dir},
+            )
+            snapshot_path = _write_json_output(
+                _snapshot_output_path(args.index_dir, snapshot),
+                snapshot,
+            )
+            if args.verbose:
+                print(f"  snapshot: {snapshot_path}")
         total_chunks += n
         if args.verbose:
             print(f"  {f.name}: {n} chunks")
@@ -95,7 +188,12 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     """品質ゲート判定を実行する。"""
-    from .quality.check import GateConfig, render_gate_markdown, run_check
+    from .quality.check import (
+        GateConfig,
+        build_gate_decision,
+        render_gate_markdown,
+        run_check,
+    )
 
     if args.config and Path(args.config).exists():
         config = GateConfig.from_yaml(args.config)
@@ -117,13 +215,61 @@ def cmd_check(args: argparse.Namespace) -> int:
     # Markdown output
     md = render_gate_markdown(result)
     print(md)
+    decision = build_gate_decision(result)
 
     if args.output_file:
         Path(args.output_file).write_text(md, encoding="utf-8")
         print(f"Saved → {args.output_file}")
 
+    if args.decision_file:
+        decision_path = _write_json_output(args.decision_file, decision)
+        print(f"Saved gate decision JSON to {decision_path}")
+
     status = "PASS" if result.gate_passed else "FAIL"
     print(f"Gate: {'✅' if result.gate_passed else '🔴'} {status}")
+    return 0 if result.gate_passed else 1
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    """Run the quality gate check and emit stable ASCII output."""
+    from .quality.check import (
+        GateConfig,
+        build_gate_decision,
+        render_gate_markdown,
+        run_check,
+    )
+
+    if args.config and Path(args.config).exists():
+        config = GateConfig.from_yaml(args.config)
+    else:
+        config = GateConfig(
+            s1_pass_rate=args.s1_threshold,
+            overall_pass_rate=args.overall_threshold,
+        )
+
+    result = run_check(
+        log_dir=args.log_dir,
+        config=config,
+        days=args.days,
+        baseline_dir=args.baseline_dir,
+        baseline_days=args.baseline_days,
+        cases_file=args.cases_file,
+    )
+
+    md = render_gate_markdown(result)
+    print(md)
+    decision = build_gate_decision(result)
+
+    if args.output_file:
+        Path(args.output_file).write_text(md, encoding="utf-8")
+        print(f"Saved report to {args.output_file}")
+
+    if args.decision_file:
+        decision_path = _write_json_output(args.decision_file, decision)
+        print(f"Saved gate decision JSON to {decision_path}")
+
+    status = "PASS" if result.gate_passed else "FAIL"
+    print(f"Gate: {status}")
     return 0 if result.gate_passed else 1
 
 
@@ -161,6 +307,35 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--s1-threshold", type=float, default=100.0)
     p_check.add_argument("--overall-threshold", type=float, default=80.0)
     p_check.add_argument("--output-file", default=None)
+    p_check.add_argument("--decision-file", default=None)
+
+    # --- init-snapshot ---
+    p_init_snapshot = sub.add_parser(
+        "init-snapshot", help="Create a document snapshot JSON file"
+    )
+    p_init_snapshot.add_argument("--snapshot-id", required=True)
+    p_init_snapshot.add_argument("--doc-id", required=True)
+    p_init_snapshot.add_argument("--title", required=True)
+    p_init_snapshot.add_argument("--source-path", required=True)
+    p_init_snapshot.add_argument(
+        "--content",
+        default="Sample document content",
+        help="Raw content used only to derive content_hash for the scaffold",
+    )
+    p_init_snapshot.add_argument("--version", default=None)
+    p_init_snapshot.add_argument("--output", required=True)
+
+    # --- create-sample-case ---
+    p_sample_case = sub.add_parser(
+        "create-sample-case", help="Create a sample eval case JSON file"
+    )
+    p_sample_case.add_argument("--output", required=True)
+
+    # --- create-sample-gate ---
+    p_sample_gate = sub.add_parser(
+        "create-sample-gate", help="Create a sample gate decision JSON file"
+    )
+    p_sample_gate.add_argument("--output", required=True)
 
     return parser
 
@@ -178,6 +353,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_eval(args)
     elif args.command == "check":
         return cmd_check(args)
+    elif args.command == "init-snapshot":
+        return cmd_init_snapshot(args)
+    elif args.command == "create-sample-case":
+        return cmd_create_sample_case(args)
+    elif args.command == "create-sample-gate":
+        return cmd_create_sample_gate(args)
     else:
         parser.print_help()
         return 0

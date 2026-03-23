@@ -12,6 +12,7 @@ from rqg.quality.check import (
     CheckResult,
     GateConfig,
     ThresholdResult,
+    build_gate_decision,
     load_records,
     render_gate_markdown,
     run_check,
@@ -123,6 +124,7 @@ class TestRunCheck:
 class TestCheckResult:
     def test_gate_passed_property(self):
         result = CheckResult(
+            run_id="run-001",
             current_runs=10,
             baseline_runs=0,
             overall_rate=90.0,
@@ -140,6 +142,7 @@ class TestCheckResult:
 class TestRenderMarkdown:
     def test_pass_rendering(self):
         result = CheckResult(
+            run_id="run-001",
             current_runs=10,
             baseline_runs=50,
             overall_rate=90.0,
@@ -157,6 +160,7 @@ class TestRenderMarkdown:
 
     def test_fail_rendering(self):
         result = CheckResult(
+            run_id="run-001",
             current_runs=10,
             baseline_runs=0,
             overall_rate=60.0,
