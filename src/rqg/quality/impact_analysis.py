@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from rqg.casegen.sections import extract_sections_from_snapshot
 from rqg.domain import DocumentSnapshot, EvalCase, ImpactReport
+from rqg.presentation.markdown import render_impact_report_review_markdown
 from rqg.quality.loader import load_eval_cases
 
 
@@ -151,45 +152,17 @@ def load_eval_cases_from_path(path: str | Path) -> list[EvalCase]:
 
 
 def render_impact_review_text(report: ImpactReport) -> str:
-    """Render impact report in review-friendly plain text."""
-    lines = [
-        "Impact Analysis Report",
-        f"old_snapshot_id: {report.old_snapshot_id}",
-        f"new_snapshot_id: {report.new_snapshot_id}",
-        f"changed_evidence_count: {len(report.changed_evidence_ids)}",
-        f"impacted_case_count: {len(report.impacted_case_ids)}",
-        "",
-        "Changed Evidence IDs:",
-    ]
-
-    if report.changed_evidence_ids:
-        lines.extend(f"- {evidence_id}" for evidence_id in report.changed_evidence_ids)
-    else:
-        lines.append("- (none)")
-
-    lines.extend(["", "Impacted Cases:"])
-    if report.details:
-        for detail in report.details:
-            lines.append(
-                "- case_id={case_id} matched_evidence_id={matched_evidence_id} question={question}".format(
-                    case_id=detail.get("case_id", ""),
-                    matched_evidence_id=detail.get("matched_evidence_id", ""),
-                    question=detail.get("question", ""),
-                )
-            )
-    else:
-        lines.append("- (none)")
-
-    return "\n".join(lines) + "\n"
+    """Render impact report in review-friendly Markdown."""
+    return render_impact_report_review_markdown(report)
 
 
 def write_impact_review(path: str | Path, report: ImpactReport) -> Path:
-    """Write impact review output (.txt or .md)."""
+    """Write impact review output (.md)."""
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     suffix = output_path.suffix.lower()
-    if suffix not in {".txt", ".md"}:
-        raise ValueError("Impact review output must use .txt or .md")
+    if suffix != ".md":
+        raise ValueError("Impact review output must use .md")
 
     output_path.write_text(render_impact_review_text(report), encoding="utf-8")
     return output_path

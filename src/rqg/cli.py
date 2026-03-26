@@ -129,7 +129,11 @@ def cmd_gen_cases(args: argparse.Namespace) -> int:
     print(f"Saved {len(bundle.cases)} eval cases to {output_path}")
 
     if args.review_output:
-        review_path = write_review_output(args.review_output, bundle.cases)
+        try:
+            review_path = write_review_output(args.review_output, bundle.cases)
+        except ValueError as exc:
+            print(f"[ERROR] Failed to write review output: {exc}", file=sys.stderr)
+            return 1
         print(f"Saved review output to {review_path}")
     return 0
 
@@ -401,7 +405,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen_cases = sub.add_parser("gen-cases", help="Generate EvalCase candidates from a snapshot")
     p_gen_cases.add_argument("--snapshot", required=True, help="Path to DocumentSnapshot JSON")
     p_gen_cases.add_argument("--output", required=True, help="Path to generated EvalCase JSON")
-    p_gen_cases.add_argument("--review-output", default=None, help="Optional .md or .csv review output")
+    p_gen_cases.add_argument("--review-output", default=None, help="Optional .md review output")
     p_gen_cases.add_argument("--mode", choices=["rule", "hybrid"], default="rule")
     p_gen_cases.add_argument("--max-cases", type=int, default=50)
     p_gen_cases.add_argument("--use-llm", action="store_true", help="Use LLM question generation in addition to rule generation")
@@ -415,7 +419,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_impact.add_argument(
         "--review-output",
         default=None,
-        help="Optional .txt or .md review output",
+        help="Optional .md review output",
     )
 
     # --- init-snapshot ---

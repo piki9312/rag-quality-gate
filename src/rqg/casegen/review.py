@@ -6,20 +6,11 @@ import csv
 from pathlib import Path
 
 from rqg.domain import EvalCase
+from rqg.presentation.markdown import render_eval_case_review_markdown
 
 
 def render_cases_markdown(cases: list[EvalCase]) -> str:
-    lines = ["# EvalCase Review", ""]
-    lines.append("| case_id | question | expected_evidence | risk_level | notes |")
-    lines.append("|---------|----------|-------------------|------------|-------|")
-    for case in cases:
-        evidence = ", ".join(case.expected_evidence)
-        notes = case.notes or ""
-        question = case.question.replace("\n", " ")
-        lines.append(
-            f"| {case.case_id} | {question} | {evidence} | {case.risk_level} | {notes} |"
-        )
-    return "\n".join(lines) + "\n"
+    return render_eval_case_review_markdown(cases)
 
 
 def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
