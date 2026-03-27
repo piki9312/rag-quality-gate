@@ -45,8 +45,10 @@ class TestQARunRecord:
         assert restored.passed == record.passed
 
     def test_failure_reasons(self, failed_result, s2_case):
+        failed_result.failure_category = "synthesis"
         record = QARunRecord.from_eval_result(failed_result, "run-002", s2_case)
         assert record.failure_type == "keyword_miss"
+        assert record.failure_category == "synthesis"
         assert len(record.reasons) == 1
 
     def test_no_cost_when_zero(self, passed_result, s1_case):

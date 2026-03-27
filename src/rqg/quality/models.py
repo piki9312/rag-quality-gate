@@ -46,6 +46,7 @@ class EvalResult:
     answer: str = ""
     retrieved_ids: list[str] = field(default_factory=list)
     failure_type: str | None = None
+    failure_category: str | None = None
     failure_reason: str = ""
     latency_ms: float = 0.0
     cost_usd: float = 0.0
@@ -100,6 +101,7 @@ class QARunRecord(BaseModel):
     category: str = Field(default="general")
     passed: bool = Field(...)
     failure_type: str | None = Field(None)
+    failure_category: str | None = Field(None)
     reasons: list[str] = Field(default_factory=list)
     answer: str = Field(default="")
     retrieved_ids: list[str] = Field(default_factory=list)
@@ -123,6 +125,7 @@ class QARunRecord(BaseModel):
             category=case.category,
             passed=result.passed,
             failure_type=result.failure_type,
+            failure_category=result.failure_category,
             reasons=reasons,
             answer=result.answer,
             retrieved_ids=result.retrieved_ids,

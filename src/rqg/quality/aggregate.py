@@ -45,3 +45,14 @@ def failure_breakdown(results: list) -> dict[str, int]:
         ft = r.failure_type or "unknown"
         breakdown[ft] = breakdown.get(ft, 0) + 1
     return dict(sorted(breakdown.items(), key=lambda x: -x[1]))
+
+
+def failure_category_breakdown(results: list) -> dict[str, int]:
+    """failure_category ごとのカウント。"""
+    breakdown: dict[str, int] = {}
+    for r in results:
+        if r.passed:
+            continue
+        category = getattr(r, "failure_category", None) or "unknown"
+        breakdown[category] = breakdown.get(category, 0) + 1
+    return dict(sorted(breakdown.items(), key=lambda x: -x[1]))

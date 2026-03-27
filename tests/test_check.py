@@ -60,6 +60,7 @@ def log_dir_with_records(tmp_path):
             severity="S2",
             passed=False,
             failure_type="keyword_miss",
+            failure_category="synthesis",
         ),
     ]
 
@@ -114,6 +115,7 @@ class TestRunCheck:
         result = run_check(log_dir_with_records, gate_config, days=1)
         # 66.7% < 80%
         assert result.gate_passed is False
+        assert result.failure_categories.get("synthesis") == 1
 
     def test_no_data_fails(self, tmp_path, gate_config):
         result = run_check(str(tmp_path / "empty"), gate_config, days=1)
@@ -170,6 +172,9 @@ class TestRenderMarkdown:
             thresholds=[
                 ThresholdResult("S1", 100.0, 50.0, False, "1/2"),
             ],
+            failure_categories={"retrieval_miss": 2, "synthesis": 1},
         )
         md = render_gate_markdown(result)
         assert "FAIL" in md
+        assert "Failure Categories" in md
+        assert "retrieval_miss" in md

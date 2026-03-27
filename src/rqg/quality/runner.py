@@ -18,6 +18,7 @@ from ..serving.rag import RAGStore
 from .evaluators.keyword import keyword_match_rate
 from .evaluators.reference import reference_accuracy
 from .evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
+from .failure_reason import classify_failure_category
 from .models import EvalResult, EvalRun, QARunRecord, QATestCase
 
 logger = logging.getLogger(__name__)
@@ -111,6 +112,7 @@ class RAGQualityRunner:
         # 4) 品質評価
         passed = True
         score = 0.0
+        failure_category: str | None = None
 
         if failure_type:
             passed = False
@@ -152,6 +154,14 @@ class RAGQualityRunner:
 
             score = sum(scores) / len(scores) if scores else 1.0
 
+        if not passed:
+            failure_category = classify_failure_category(
+                failure_type=failure_type,
+                failure_reason=failure_reason,
+                retrieval_hit=ret_hit,
+                retrieved_ids=retrieved_ids,
+            )
+
         return EvalResult(
             case_id=case.case_id,
             severity=case.severity,
@@ -160,6 +170,7 @@ class RAGQualityRunner:
             answer=answer,
             retrieved_ids=retrieved_ids,
             failure_type=failure_type,
+            failure_category=failure_category,
             failure_reason=failure_reason,
             latency_ms=latency_ms,
             cost_usd=cost_usd,

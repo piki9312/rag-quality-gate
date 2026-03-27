@@ -62,6 +62,7 @@ class TestRunCase:
         assert result.retrieval_hit is False
         # S1 + retrieval miss → passed=False
         assert result.passed is False
+        assert result.failure_category == "retrieval_miss"
 
     def test_error_handling(self, s1_case):
         """store.search がエラーを投げたら failure_type=error。"""
@@ -74,6 +75,7 @@ class TestRunCase:
         result = runner.run_case(s1_case)
         assert result.passed is False
         assert result.failure_type == "error"
+        assert result.failure_category == "tool_failure"
 
     def test_empty_search_results(self, s1_case):
         class EmptyStore:
