@@ -29,6 +29,7 @@ class TestCLIHelp:
         assert "create-sample-gate" in result.stdout
         assert "gen-cases" in result.stdout
         assert "impact" in result.stdout
+        assert "migrate-cases" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -112,6 +113,30 @@ class TestCLIParsing:
         assert args.command == "gen-cases"
         assert args.mode == "hybrid"
         assert args.use_llm is True
+
+    def test_migrate_cases_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "migrate-cases",
+                "--cases",
+                "cases.json",
+                "--snapshot",
+                "snapshots/old.json",
+                "--snapshot-dir",
+                "snapshots",
+                "--output",
+                "migrated.json",
+                "--report",
+                "migration_report.json",
+            ]
+        )
+        assert args.command == "migrate-cases"
+        assert args.snapshot == ["snapshots/old.json"]
+        assert args.snapshot_dir == "snapshots"
+        assert args.report == "migration_report.json"
 
 
 class TestPhase1CLI:
@@ -222,4 +247,44 @@ class TestPhase1CLI:
         assert output_file.exists()
         assert review_file.exists()
         assert "leave_policy_001" in output_file.read_text(encoding="utf-8")
-        assert "| case_id | question |" in review_file.read_text(encoding="utf-8")
+        review_content = review_file.read_text(encoding="utf-8")
+        assert "# Eval Case Review" in review_content
+        assert "## Case: leave_policy_001" in review_content
+
+    def test_gen_cases_without_review_output_writes_only_json(self):
+        source_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-rules-no-review.md"
+        snapshot_file = Path("tests/.tmp") / f"{uuid.uuid4()}-snapshot-no-review.json"
+        output_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-no-review.json"
+        review_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-no-review.md"
+
+        source_doc.write_text(
+            "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.\n",
+            encoding="utf-8",
+        )
+        snapshot = {
+            "snapshot_id": "snapshot-001",
+            "doc_id": "doc-001",
+            "title": "Leave Policy",
+            "source_path": source_doc.as_posix(),
+            "content_hash": "abc123",
+            "created_at": "2026-03-23T00:00:00Z",
+            "version": None,
+            "metadata": {},
+        }
+        import json
+
+        snapshot_file.write_text(json.dumps(snapshot), encoding="utf-8")
+
+        exit_code = main(
+            [
+                "gen-cases",
+                "--snapshot",
+                str(snapshot_file),
+                "--output",
+                str(output_file),
+            ]
+        )
+
+        assert exit_code == 0
+        assert output_file.exists()
+        assert not review_file.exists()

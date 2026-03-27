@@ -3,9 +3,20 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+
+class ImpactDetail(BaseModel):
+    """A single impacted-case detail row."""
+
+    case_id: str = Field(..., min_length=1)
+    matched_evidence_id: str = Field(..., min_length=1)
+    question: str = Field(..., min_length=1)
+    match_mode: Literal["strict", "legacy_compat"] = "strict"
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class ImpactReport(BaseModel):
@@ -15,7 +26,9 @@ class ImpactReport(BaseModel):
     new_snapshot_id: str = Field(..., min_length=1)
     changed_evidence_ids: list[str] = Field(default_factory=list)
     impacted_case_ids: list[str] = Field(default_factory=list)
-    details: list[dict[str, Any]] = Field(default_factory=list)
+    details: list[ImpactDetail] = Field(default_factory=list)
+    legacy_match_count: int = Field(default=0, ge=0)
+    legacy_compatibility_active: bool = False
     created_at: datetime
 
     model_config = ConfigDict(extra="forbid")
