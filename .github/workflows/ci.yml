@@ -75,6 +75,134 @@ jobs:
             --output-file runs/quality/gate-report.md \
             --decision-file runs/quality/gate-decision.json
 
+        - name: Verify legacy match migration baseline
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          workspace = Path("runs/legacy-migration-check")
+          workspace.mkdir(parents=True, exist_ok=True)
+
+          old_doc = workspace / "leave_policy_old.md"
+          new_doc = workspace / "leave_policy_new.md"
+          old_doc.write_text(
+            "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.\n",
+            encoding="utf-8",
+          )
+          new_doc.write_text(
+            "# Leave Policy\n\nPaid leave requests must be submitted 3 business days in advance.\n",
+            encoding="utf-8",
+          )
+
+          old_snapshot = workspace / "old_snapshot.json"
+          new_snapshot = workspace / "new_snapshot.json"
+          cases_legacy = workspace / "cases_legacy.json"
+          cases_migrated = workspace / "cases_migrated.json"
+          migration_report = workspace / "migration_report.json"
+          impact_report = workspace / "impact_report.json"
+
+          old_snapshot.write_text(
+            json.dumps(
+              {
+                "snapshot_id": "impact-old",
+                "doc_id": "demo-leave-policy",
+                "title": "Leave Policy",
+                "source_path": str(old_doc.resolve()),
+                "content_hash": "hash-old",
+                "created_at": "2026-03-27T00:00:00Z",
+                "metadata": {},
+              },
+              indent=2,
+            ),
+            encoding="utf-8",
+          )
+          new_snapshot.write_text(
+            json.dumps(
+              {
+                "snapshot_id": "impact-new",
+                "doc_id": "demo-leave-policy",
+                "title": "Leave Policy",
+                "source_path": str(new_doc.resolve()),
+                "content_hash": "hash-new",
+                "created_at": "2026-03-27T00:00:00Z",
+                "metadata": {},
+              },
+              indent=2,
+            ),
+            encoding="utf-8",
+          )
+          cases_legacy.write_text(
+            json.dumps(
+              [
+                {
+                  "case_id": "leave_policy_001",
+                  "question": "What is the leave policy?",
+                  "expected_evidence": [f"{old_doc.resolve().as_posix()}#sec-1"],
+                  "expected_keywords": ["leave", "policy"],
+                  "risk_level": "S2",
+                  "doc_snapshot_id": "impact-old",
+                }
+              ],
+              indent=2,
+            ),
+            encoding="utf-8",
+          )
+
+          subprocess.run(
+            [
+              sys.executable,
+              "-m",
+              "rqg.cli",
+              "migrate-cases",
+              "--cases",
+              str(cases_legacy),
+              "--snapshot",
+              str(old_snapshot),
+              "--snapshot",
+              str(new_snapshot),
+              "--output",
+              str(cases_migrated),
+              "--report",
+              str(migration_report),
+            ],
+            check=True,
+          )
+
+          subprocess.run(
+            [
+              sys.executable,
+              "-m",
+              "rqg.cli",
+              "impact",
+              "--old-snapshot",
+              str(old_snapshot),
+              "--new-snapshot",
+              str(new_snapshot),
+              "--cases",
+              str(cases_migrated),
+              "--output",
+              str(impact_report),
+            ],
+            check=True,
+          )
+
+          payload = json.loads(impact_report.read_text(encoding="utf-8"))
+          legacy_matches = int(payload.get("legacy_match_count", -1))
+          impacted = len(payload.get("impacted_case_ids", []))
+
+          if impacted == 0:
+            raise SystemExit("legacy migration CI check failed: expected impacted cases > 0")
+          if legacy_matches != 0:
+            raise SystemExit(
+              f"legacy migration CI check failed: legacy_match_count must be 0 after migration, got {legacy_matches}"
+            )
+
+          print(f"legacy migration CI check passed: impacted={impacted}, legacy_match_count={legacy_matches}")
+          PY
+
       - name: Upload quality artifacts
         if: always()
         uses: actions/upload-artifact@v4
