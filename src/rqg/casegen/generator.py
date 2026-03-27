@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 import logging
 from pathlib import Path
+import re
 
 from rqg.casegen.questions import (
+    normalize_question_text,
     generate_llm_questions,
     generate_rule_questions,
     suggest_keywords,
@@ -15,6 +17,8 @@ from rqg.casegen.sections import DocumentSection, extract_sections_from_snapshot
 from rqg.domain import DocumentSnapshot, EvalCase
 
 logger = logging.getLogger(__name__)
+
+_CONTENT_TOKEN_RE = re.compile(r"[\w\u3040-\u30ff\u3400-\u9fff]")
 
 
 @dataclass
@@ -48,6 +52,13 @@ def _build_eval_case(
     )
 
 
+def _is_caseworthy_section(section: DocumentSection) -> bool:
+    compact = "".join(section.content.split())
+    if len(compact) < 15:
+        return False
+    return bool(_CONTENT_TOKEN_RE.search(compact))
+
+
 def generate_eval_cases_from_snapshot(
     snapshot: DocumentSnapshot,
     *,
@@ -62,6 +73,9 @@ def generate_eval_cases_from_snapshot(
     ordinal = 0
 
     for section in sections:
+        if not _is_caseworthy_section(section):
+            continue
+
         questions: list[tuple[str, str]] = []
 
         for question in generate_rule_questions(section, max_questions=1):
@@ -82,8 +96,9 @@ def generate_eval_cases_from_snapshot(
         deduped_questions: list[tuple[str, str]] = []
         seen_questions: set[str] = set()
         for question, note in questions:
-            if question not in seen_questions:
-                seen_questions.add(question)
+            question_key = normalize_question_text(question).lower()
+            if question_key and question_key not in seen_questions:
+                seen_questions.add(question_key)
                 deduped_questions.append((question, note))
 
         for question, note in deduped_questions:
