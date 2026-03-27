@@ -138,6 +138,30 @@ class TestCLIParsing:
         assert args.snapshot_dir == "snapshots"
         assert args.report == "migration_report.json"
 
+    def test_impact_args_with_simulation_options(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "impact",
+                "--old-snapshot",
+                "old.json",
+                "--new-snapshot",
+                "new.json",
+                "--cases",
+                "cases.json",
+                "--output",
+                "impact.json",
+                "--reference-date",
+                "2026-07-01",
+                "--strict-only",
+            ]
+        )
+        assert args.command == "impact"
+        assert args.reference_date == "2026-07-01"
+        assert args.strict_only is True
+
 
 class TestPhase1CLI:
     def test_create_sample_case_writes_json(self):

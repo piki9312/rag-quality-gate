@@ -160,6 +160,7 @@ def build_impact_report(
     old_snapshot_path: str | Path | None = None,
     new_snapshot_path: str | Path | None = None,
     reference_date: date | None = None,
+    strict_only: bool = False,
 ) -> ImpactReport:
     """Build an impact report from snapshots and eval cases."""
     changed_evidence_ids = detect_changed_evidence_ids(
@@ -168,7 +169,7 @@ def build_impact_report(
         old_snapshot_path=old_snapshot_path,
         new_snapshot_path=new_snapshot_path,
     )
-    legacy_compatibility_active = _is_legacy_compat_active(reference_date)
+    legacy_compatibility_active = False if strict_only else _is_legacy_compat_active(reference_date)
     if legacy_compatibility_active:
         compatible_changed_ids = _build_legacy_compatible_changed_ids(
             changed_evidence_ids,
