@@ -109,39 +109,47 @@ def extract_impacted_cases(
     changed_evidence_ids: list[str],
     *,
     compatible_changed_evidence_ids: set[str] | None = None,
-) -> tuple[list[str], list[ImpactDetail]]:
+) -> tuple[list[str], list[ImpactDetail], int]:
     """Extract impacted case IDs based on expected_evidence overlap."""
     if not changed_evidence_ids:
-        return [], []
+        return [], [], 0
 
     changed_set = {_normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids}
     if compatible_changed_evidence_ids is None:
         compatible_set = changed_set
     else:
         compatible_set = {_normalize_evidence_ref(evidence_id) for evidence_id in compatible_changed_evidence_ids}
+    legacy_only_set = compatible_set - changed_set
 
     impacted_case_ids: list[str] = []
     details: list[ImpactDetail] = []
+    legacy_match_count = 0
 
     for case in cases:
-        matched = [
-            evidence_id
-            for evidence_id in case.expected_evidence
-            if _normalize_evidence_ref(evidence_id) in compatible_set
-        ]
+        matched: list[tuple[str, str]] = []
+        for evidence_id in case.expected_evidence:
+            normalized_evidence_id = _normalize_evidence_ref(evidence_id)
+            if normalized_evidence_id not in compatible_set:
+                continue
+            if normalized_evidence_id in legacy_only_set:
+                matched.append((evidence_id, "legacy_compat"))
+                legacy_match_count += 1
+            else:
+                matched.append((evidence_id, "strict"))
         if not matched:
             continue
         impacted_case_ids.append(case.case_id)
-        for evidence_id in matched:
+        for evidence_id, match_mode in matched:
             details.append(
                 ImpactDetail(
                     case_id=case.case_id,
                     matched_evidence_id=evidence_id,
                     question=case.question,
+                    match_mode=match_mode,
                 )
             )
 
-    return impacted_case_ids, details
+    return impacted_case_ids, details, legacy_match_count
 
 
 def build_impact_report(
@@ -160,7 +168,8 @@ def build_impact_report(
         old_snapshot_path=old_snapshot_path,
         new_snapshot_path=new_snapshot_path,
     )
-    if _is_legacy_compat_active(reference_date):
+    legacy_compatibility_active = _is_legacy_compat_active(reference_date)
+    if legacy_compatibility_active:
         compatible_changed_ids = _build_legacy_compatible_changed_ids(
             changed_evidence_ids,
             old_snapshot,
@@ -168,7 +177,7 @@ def build_impact_report(
         )
     else:
         compatible_changed_ids = {_normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids}
-    impacted_case_ids, details = extract_impacted_cases(
+    impacted_case_ids, details, legacy_match_count = extract_impacted_cases(
         cases,
         changed_evidence_ids,
         compatible_changed_evidence_ids=compatible_changed_ids,
@@ -180,6 +189,8 @@ def build_impact_report(
         changed_evidence_ids=changed_evidence_ids,
         impacted_case_ids=impacted_case_ids,
         details=details,
+        legacy_match_count=legacy_match_count,
+        legacy_compatibility_active=legacy_compatibility_active,
         created_at=datetime.now(timezone.utc),
     )
 

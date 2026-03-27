@@ -182,6 +182,8 @@ def test_render_impact_report_markdown():
     markdown = render_impact_report_review_markdown(report)
     assert "# Impact Report Review" in markdown
     assert "- Old Snapshot: old-snapshot" in markdown
+    assert "- Legacy Compatibility:" in markdown
+    assert "- Legacy Compatibility Matches:" in markdown
     assert "## Changed Evidence" in markdown
     assert "## Impacted Cases" in markdown
     assert "### Case: case-xyz" in markdown
@@ -200,7 +202,7 @@ def test_render_impact_report_markdown_handles_empty_lists():
     assert "## Impacted Cases" in markdown
 
 
-def test_impact_cli_writes_markdown_review_when_requested(tmp_path: Path):
+def test_impact_cli_writes_markdown_review_when_requested(tmp_path: Path, capsys):
     old_doc = tmp_path / "old.md"
     new_doc = tmp_path / "new.md"
     old_snapshot_file = tmp_path / "old_snapshot.json"
@@ -246,6 +248,8 @@ def test_impact_cli_writes_markdown_review_when_requested(tmp_path: Path):
     assert exit_code == 0
     assert review_file.exists()
     assert "# Impact Report Review" in review_file.read_text(encoding="utf-8")
+    stdout = capsys.readouterr().out
+    assert "Legacy compatibility matches:" in stdout
 
 
 def test_impact_cli_without_review_output_does_not_create_markdown(tmp_path: Path):
@@ -324,7 +328,10 @@ def test_legacy_source_path_evidence_still_matches_doc_id_based_change():
     )
 
     assert "legacy-case-001" in report.impacted_case_ids
+    assert report.legacy_compatibility_active is True
+    assert report.legacy_match_count == 1
     assert any(detail.case_id == "legacy-case-001" for detail in report.details)
+    assert any(detail.match_mode == "legacy_compat" for detail in report.details)
 
 
 def test_unrelated_legacy_path_with_same_fragment_is_not_impacted():
@@ -408,4 +415,6 @@ def test_legacy_source_path_evidence_does_not_match_after_compat_expiry():
         reference_date=date(2026, 7, 1),
     )
 
+    assert report.legacy_compatibility_active is False
+    assert report.legacy_match_count == 0
     assert "legacy-case-expired" not in report.impacted_case_ids

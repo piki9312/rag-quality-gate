@@ -177,6 +177,11 @@ def cmd_impact(args: argparse.Namespace) -> int:
 
     output_path = _write_json_output(args.output, report)
     print(f"Saved impact report JSON to {output_path}")
+    print(f"Changed evidence count: {len(report.changed_evidence_ids)}")
+    print(f"Impacted case count: {len(report.impacted_case_ids)}")
+    compat_state = "active" if report.legacy_compatibility_active else "inactive"
+    print(f"Legacy compatibility: {compat_state}")
+    print(f"Legacy compatibility matches: {report.legacy_match_count}")
 
     if args.review_output:
         try:
@@ -185,6 +190,67 @@ def cmd_impact(args: argparse.Namespace) -> int:
             print(f"[ERROR] Failed to write review output: {exc}", file=sys.stderr)
             return 1
         print(f"Saved impact review output to {review_path}")
+
+    return 0
+
+
+def cmd_migrate_cases(args: argparse.Namespace) -> int:
+    from .quality.case_migration import (
+        load_cases_with_format,
+        load_snapshots,
+        migrate_expected_evidence,
+        write_cases_with_format,
+    )
+
+    if not args.snapshot and not args.snapshot_dir:
+        print("[ERROR] Provide --snapshot and/or --snapshot-dir", file=sys.stderr)
+        return 1
+
+    try:
+        snapshots = load_snapshots(args.snapshot or [], args.snapshot_dir)
+    except (FileNotFoundError, ValidationError, ValueError) as exc:
+        print(f"[ERROR] Failed to load snapshots: {exc}", file=sys.stderr)
+        return 1
+
+    if not snapshots:
+        print("[ERROR] No snapshots found for migration", file=sys.stderr)
+        return 1
+
+    try:
+        cases, payload_format = load_cases_with_format(args.cases)
+    except (FileNotFoundError, ValueError, ValidationError) as exc:
+        print(f"[ERROR] Failed to load cases: {exc}", file=sys.stderr)
+        return 1
+
+    migrated_cases, stats = migrate_expected_evidence(cases, snapshots)
+
+    try:
+        output_path = write_cases_with_format(args.output, migrated_cases, payload_format)
+    except ValueError as exc:
+        print(f"[ERROR] Failed to write migrated cases: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Saved migrated cases to {output_path}")
+    print(f"Total cases: {stats['total_cases']}")
+    print(f"Converted cases: {stats['converted_case_count']}")
+    print(f"Total evidence refs: {stats['total_evidence_refs']}")
+    print(f"Converted evidence refs: {stats['converted_evidence_refs']}")
+    print(f"Unresolved legacy refs: {stats['unresolved_legacy_refs']}")
+
+    if args.report:
+        report_path = Path(args.report)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        import json
+
+        report_payload = {
+            "snapshot_count": len(snapshots),
+            **stats,
+        }
+        report_path.write_text(
+            json.dumps(report_payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        print(f"Saved migration report to {report_path}")
 
     return 0
 
@@ -378,6 +444,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional .md review output",
     )
 
+    # --- migrate-cases ---
+    p_migrate_cases = sub.add_parser(
+        "migrate-cases",
+        help="Convert legacy expected_evidence to doc_id-based IDs",
+    )
+    p_migrate_cases.add_argument("--cases", required=True, help="Path to EvalCase JSON or CSV")
+    p_migrate_cases.add_argument(
+        "--snapshot",
+        action="append",
+        default=[],
+        help="Path to DocumentSnapshot JSON (repeatable)",
+    )
+    p_migrate_cases.add_argument(
+        "--snapshot-dir",
+        default=None,
+        help="Directory containing DocumentSnapshot JSON files",
+    )
+    p_migrate_cases.add_argument("--output", required=True, help="Path to migrated cases JSON or CSV")
+    p_migrate_cases.add_argument(
+        "--report",
+        default=None,
+        help="Optional JSON summary report path",
+    )
+
     # --- init-snapshot ---
     p_init_snapshot = sub.add_parser(
         "init-snapshot", help="Create a document snapshot JSON file"
@@ -432,6 +522,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_gen_cases(args)
     elif args.command == "impact":
         return cmd_impact(args)
+    elif args.command == "migrate-cases":
+        return cmd_migrate_cases(args)
     else:
         parser.print_help()
         return 0

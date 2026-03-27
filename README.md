@@ -121,9 +121,18 @@ qgate impact \
   - new_snapshot_id
   - changed_evidence_ids
   - impacted_case_ids
-  - details (case_id, matched_evidence_id, question)
+  - details (case_id, matched_evidence_id, question, match_mode)
+  - legacy_match_count
+  - legacy_compatibility_active
   - created_at
 - review-output 指定時のみレビュー用 Markdown
+
+CLI 標準出力には以下のサマリも表示されます。
+
+- Changed evidence count
+- Impacted case count
+- Legacy compatibility (active/inactive)
+- Legacy compatibility matches
 
 運用メモ (Phase 1.5 仕上げ):
 
@@ -137,6 +146,23 @@ qgate impact \
 - source_path ベース expected_evidence を doc_id ベースへ移行完了
 - legacy 互換マッチ 0 件を継続確認
 
+### expected_evidence 移行補助ツール
+
+legacy な source_path ベース `expected_evidence` を `doc_id#...` 形式へ変換できます。
+
+```bash
+rqg migrate-cases \
+  --cases artifacts/eval_cases.json \
+  --snapshot artifacts/old_snapshot.json \
+  --snapshot-dir index/snapshots \
+  --output artifacts/eval_cases_migrated.json \
+  --report artifacts/migration_report.json
+```
+
+- `--snapshot` は複数指定できます
+- `--snapshot-dir` 配下の snapshot JSON も変換マップに利用されます
+- `--report` には変換件数・未解決件数が保存されます
+
 ### 文書更新時の推奨運用フロー
 
 1. 現行文書を ingest して snapshot を保存
@@ -144,9 +170,10 @@ qgate impact \
 3. 文書を更新
 4. 更新後文書を ingest して snapshot を保存
 5. qgate impact を実行
-6. impacted cases を優先レビュー
-7. rqg eval と rqg check を実行
-8. 必要な修正後に pass を確認
+6. Legacy compatibility matches を確認し、必要なら rqg migrate-cases でケース移行
+7. impacted cases を優先レビュー
+8. rqg eval と rqg check を実行
+9. 必要な修正後に pass を確認
 
 ## デモ
 

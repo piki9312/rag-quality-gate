@@ -29,6 +29,7 @@ class TestCLIHelp:
         assert "create-sample-gate" in result.stdout
         assert "gen-cases" in result.stdout
         assert "impact" in result.stdout
+        assert "migrate-cases" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -112,6 +113,30 @@ class TestCLIParsing:
         assert args.command == "gen-cases"
         assert args.mode == "hybrid"
         assert args.use_llm is True
+
+    def test_migrate_cases_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "migrate-cases",
+                "--cases",
+                "cases.json",
+                "--snapshot",
+                "snapshots/old.json",
+                "--snapshot-dir",
+                "snapshots",
+                "--output",
+                "migrated.json",
+                "--report",
+                "migration_report.json",
+            ]
+        )
+        assert args.command == "migrate-cases"
+        assert args.snapshot == ["snapshots/old.json"]
+        assert args.snapshot_dir == "snapshots"
+        assert args.report == "migration_report.json"
 
 
 class TestPhase1CLI:
