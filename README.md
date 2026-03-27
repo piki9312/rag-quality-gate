@@ -212,6 +212,18 @@ python -m rqg.demo.impact_cycle
 - docs/demo/fail-fix-cycle.md
 - docs/demo/impact-cycle.md
 - docs/adr/0001-model-boundaries.md
+- docs/ops/phase2-migration-playbook.md
+
+## Phase2 開始前チェック
+
+Phase2（旧形式の計画的削減）へ進む前に、以下を固定してください。
+
+1. 対象ケース母集団の確定（owner/期限を明記）
+2. legacy_match_count と unresolved_legacy_refs の週次計測
+3. migrate-cases 実行手順とロールバック条件の合意
+4. 期限後撤去タスクの担当・実行タイミング確定
+
+詳細は docs/ops/phase2-migration-playbook.md を参照してください。
 
 ## Phase 1 / 1.5 実装状況
 
