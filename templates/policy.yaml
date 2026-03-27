@@ -1,0 +1,21 @@
+# RQG policy template
+# Copy to .rqg.yml or merge required fields into your policy repo.
+
+thresholds:
+  s1_pass_rate: 100.0
+  overall_pass_rate: 80.0
+  retrieval_precision: 0.0
+
+operation:
+  gate_mode: block           # block | warn-only
+  hotfix_override: false     # temporary escape hatch for emergency fixes
+  flaky_quarantine_cases: [] # list of case_id to isolate until stabilized
+
+failure_reason:
+  enabled: true
+  categories:
+    - retrieval_miss
+    - stale
+    - synthesis
+    - tool_failure
+    - unknown
