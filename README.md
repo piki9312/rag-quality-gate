@@ -125,6 +125,18 @@ qgate impact \
   - created_at
 - review-output 指定時のみレビュー用 Markdown
 
+運用メモ (Phase 1.5 仕上げ):
+
+- section_id は doc_id ベースで生成されます（パス変更に強くするため）
+- 既存ケースに source_path ベース expected_evidence が残っていても、impact 判定では後方互換マッチを行います
+- 後方互換マッチの有効期間は 2026-03-27 から 2026-06-30 までです
+- 新規ケース作成時は doc_id を安定した論理IDとして運用してください
+
+移行完了条件 (後方互換ロジック終了の目安):
+
+- source_path ベース expected_evidence を doc_id ベースへ移行完了
+- legacy 互換マッチ 0 件を継続確認
+
 ### 文書更新時の推奨運用フロー
 
 1. 現行文書を ingest して snapshot を保存

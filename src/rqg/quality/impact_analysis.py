@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -16,8 +16,55 @@ from rqg.presentation.markdown import render_impact_report_review_markdown
 from rqg.quality.loader import load_eval_cases
 
 
+LEGACY_EVIDENCE_COMPAT_START = date(2026, 3, 27)
+LEGACY_EVIDENCE_COMPAT_UNTIL = date(2026, 6, 30)
+
+
 def _section_hash(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def _normalize_evidence_ref(value: str) -> str:
+    return value.strip().replace("\\", "/")
+
+
+def _split_evidence_id(evidence_id: str) -> tuple[str, str]:
+    normalized = _normalize_evidence_ref(evidence_id)
+    if "#" not in normalized:
+        return normalized, ""
+    prefix, fragment = normalized.split("#", 1)
+    return prefix, fragment
+
+
+def _build_doc_aliases(old_snapshot: DocumentSnapshot, new_snapshot: DocumentSnapshot) -> set[str]:
+    aliases = {
+        _normalize_evidence_ref(old_snapshot.doc_id),
+        _normalize_evidence_ref(new_snapshot.doc_id),
+        _normalize_evidence_ref(old_snapshot.source_path),
+        _normalize_evidence_ref(new_snapshot.source_path),
+    }
+    return {alias for alias in aliases if alias}
+
+
+def _build_legacy_compatible_changed_ids(
+    changed_evidence_ids: list[str],
+    old_snapshot: DocumentSnapshot,
+    new_snapshot: DocumentSnapshot,
+) -> set[str]:
+    aliases = _build_doc_aliases(old_snapshot, new_snapshot)
+    compatible_ids = {_normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids}
+    for evidence_id in changed_evidence_ids:
+        _, fragment = _split_evidence_id(evidence_id)
+        if not fragment:
+            continue
+        for alias in aliases:
+            compatible_ids.add(f"{alias}#{fragment}")
+    return compatible_ids
+
+
+def _is_legacy_compat_active(reference_date: date | None = None) -> bool:
+    current = reference_date or datetime.now(timezone.utc).date()
+    return LEGACY_EVIDENCE_COMPAT_START <= current <= LEGACY_EVIDENCE_COMPAT_UNTIL
 
 
 def _extract_section_hashes(
@@ -60,17 +107,28 @@ def detect_changed_evidence_ids(
 def extract_impacted_cases(
     cases: list[EvalCase],
     changed_evidence_ids: list[str],
+    *,
+    compatible_changed_evidence_ids: set[str] | None = None,
 ) -> tuple[list[str], list[ImpactDetail]]:
     """Extract impacted case IDs based on expected_evidence overlap."""
     if not changed_evidence_ids:
         return [], []
 
-    changed_set = set(changed_evidence_ids)
+    changed_set = {_normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids}
+    if compatible_changed_evidence_ids is None:
+        compatible_set = changed_set
+    else:
+        compatible_set = {_normalize_evidence_ref(evidence_id) for evidence_id in compatible_changed_evidence_ids}
+
     impacted_case_ids: list[str] = []
     details: list[ImpactDetail] = []
 
     for case in cases:
-        matched = [evidence_id for evidence_id in case.expected_evidence if evidence_id in changed_set]
+        matched = [
+            evidence_id
+            for evidence_id in case.expected_evidence
+            if _normalize_evidence_ref(evidence_id) in compatible_set
+        ]
         if not matched:
             continue
         impacted_case_ids.append(case.case_id)
@@ -93,6 +151,7 @@ def build_impact_report(
     *,
     old_snapshot_path: str | Path | None = None,
     new_snapshot_path: str | Path | None = None,
+    reference_date: date | None = None,
 ) -> ImpactReport:
     """Build an impact report from snapshots and eval cases."""
     changed_evidence_ids = detect_changed_evidence_ids(
@@ -101,7 +160,19 @@ def build_impact_report(
         old_snapshot_path=old_snapshot_path,
         new_snapshot_path=new_snapshot_path,
     )
-    impacted_case_ids, details = extract_impacted_cases(cases, changed_evidence_ids)
+    if _is_legacy_compat_active(reference_date):
+        compatible_changed_ids = _build_legacy_compatible_changed_ids(
+            changed_evidence_ids,
+            old_snapshot,
+            new_snapshot,
+        )
+    else:
+        compatible_changed_ids = {_normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids}
+    impacted_case_ids, details = extract_impacted_cases(
+        cases,
+        changed_evidence_ids,
+        compatible_changed_evidence_ids=compatible_changed_ids,
+    )
 
     return ImpactReport(
         old_snapshot_id=old_snapshot.snapshot_id,

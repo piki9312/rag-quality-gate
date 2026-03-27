@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 import uuid
 
@@ -281,3 +282,130 @@ def test_impact_cli_without_review_output_does_not_create_markdown(tmp_path: Pat
 
     assert exit_code == 0
     assert not review_file.exists()
+
+
+def test_legacy_source_path_evidence_still_matches_doc_id_based_change():
+    old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy-old.md"
+    new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy-new.md"
+    old_doc.write_text("# Policy\n\nSubmit request 5 business days in advance.", encoding="utf-8")
+    new_doc.write_text("# Policy\n\nSubmit request 3 business days in advance.", encoding="utf-8")
+
+    old_snapshot = DocumentSnapshot(
+        snapshot_id="snap-old",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=old_doc.as_posix(),
+        content_hash="hash-old",
+        created_at="2026-03-23T00:00:00Z",
+    )
+    new_snapshot = DocumentSnapshot(
+        snapshot_id="snap-new",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=new_doc.as_posix(),
+        content_hash="hash-new",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    legacy_case = EvalCase(
+        case_id="legacy-case-001",
+        question="When should request be submitted?",
+        expected_evidence=[f"{old_doc.as_posix()}#sec-1"],
+        expected_keywords=[],
+        risk_level="S2",
+        doc_snapshot_id="snap-old",
+    )
+
+    report = build_impact_report(
+        old_snapshot,
+        new_snapshot,
+        [legacy_case],
+        reference_date=date(2026, 4, 1),
+    )
+
+    assert "legacy-case-001" in report.impacted_case_ids
+    assert any(detail.case_id == "legacy-case-001" for detail in report.details)
+
+
+def test_unrelated_legacy_path_with_same_fragment_is_not_impacted():
+    old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy2-old.md"
+    new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy2-new.md"
+    old_doc.write_text("# Policy\n\nA", encoding="utf-8")
+    new_doc.write_text("# Policy\n\nB", encoding="utf-8")
+
+    old_snapshot = DocumentSnapshot(
+        snapshot_id="snap-old",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=old_doc.as_posix(),
+        content_hash="hash-old",
+        created_at="2026-03-23T00:00:00Z",
+    )
+    new_snapshot = DocumentSnapshot(
+        snapshot_id="snap-new",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=new_doc.as_posix(),
+        content_hash="hash-new",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    unrelated_case = EvalCase(
+        case_id="other-doc-case",
+        question="Other doc question",
+        expected_evidence=["other/doc/path.md#sec-1"],
+        expected_keywords=[],
+        risk_level="S2",
+        doc_snapshot_id="other-snapshot",
+    )
+
+    report = build_impact_report(
+        old_snapshot,
+        new_snapshot,
+        [unrelated_case],
+        reference_date=date(2026, 4, 1),
+    )
+
+    assert "other-doc-case" not in report.impacted_case_ids
+
+
+def test_legacy_source_path_evidence_does_not_match_after_compat_expiry():
+    old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy3-old.md"
+    new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy3-new.md"
+    old_doc.write_text("# Policy\n\nold", encoding="utf-8")
+    new_doc.write_text("# Policy\n\nnew", encoding="utf-8")
+
+    old_snapshot = DocumentSnapshot(
+        snapshot_id="snap-old",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=old_doc.as_posix(),
+        content_hash="hash-old",
+        created_at="2026-03-23T00:00:00Z",
+    )
+    new_snapshot = DocumentSnapshot(
+        snapshot_id="snap-new",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=new_doc.as_posix(),
+        content_hash="hash-new",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    legacy_case = EvalCase(
+        case_id="legacy-case-expired",
+        question="legacy question",
+        expected_evidence=[f"{old_doc.as_posix()}#sec-1"],
+        expected_keywords=[],
+        risk_level="S2",
+        doc_snapshot_id="snap-old",
+    )
+
+    report = build_impact_report(
+        old_snapshot,
+        new_snapshot,
+        [legacy_case],
+        reference_date=date(2026, 7, 1),
+    )
+
+    assert "legacy-case-expired" not in report.impacted_case_ids
