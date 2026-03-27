@@ -106,6 +106,22 @@ qgate impact \
   --cases artifacts/eval_cases.json \
   --output artifacts/impact_report.json \
   --review-output artifacts/impact_report_review.md
+
+# 期限後シミュレーション（任意）
+qgate impact \
+  --old-snapshot artifacts/old_snapshot.json \
+  --new-snapshot artifacts/new_snapshot.json \
+  --cases artifacts/eval_cases.json \
+  --output artifacts/impact_report_strict.json \
+  --reference-date 2026-07-01
+
+# 日付に関係なく strict matching のみで評価（任意）
+qgate impact \
+  --old-snapshot artifacts/old_snapshot.json \
+  --new-snapshot artifacts/new_snapshot.json \
+  --cases artifacts/eval_cases.json \
+  --output artifacts/impact_report_strict.json \
+  --strict-only
 ```
 
 入力:
@@ -113,6 +129,8 @@ qgate impact \
 - --old-snapshot: 変更前 DocumentSnapshot JSON
 - --new-snapshot: 変更後 DocumentSnapshot JSON
 - --cases: EvalCase JSON または CSV
+- --reference-date: 互換有効期間を判定する基準日（YYYY-MM-DD, 任意）
+- --strict-only: 互換有無に関係なく strict matching のみで判定（任意）
 
 出力:
 

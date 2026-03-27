@@ -418,3 +418,86 @@ def test_legacy_source_path_evidence_does_not_match_after_compat_expiry():
     assert report.legacy_compatibility_active is False
     assert report.legacy_match_count == 0
     assert "legacy-case-expired" not in report.impacted_case_ids
+
+
+def test_strict_only_disables_legacy_compatibility_within_window():
+    old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy4-old.md"
+    new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy4-new.md"
+    old_doc.write_text("# Policy\n\nold", encoding="utf-8")
+    new_doc.write_text("# Policy\n\nnew", encoding="utf-8")
+
+    old_snapshot = DocumentSnapshot(
+        snapshot_id="snap-old",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=old_doc.as_posix(),
+        content_hash="hash-old",
+        created_at="2026-03-23T00:00:00Z",
+    )
+    new_snapshot = DocumentSnapshot(
+        snapshot_id="snap-new",
+        doc_id="policy/leave",
+        title="Policy",
+        source_path=new_doc.as_posix(),
+        content_hash="hash-new",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    legacy_case = EvalCase(
+        case_id="legacy-case-strict-only",
+        question="legacy question",
+        expected_evidence=[f"{old_doc.as_posix()}#sec-1"],
+        expected_keywords=[],
+        risk_level="S2",
+        doc_snapshot_id="snap-old",
+    )
+
+    report = build_impact_report(
+        old_snapshot,
+        new_snapshot,
+        [legacy_case],
+        reference_date=date(2026, 4, 1),
+        strict_only=True,
+    )
+
+    assert report.legacy_compatibility_active is False
+    assert report.legacy_match_count == 0
+    assert "legacy-case-strict-only" not in report.impacted_case_ids
+
+
+def test_impact_cli_invalid_reference_date_returns_error(tmp_path: Path, capsys):
+    old_doc = tmp_path / "old.md"
+    new_doc = tmp_path / "new.md"
+    old_snapshot_file = tmp_path / "old_snapshot.json"
+    new_snapshot_file = tmp_path / "new_snapshot.json"
+    cases_file = tmp_path / "cases.json"
+    output_file = tmp_path / "impact_report.json"
+
+    old_doc.write_text("# A\n\nOne", encoding="utf-8")
+    new_doc.write_text("# A\n\nTwo", encoding="utf-8")
+    old_snapshot = _make_snapshot(old_doc, snapshot_id="old")
+    new_snapshot = _make_snapshot(new_doc, snapshot_id="new")
+
+    old_snapshot_file.write_text(old_snapshot.model_dump_json(indent=2), encoding="utf-8")
+    new_snapshot_file.write_text(new_snapshot.model_dump_json(indent=2), encoding="utf-8")
+    cases_file.write_text("[]", encoding="utf-8")
+
+    exit_code = main(
+        [
+            "impact",
+            "--old-snapshot",
+            str(old_snapshot_file),
+            "--new-snapshot",
+            str(new_snapshot_file),
+            "--cases",
+            str(cases_file),
+            "--output",
+            str(output_file),
+            "--reference-date",
+            "2026-13-99",
+        ]
+    )
+
+    stderr = capsys.readouterr().err
+    assert exit_code == 1
+    assert "Invalid --reference-date" in stderr
