@@ -11,7 +11,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from rqg.casegen.sections import extract_sections_from_snapshot
-from rqg.domain import DocumentSnapshot, EvalCase, ImpactReport
+from rqg.domain import DocumentSnapshot, EvalCase, ImpactDetail, ImpactReport
 from rqg.presentation.markdown import render_impact_report_review_markdown
 from rqg.quality.loader import load_eval_cases
 
@@ -60,14 +60,14 @@ def detect_changed_evidence_ids(
 def extract_impacted_cases(
     cases: list[EvalCase],
     changed_evidence_ids: list[str],
-) -> tuple[list[str], list[dict[str, str]]]:
+) -> tuple[list[str], list[ImpactDetail]]:
     """Extract impacted case IDs based on expected_evidence overlap."""
     if not changed_evidence_ids:
         return [], []
 
     changed_set = set(changed_evidence_ids)
     impacted_case_ids: list[str] = []
-    details: list[dict[str, str]] = []
+    details: list[ImpactDetail] = []
 
     for case in cases:
         matched = [evidence_id for evidence_id in case.expected_evidence if evidence_id in changed_set]
@@ -76,11 +76,11 @@ def extract_impacted_cases(
         impacted_case_ids.append(case.case_id)
         for evidence_id in matched:
             details.append(
-                {
-                    "case_id": case.case_id,
-                    "matched_evidence_id": evidence_id,
-                    "question": case.question,
-                }
+                ImpactDetail(
+                    case_id=case.case_id,
+                    matched_evidence_id=evidence_id,
+                    question=case.question,
+                )
             )
 
     return impacted_case_ids, details

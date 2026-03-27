@@ -47,7 +47,7 @@ def test_changed_evidence_ids_and_impacted_cases_detected():
 
     assert old_section_id in changed
     assert "case-001" in report.impacted_case_ids
-    assert any(detail["matched_evidence_id"] == old_section_id for detail in report.details)
+    assert any(detail.matched_evidence_id == old_section_id for detail in report.details)
 
 
 def test_impact_report_json_serializable():

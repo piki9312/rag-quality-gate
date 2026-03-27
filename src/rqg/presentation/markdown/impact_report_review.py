@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 
-from rqg.domain import ImpactReport
+from rqg.domain import ImpactDetail, ImpactReport
 
 
 def _single_line(value: str) -> str:
@@ -30,18 +30,18 @@ def render_impact_report_review_markdown(report: ImpactReport) -> str:
     lines.extend(["", "## Impacted Cases", ""])
 
     # Group details by case while preserving appearance order.
-    grouped: OrderedDict[str, list[dict[str, str]]] = OrderedDict()
+    grouped: OrderedDict[str, list[ImpactDetail]] = OrderedDict()
     for detail in report.details:
-        case_id = str(detail.get("case_id", "")).strip() or "(unknown-case)"
+        case_id = detail.case_id.strip() or "(unknown-case)"
         grouped.setdefault(case_id, []).append(detail)
 
     if grouped:
         for case_id, details in grouped.items():
             lines.append(f"### Case: {_single_line(case_id)}")
-            question = str(details[0].get("question", "")).strip()
+            question = details[0].question.strip()
             lines.append(f"- Question: {_single_line(question) if question else '(none)'}")
             for detail in details:
-                matched_evidence_id = str(detail.get("matched_evidence_id", "")).strip()
+                matched_evidence_id = detail.matched_evidence_id.strip()
                 lines.append(
                     f"- Matched Evidence: {_single_line(matched_evidence_id) if matched_evidence_id else '(none)'}"
                 )

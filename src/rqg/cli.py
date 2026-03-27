@@ -279,50 +279,6 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
-    """品質ゲート判定を実行する。"""
-    from .quality.check import (
-        GateConfig,
-        build_gate_decision,
-        render_gate_markdown,
-        run_check,
-    )
-
-    if args.config and Path(args.config).exists():
-        config = GateConfig.from_yaml(args.config)
-    else:
-        config = GateConfig(
-            s1_pass_rate=args.s1_threshold,
-            overall_pass_rate=args.overall_threshold,
-        )
-
-    result = run_check(
-        log_dir=args.log_dir,
-        config=config,
-        days=args.days,
-        baseline_dir=args.baseline_dir,
-        baseline_days=args.baseline_days,
-        cases_file=args.cases_file,
-    )
-
-    # Markdown output
-    md = render_gate_markdown(result)
-    print(md)
-    decision = build_gate_decision(result)
-
-    if args.output_file:
-        Path(args.output_file).write_text(md, encoding="utf-8")
-        print(f"Saved → {args.output_file}")
-
-    if args.decision_file:
-        decision_path = _write_json_output(args.decision_file, decision)
-        print(f"Saved gate decision JSON to {decision_path}")
-
-    status = "PASS" if result.gate_passed else "FAIL"
-    print(f"Gate: {'✅' if result.gate_passed else '🔴'} {status}")
-    return 0 if result.gate_passed else 1
-
-
-def cmd_check(args: argparse.Namespace) -> int:
     """Run the quality gate check and emit stable ASCII output."""
     from .quality.check import (
         GateConfig,

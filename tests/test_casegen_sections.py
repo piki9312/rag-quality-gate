@@ -47,3 +47,21 @@ def test_extract_sections_without_headings_returns_single_section():
 
     assert len(sections) == 1
     assert sections[0].content == "Paid leave requests must be submitted."
+
+
+def test_extract_sections_uses_doc_id_for_stable_section_id_prefix():
+    doc = Path("tests/.tmp") / f"{uuid.uuid4()}-stable-id.md"
+    doc.write_text("# Leave Policy\n\nPaid leave requests must be submitted.", encoding="utf-8")
+    snapshot = DocumentSnapshot(
+        snapshot_id="snapshot-001",
+        doc_id="policy/leave",
+        title="Leave Policy",
+        source_path=doc.as_posix(),
+        content_hash="hash",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    sections = extract_sections_from_snapshot(snapshot)
+
+    assert len(sections) == 1
+    assert sections[0].section_id == "policy/leave#sec-1"
