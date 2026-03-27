@@ -8,6 +8,7 @@ import pytest
 
 from rqg.quality.aggregate import (
     case_pass_rates,
+    failure_category_breakdown,
     failure_breakdown,
     percentile,
     severity_pass_rate,
@@ -20,6 +21,7 @@ class _FakeResult:
     severity: str
     passed: bool
     failure_type: str | None = None
+    failure_category: str | None = None
 
 
 class TestSeverityPassRate:
@@ -93,3 +95,21 @@ class TestFailureBreakdown:
     def test_all_pass(self):
         results = [_FakeResult("QA001", "S1", True)]
         assert failure_breakdown(results) == {}
+
+
+class TestFailureCategoryBreakdown:
+    def test_breakdown(self):
+        results = [
+            _FakeResult("QA001", "S1", False, "keyword_miss", "synthesis"),
+            _FakeResult("QA002", "S1", False, "keyword_miss", "synthesis"),
+            _FakeResult("QA003", "S2", False, "error", "tool_failure"),
+            _FakeResult("QA004", "S2", True, None, None),
+        ]
+        bd = failure_category_breakdown(results)
+        assert bd["synthesis"] == 2
+        assert bd["tool_failure"] == 1
+
+    def test_unknown_when_missing_category(self):
+        results = [_FakeResult("QA001", "S1", False, "keyword_miss", None)]
+        bd = failure_category_breakdown(results)
+        assert bd["unknown"] == 1

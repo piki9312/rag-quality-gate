@@ -10,7 +10,7 @@ from typing import Any
 
 from rqg.domain import GateDecision
 
-from .aggregate import case_pass_rates, severity_pass_rate
+from .aggregate import case_pass_rates, failure_category_breakdown, severity_pass_rate
 from .models import QARunRecord
 
 
@@ -70,6 +70,7 @@ class CheckResult:
     s1_total: int
     thresholds: list[ThresholdResult] = field(default_factory=list)
     case_thresholds: list[ThresholdResult] = field(default_factory=list)
+    failure_categories: dict[str, int] = field(default_factory=dict)
 
     @property
     def gate_passed(self) -> bool:
@@ -229,6 +230,7 @@ def run_check(
         s1_total=s1_total,
         thresholds=checks,
         case_thresholds=case_checks,
+        failure_categories=failure_category_breakdown(current),
     )
 
 
@@ -288,6 +290,13 @@ def render_gate_markdown(result: CheckResult) -> str:
             for t in failed:
                 lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {t.detail} |")
 
+    if result.failure_categories:
+        lines.append("\n### Failure Categories")
+        lines.append("| Category | Count |")
+        lines.append("|----------|-------|")
+        for category, count in result.failure_categories.items():
+            lines.append(f"| {category} | {count} |")
+
     return "\n".join(lines) + "\n"
 
 
@@ -310,5 +319,12 @@ def render_gate_markdown(result: CheckResult) -> str:
             lines.append("|------|--------|-----------|------|")
             for t in failed:
                 lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {t.detail} |")
+
+    if result.failure_categories:
+        lines.append("\n### Failure Categories")
+        lines.append("| Category | Count |")
+        lines.append("|----------|-------|")
+        for category, count in result.failure_categories.items():
+            lines.append(f"| {category} | {count} |")
 
     return "\n".join(lines) + "\n"
