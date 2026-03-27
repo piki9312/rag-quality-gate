@@ -11,6 +11,46 @@ from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
 
 logger = logging.getLogger(__name__)
 
+_SPACE_RE = re.compile(r"\s+")
+
+
+def normalize_question_text(question: str) -> str:
+    """Normalize question text for dedupe and quality checks."""
+    compact = _SPACE_RE.sub(" ", question.strip())
+    return compact.rstrip("?？ ")
+
+
+def _is_generic_question(question: str) -> bool:
+    normalized = normalize_question_text(question)
+    if not normalized:
+        return True
+    generic_tokens = ["この内容", "このセクション", "本文", "本セクション"]
+    return any(token in normalized for token in generic_tokens)
+
+
+def filter_reviewable_questions(questions: list[str]) -> list[str]:
+    """Filter and dedupe questions for reviewer-friendly output."""
+    cleaned: list[str] = []
+    seen_keys: set[str] = set()
+
+    for question in questions:
+        normalized = normalize_question_text(question)
+        if not normalized:
+            continue
+        if len(normalized) < 8 or len(normalized) > 120:
+            continue
+        key = normalized.lower()
+        if key in seen_keys:
+            continue
+        seen_keys.add(key)
+        cleaned.append(normalized + "？")
+
+    if len(cleaned) <= 1:
+        return cleaned
+
+    non_generic = [question for question in cleaned if not _is_generic_question(question)]
+    return non_generic or cleaned
+
 
 def _extract_keywords(text: str, limit: int = 3) -> list[str]:
     normalized = re.sub(r"[^\w\u3040-\u30ff\u3400-\u9fff]+", " ", text)
@@ -39,7 +79,8 @@ def suggest_keywords(section: DocumentSection) -> list[str]:
 
 def generate_rule_questions(section: DocumentSection, max_questions: int = 1) -> list[str]:
     """Generate stable rule-based questions from a section."""
-    subject = section.heading.strip() or "この内容"
+    heading = section.heading.strip()
+    subject = heading or "このセクション"
     content = section.content
     templates: list[str] = []
 
@@ -52,15 +93,12 @@ def generate_rule_questions(section: DocumentSection, max_questions: int = 1) ->
     if any(keyword in subject + content for keyword in ["禁止", "不可", "してはいけない"]):
         templates.append(f"{subject}で禁止されていることは何ですか？")
 
-    templates.append(f"{subject}の内容は何ですか？")
+    templates.append(f"{subject}の要点は何ですか？")
 
-    deduped: list[str] = []
-    for question in templates:
-        if question not in deduped:
-            deduped.append(question)
-        if len(deduped) >= max_questions:
-            break
-    return deduped or ["このセクションの要点は何ですか？"]
+    filtered = filter_reviewable_questions(templates)
+    if filtered:
+        return filtered[:max_questions]
+    return ["このセクションの要点は何ですか？"]
 
 
 def generate_llm_questions(section: DocumentSection, max_questions: int = 2) -> list[str]:
@@ -81,8 +119,9 @@ def generate_llm_questions(section: DocumentSection, max_questions: int = 2) -> 
         questions = payload.get("questions", [])
         if not isinstance(questions, list):
             return []
-        cleaned = [str(question).strip() for question in questions if str(question).strip()]
-        return cleaned[:max_questions]
+        cleaned = [str(question) for question in questions]
+        filtered = filter_reviewable_questions(cleaned)
+        return filtered[:max_questions]
     except Exception as exc:
         logger.warning("llm question generation failed for %s: %s", section.section_id, exc)
         return []
