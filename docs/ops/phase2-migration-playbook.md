@@ -128,3 +128,5 @@ rqg check --log-dir runs/quality --config .rqg.yml
 - unresolved_legacy_refs が連続 0
 - impact 運用が定常化
 - 期限後撤去 PR が作成・マージ済み
+
+Phase2 完了後は `docs/ops/phase2-5-hardening-plan.md` に従って Phase2.5 を開始してください。
