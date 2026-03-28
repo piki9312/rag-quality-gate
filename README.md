@@ -278,6 +278,7 @@ Phase2.5（実運用で壊れにくくする）へ移行する場合は、以下
 
 - docs/ops/phase2-5-hardening-plan.md
 - docs/ops/phase2-5-ws1-baseline-sheet.md
+- docs/ops/phase2-5-ws2-failure-review-template.md
 
 WS1 の時間 target（初回導入 30分以内 / 週次運用 15分以内）は、以下の測定条件を固定した値として扱います。
 

@@ -87,3 +87,4 @@ Phase2.5 の完了条件:
 - docs/ops/phase2-weekly-metrics-register.md
 - docs/ops/phase2-kickoff-board.md
 - docs/ops/phase2-5-ws1-baseline-sheet.md
+- docs/ops/phase2-5-ws2-failure-review-template.md
