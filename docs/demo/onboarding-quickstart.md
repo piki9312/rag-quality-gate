@@ -15,9 +15,17 @@ Run a single flow end-to-end:
 
 ## Command
 
-Run from repository root:
+Run from repository root.
+
+Bash (macOS/Linux):
 
 ```bash
+python -m rqg.demo.onboarding_quickstart
+```
+
+PowerShell (Windows):
+
+```powershell
 python -m rqg.demo.onboarding_quickstart
 ```
 
