@@ -52,6 +52,7 @@ jobs:
       - name: Create pull request for weekly register update
         id: register_pr
         if: steps.register_diff.outputs.changed == 'true'
+        continue-on-error: true
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -77,18 +78,46 @@ jobs:
         if: steps.register_diff.outputs.changed != 'true'
         run: echo "No register changes detected. Skipping PR creation."
 
+      - name: Resolve register PR reference
+        id: register_pr_ref
+        if: always()
+        run: |
+          if [ "${{ steps.register_diff.outputs.changed }}" != "true" ]; then
+            echo "register_pr_url=" >> "$GITHUB_OUTPUT"
+            echo "register_pr_note=no register diff" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "${{ steps.register_pr.outcome }}" = "success" ] && [ -n "${{ steps.register_pr.outputs.pull-request-url }}" ]; then
+            echo "register_pr_url=${{ steps.register_pr.outputs.pull-request-url }}" >> "$GITHUB_OUTPUT"
+            echo "register_pr_note=auto-created" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "register_pr_url=${{ github.server_url }}/${{ github.repository }}/pull/new/automation/phase2-5-weekly-metrics-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+          echo "register_pr_note=manual creation required (actions PR creation disabled)" >> "$GITHUB_OUTPUT"
+
+      - name: Warn manual register PR creation required
+        if: always() && steps.register_diff.outputs.changed == 'true' && steps.register_pr.outcome != 'success'
+        run: |
+          echo "Auto PR creation was blocked by repository settings."
+          echo "Create PR manually from branch: automation/phase2-5-weekly-metrics-${{ github.run_id }}"
+          echo "Manual PR URL: ${{ steps.register_pr_ref.outputs.register_pr_url }}"
+
       - name: Link weekly metrics run to weekly review issue
         id: link_weekly_metrics
         if: always()
         uses: actions/github-script@v7
         env:
-          REGISTER_PR_URL: ${{ steps.register_pr.outputs.pull-request-url }}
+          REGISTER_PR_URL: ${{ steps.register_pr_ref.outputs.register_pr_url }}
+          REGISTER_PR_NOTE: ${{ steps.register_pr_ref.outputs.register_pr_note }}
         with:
           script: |
             const fs = require('fs');
             const runId = process.env.GITHUB_RUN_ID;
             const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`;
             const registerPrUrl = process.env.REGISTER_PR_URL || '';
+            const registerPrNote = process.env.REGISTER_PR_NOTE || '';
             const { owner, repo } = context.repo;
 
             let summary = {};
@@ -118,6 +147,7 @@ jobs:
               `- run_url: ${summary.run_url ?? runUrl}`,
               `- decision: ${summary.decision ?? 'unknown'}`,
               `- register_pr: ${registerPrUrl || 'not created (no register diff)'}`,
+              `- register_pr_note: ${registerPrNote || 'n/a'}`,
             ].join('\n');
 
             await github.rest.issues.createComment({
