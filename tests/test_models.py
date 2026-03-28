@@ -22,9 +22,7 @@ class TestEvalRun:
         assert run.pass_rate == 50.0
 
     def test_empty_run(self):
-        run = EvalRun(
-            run_id="empty", timestamp=datetime.now(timezone.utc), results=[]
-        )
+        run = EvalRun(run_id="empty", timestamp=datetime.now(timezone.utc), results=[])
         assert run.total == 0
         assert run.pass_rate == 0.0
 

@@ -13,7 +13,6 @@ from rqg.domain import GateDecision
 from .aggregate import case_pass_rates, failure_category_breakdown, severity_pass_rate
 from .models import QARunRecord
 
-
 # ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------

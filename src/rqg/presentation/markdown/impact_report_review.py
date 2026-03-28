@@ -26,7 +26,9 @@ def render_impact_report_review_markdown(report: ImpactReport) -> str:
     ]
 
     if report.changed_evidence_ids:
-        lines.extend(f"- {_single_line(evidence_id)}" for evidence_id in report.changed_evidence_ids)
+        lines.extend(
+            f"- {_single_line(evidence_id)}" for evidence_id in report.changed_evidence_ids
+        )
     else:
         lines.append("- (none)")
 
@@ -52,9 +54,7 @@ def render_impact_report_review_markdown(report: ImpactReport) -> str:
                     )
                 else:
                     label = _single_line(matched_evidence_id) if matched_evidence_id else "(none)"
-                lines.append(
-                    f"- Matched Evidence: {label}"
-                )
+                lines.append(f"- Matched Evidence: {label}")
             lines.append("")
     else:
         if report.impacted_case_ids:

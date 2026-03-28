@@ -8,7 +8,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ------------------------------------------------------------------
 # Test Case (input)
 # ------------------------------------------------------------------
@@ -113,9 +112,7 @@ class QARunRecord(BaseModel):
     model_config = ConfigDict(ser_json_timedelta="float")
 
     @classmethod
-    def from_eval_result(
-        cls, result: EvalResult, run_id: str, case: QATestCase
-    ) -> QARunRecord:
+    def from_eval_result(cls, result: EvalResult, run_id: str, case: QATestCase) -> QARunRecord:
         reasons = [result.failure_reason] if result.failure_reason else []
         return cls(
             timestamp=result.timestamp,

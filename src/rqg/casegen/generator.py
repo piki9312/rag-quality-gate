@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
-from pathlib import Path
 import re
+from dataclasses import dataclass
+from pathlib import Path
 
 from rqg.casegen.questions import (
-    normalize_question_text,
     generate_llm_questions,
     generate_rule_questions,
+    normalize_question_text,
     suggest_keywords,
 )
 from rqg.casegen.sections import DocumentSection, extract_sections_from_snapshot
@@ -29,7 +29,12 @@ class GeneratedCaseBundle:
 
 
 def _make_case_id(snapshot: DocumentSnapshot, section: DocumentSection, ordinal: int) -> str:
-    prefix = snapshot.title.strip() or Path(snapshot.source_path).stem or Path(snapshot.doc_id).stem or "doc"
+    prefix = (
+        snapshot.title.strip()
+        or Path(snapshot.source_path).stem
+        or Path(snapshot.doc_id).stem
+        or "doc"
+    )
     slug = prefix.lower().replace(" ", "_").replace("-", "_")
     return f"{slug}_{ordinal:03d}"
 
@@ -86,7 +91,9 @@ def generate_eval_cases_from_snapshot(
                 try:
                     llm_questions = generate_llm_questions(section, max_questions=2)
                 except Exception as exc:
-                    logger.warning("llm question generation crashed for %s: %s", section.section_id, exc)
+                    logger.warning(
+                        "llm question generation crashed for %s: %s", section.section_id, exc
+                    )
                     llm_questions = []
             else:
                 llm_questions = []

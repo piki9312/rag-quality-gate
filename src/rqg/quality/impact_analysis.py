@@ -15,7 +15,6 @@ from rqg.domain import DocumentSnapshot, EvalCase, ImpactDetail, ImpactReport
 from rqg.presentation.markdown import render_impact_report_review_markdown
 from rqg.quality.loader import load_eval_cases
 
-
 LEGACY_EVIDENCE_COMPAT_START = date(2026, 3, 27)
 LEGACY_EVIDENCE_COMPAT_UNTIL = date(2026, 6, 30)
 
@@ -118,7 +117,9 @@ def extract_impacted_cases(
     if compatible_changed_evidence_ids is None:
         compatible_set = changed_set
     else:
-        compatible_set = {_normalize_evidence_ref(evidence_id) for evidence_id in compatible_changed_evidence_ids}
+        compatible_set = {
+            _normalize_evidence_ref(evidence_id) for evidence_id in compatible_changed_evidence_ids
+        }
     legacy_only_set = compatible_set - changed_set
 
     impacted_case_ids: list[str] = []
@@ -177,7 +178,9 @@ def build_impact_report(
             new_snapshot,
         )
     else:
-        compatible_changed_ids = {_normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids}
+        compatible_changed_ids = {
+            _normalize_evidence_ref(evidence_id) for evidence_id in changed_evidence_ids
+        }
     impacted_case_ids, details, legacy_match_count = extract_impacted_cases(
         cases,
         changed_evidence_ids,

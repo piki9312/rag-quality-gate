@@ -71,6 +71,40 @@ CLI ヘルプ:
 rqg --help
 ```
 
+## 3ステップ導入（テンプレート標準）
+
+初回導入を最短化するために、以下のテンプレートを用意しています。
+
+- templates/policy.yaml
+- templates/github/workflows/rqg-onboarding.yml
+- templates/sample_pack/
+
+Step 1. テンプレートを配置
+
+```bash
+cp templates/policy.yaml .rqg.yml
+mkdir -p .github/workflows
+cp templates/github/workflows/rqg-onboarding.yml .github/workflows/
+cp -r templates/sample_pack packs/my_pack
+```
+
+Step 2. サンプル pack で実行
+
+```bash
+rqg ingest packs/my_pack/documents --index-dir index
+rqg eval packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality
+rqg check --log-dir runs/quality --config .rqg.yml
+```
+
+Step 3. 成果物を確認
+
+- runs/quality/gate-report.md
+- runs/quality/gate-decision.json
+- templates/sample_pack/reports/example-impact-report.json
+
+PRごとの導入スモークは、workflow_dispatch または pull_request で
+`rqg-onboarding.yml` が実行します。
+
 ## 最小実行フロー
 
 同梱の HR pack を使って最小構成を実行できます。
@@ -278,6 +312,7 @@ src/rqg/
   demo/           # 再現可能なデモシナリオ
   cli.py          # CLI エントリポイント
 packs/            # ドメイン別 Quality Pack
+templates/        # 導入テンプレート (policy/workflow/sample pack)
 tests/            # pytest
 ```
 

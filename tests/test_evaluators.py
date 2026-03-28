@@ -8,7 +8,6 @@ from rqg.quality.evaluators.keyword import keyword_match_rate
 from rqg.quality.evaluators.reference import extract_references, reference_accuracy
 from rqg.quality.evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
 
-
 # ==================================================================
 # keyword_match_rate
 # ==================================================================

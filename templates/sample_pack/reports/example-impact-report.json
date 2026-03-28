@@ -1,0 +1,21 @@
+{
+  "old_snapshot_id": "sample-old",
+  "new_snapshot_id": "sample-new",
+  "changed_evidence_ids": [
+    "demo-leave-policy#sec-1"
+  ],
+  "impacted_case_ids": [
+    "leave_policy_001"
+  ],
+  "details": [
+    {
+      "case_id": "leave_policy_001",
+      "matched_evidence_id": "demo-leave-policy#sec-1",
+      "question": "Leave Policyの内容は何ですか？",
+      "match_mode": "strict"
+    }
+  ],
+  "legacy_match_count": 0,
+  "legacy_compatibility_active": false,
+  "created_at": "2026-03-27T00:00:00Z"
+}

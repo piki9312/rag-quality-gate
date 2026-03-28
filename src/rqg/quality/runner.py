@@ -93,9 +93,7 @@ class RAGQualityRunner:
                 # Mock: retrieved chunk のテキストを結合して返す
                 answer = " ".join(r["text"][:100] for r in retrieved)
             else:
-                answer, meta = generate_answer(
-                    case.question, retrieved, self.max_new_tokens
-                )
+                answer, meta = generate_answer(case.question, retrieved, self.max_new_tokens)
                 usage = meta.get("usage", {})
                 cost_usd = usage.get("estimated_cost_usd", 0.0) or 0.0
                 input_tokens = usage.get("input_tokens", 0)
@@ -122,17 +120,13 @@ class RAGQualityRunner:
 
             # Keyword match
             if case.expected_keywords:
-                threshold = (
-                    S1_KEYWORD_THRESHOLD if case.severity == "S1" else S2_KEYWORD_THRESHOLD
-                )
+                threshold = S1_KEYWORD_THRESHOLD if case.severity == "S1" else S2_KEYWORD_THRESHOLD
                 kw_rate = keyword_match_rate(answer, case.expected_keywords)
                 scores.append(kw_rate)
                 if kw_rate < threshold:
                     passed = False
                     failure_type = "keyword_miss"
-                    failure_reason = (
-                        f"Keyword match {kw_rate:.0%} < {threshold:.0%}"
-                    )
+                    failure_reason = f"Keyword match {kw_rate:.0%} < {threshold:.0%}"
 
             # Retrieval hit (S1 のみ必須)
             if case.expected_chunks and case.severity == "S1" and not ret_hit:
@@ -148,9 +142,7 @@ class RAGQualityRunner:
             if ref_acc < 0.5 and not self.mock_llm:
                 passed = False
                 failure_type = failure_type or "bad_reference"
-                failure_reason = failure_reason or (
-                    f"Reference accuracy {ref_acc:.0%}"
-                )
+                failure_reason = failure_reason or (f"Reference accuracy {ref_acc:.0%}")
 
             score = sum(scores) / len(scores) if scores else 1.0
 
@@ -180,9 +172,7 @@ class RAGQualityRunner:
             retrieval_hit=ret_hit,
         )
 
-    def run_all(
-        self, cases: list[QATestCase], run_id: str | None = None
-    ) -> EvalRun:
+    def run_all(self, cases: list[QATestCase], run_id: str | None = None) -> EvalRun:
         """全ケースを実行して EvalRun を返す。"""
         rid = run_id or str(uuid.uuid4())[:12]
         results: list[EvalResult] = []
@@ -205,9 +195,7 @@ class RAGQualityRunner:
         )
 
     @staticmethod
-    def save_jsonl(
-        run: EvalRun, cases: list[QATestCase], log_dir: str
-    ) -> Path:
+    def save_jsonl(run: EvalRun, cases: list[QATestCase], log_dir: str) -> Path:
         """EvalRun を JSONL ファイルに永続化する。"""
         log_path = Path(log_dir)
         log_path.mkdir(parents=True, exist_ok=True)

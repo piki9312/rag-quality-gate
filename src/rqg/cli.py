@@ -440,7 +440,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen_cases.add_argument("--review-output", default=None, help="Optional .md review output")
     p_gen_cases.add_argument("--mode", choices=["rule", "hybrid"], default="rule")
     p_gen_cases.add_argument("--max-cases", type=int, default=50)
-    p_gen_cases.add_argument("--use-llm", action="store_true", help="Use LLM question generation in addition to rule generation")
+    p_gen_cases.add_argument(
+        "--use-llm",
+        action="store_true",
+        help="Use LLM question generation in addition to rule generation",
+    )
 
     # --- impact ---
     p_impact = sub.add_parser("impact", help="Analyze impacted eval cases between two snapshots")
@@ -481,7 +485,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Directory containing DocumentSnapshot JSON files",
     )
-    p_migrate_cases.add_argument("--output", required=True, help="Path to migrated cases JSON or CSV")
+    p_migrate_cases.add_argument(
+        "--output", required=True, help="Path to migrated cases JSON or CSV"
+    )
     p_migrate_cases.add_argument(
         "--report",
         default=None,
@@ -489,9 +495,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # --- init-snapshot ---
-    p_init_snapshot = sub.add_parser(
-        "init-snapshot", help="Create a document snapshot JSON file"
-    )
+    p_init_snapshot = sub.add_parser("init-snapshot", help="Create a document snapshot JSON file")
     p_init_snapshot.add_argument("--snapshot-id", required=True)
     p_init_snapshot.add_argument("--doc-id", required=True)
     p_init_snapshot.add_argument("--title", required=True)
@@ -505,9 +509,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_init_snapshot.add_argument("--output", required=True)
 
     # --- create-sample-case ---
-    p_sample_case = sub.add_parser(
-        "create-sample-case", help="Create a sample eval case JSON file"
-    )
+    p_sample_case = sub.add_parser("create-sample-case", help="Create a sample eval case JSON file")
     p_sample_case.add_argument("--output", required=True)
 
     # --- create-sample-gate ---

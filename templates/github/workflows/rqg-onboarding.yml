@@ -1,0 +1,46 @@
+name: RQG Onboarding Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  onboarding-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run onboarding quickstart flow
+        run: |
+          python -m rqg.demo.onboarding_quickstart
+
+      - name: Verify onboarding summary
+        shell: python
+        run: |
+          import json
+          from pathlib import Path
+
+          summaries = sorted(Path("demo_runs/onboarding_quickstart").glob("*/summary.json"))
+          if not summaries:
+            raise SystemExit("No onboarding summary found")
+
+          summary = json.loads(summaries[-1].read_text(encoding="utf-8"))
+          if summary.get("gate_status") != "pass":
+            raise SystemExit(f"Unexpected gate_status: {summary.get('gate_status')}")
+          if int(summary.get("changed_evidence_count", 0)) < 1:
+            raise SystemExit("changed_evidence_count must be >= 1")
+          if int(summary.get("impacted_case_count", 0)) < 1:
+            raise SystemExit("impacted_case_count must be >= 1")
+
+          print("onboarding smoke passed")
