@@ -151,11 +151,18 @@ def test_main_writes_output_and_returns_exit_codes(
     assert payload["decision"] == "investigate"
 
 
-def test_render_register_row_formats_values(metrics_docs: tuple[Path, Path, Path]) -> None:
+def test_render_register_row_formats_values(
+    metrics_docs: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     ws1, ws2, ws3 = metrics_docs
     _write(ws1, _ws1_markdown(with_real_row=True))
     _write(ws2, _ws2_markdown(real_rows=[]))
     _write(ws3, _ws3_markdown(real_rows=[]))
+
+    monkeypatch.delenv("GITHUB_RUN_ID", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
 
     summary = metrics.collect_summary(today=date(2026, 3, 28))
     row = metrics.render_register_row(summary, "piki9312")
