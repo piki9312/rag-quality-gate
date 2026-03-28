@@ -23,6 +23,7 @@ Last updated: 2026-03-28
 - Schedule: every Monday 00:00 UTC (Monday 09:00 JST)
 - Output artifact: phase2-weekly-metrics
 - Review owner: quality owner
+- Transfer record: docs/ops/phase2-weekly-metrics-register.md
 
 ## 4. Runbook and rollback
 
@@ -48,3 +49,4 @@ qgate impact \
 - Related issue: https://github.com/piki9312/rag-quality-gate/issues/4
 - Owner: @piki9312
 - Planned start: 2026-07-01 or later (after legacy_match_count stays 0)
+- PR template: .github/PULL_REQUEST_TEMPLATE/issue4-post-expiry-cleanup.md
