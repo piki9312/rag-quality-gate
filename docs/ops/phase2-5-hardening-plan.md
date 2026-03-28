@@ -92,3 +92,4 @@ Phase2.5 の完了条件:
 - docs/ops/phase2-5-ws3-gate-exception-approval-template.md
 - docs/ops/phase2-5-weekly-metrics-register.md
 - docs/ops/phase2-5-first-sprint-completion-record.md
+- .github/workflows/phase2-5-weekly-metrics.yml
