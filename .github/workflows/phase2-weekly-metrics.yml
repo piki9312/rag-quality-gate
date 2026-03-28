@@ -1,0 +1,190 @@
+name: Phase2 Weekly Migration Metrics
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+jobs:
+  phase2-weekly-metrics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Collect phase2 metrics
+        run: |
+          python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          root = Path("runs/phase2-weekly")
+          root.mkdir(parents=True, exist_ok=True)
+
+          old_doc = root / "leave_policy_old.md"
+          new_doc = root / "leave_policy_new.md"
+          old_doc.write_text(
+            "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.\n",
+            encoding="utf-8",
+          )
+          new_doc.write_text(
+            "# Leave Policy\n\nPaid leave requests must be submitted 3 business days in advance.\n",
+            encoding="utf-8",
+          )
+
+          old_snapshot = root / "old_snapshot.json"
+          new_snapshot = root / "new_snapshot.json"
+          cases_legacy = root / "cases_legacy.json"
+          cases_migrated = root / "cases_migrated.json"
+          migration_report = root / "migration_report.json"
+          impact_strict = root / "impact_report_strict.json"
+          impact_compat = root / "impact_report_compat.json"
+          summary_path = root / "summary.json"
+
+          old_snapshot.write_text(
+            json.dumps(
+              {
+                "snapshot_id": "phase2-old",
+                "doc_id": "demo-leave-policy",
+                "title": "Leave Policy",
+                "source_path": str(old_doc.resolve()),
+                "content_hash": "hash-old",
+                "created_at": "2026-03-28T00:00:00Z",
+                "metadata": {},
+              },
+              indent=2,
+            ),
+            encoding="utf-8",
+          )
+          new_snapshot.write_text(
+            json.dumps(
+              {
+                "snapshot_id": "phase2-new",
+                "doc_id": "demo-leave-policy",
+                "title": "Leave Policy",
+                "source_path": str(new_doc.resolve()),
+                "content_hash": "hash-new",
+                "created_at": "2026-03-28T00:00:00Z",
+                "metadata": {},
+              },
+              indent=2,
+            ),
+            encoding="utf-8",
+          )
+          cases_legacy.write_text(
+            json.dumps(
+              [
+                {
+                  "case_id": "leave_policy_001",
+                  "question": "What is the leave policy?",
+                  "expected_evidence": [f"{old_doc.resolve().as_posix()}#sec-1"],
+                  "expected_keywords": ["leave", "policy"],
+                  "risk_level": "S2",
+                  "doc_snapshot_id": "phase2-old",
+                }
+              ],
+              indent=2,
+            ),
+            encoding="utf-8",
+          )
+
+          subprocess.run(
+            [
+              sys.executable,
+              "-m",
+              "rqg.cli",
+              "migrate-cases",
+              "--cases",
+              str(cases_legacy),
+              "--snapshot",
+              str(old_snapshot),
+              "--snapshot",
+              str(new_snapshot),
+              "--output",
+              str(cases_migrated),
+              "--report",
+              str(migration_report),
+            ],
+            check=True,
+          )
+
+          subprocess.run(
+            [
+              sys.executable,
+              "-m",
+              "rqg.cli",
+              "impact",
+              "--old-snapshot",
+              str(old_snapshot),
+              "--new-snapshot",
+              str(new_snapshot),
+              "--cases",
+              str(cases_migrated),
+              "--output",
+              str(impact_strict),
+              "--strict-only",
+            ],
+            check=True,
+          )
+
+          subprocess.run(
+            [
+              sys.executable,
+              "-m",
+              "rqg.cli",
+              "impact",
+              "--old-snapshot",
+              str(old_snapshot),
+              "--new-snapshot",
+              str(new_snapshot),
+              "--cases",
+              str(cases_migrated),
+              "--output",
+              str(impact_compat),
+            ],
+            check=True,
+          )
+
+          migration = json.loads(migration_report.read_text(encoding="utf-8"))
+          strict = json.loads(impact_strict.read_text(encoding="utf-8"))
+          compat = json.loads(impact_compat.read_text(encoding="utf-8"))
+
+          summary = {
+            "legacy_match_count": int(compat.get("legacy_match_count", -1)),
+            "unresolved_legacy_refs": int(migration.get("unresolved_legacy_refs", -1)),
+            "strict_only_impacted_case_count": len(strict.get("impacted_case_ids", [])),
+          }
+          summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+
+          if summary["legacy_match_count"] != 0:
+            raise SystemExit(
+              f"phase2 weekly metrics failed: legacy_match_count must be 0, got {summary['legacy_match_count']}"
+            )
+          if summary["unresolved_legacy_refs"] != 0:
+            raise SystemExit(
+              f"phase2 weekly metrics failed: unresolved_legacy_refs must be 0, got {summary['unresolved_legacy_refs']}"
+            )
+          if summary["strict_only_impacted_case_count"] <= 0:
+            raise SystemExit("phase2 weekly metrics failed: strict_only_impacted_case_count must be > 0")
+
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Upload phase2 weekly metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-weekly-metrics
+          path: runs/phase2-weekly/
