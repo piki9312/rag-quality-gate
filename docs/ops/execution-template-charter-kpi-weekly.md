@@ -82,16 +82,16 @@
 | KPI ID | KPI 名 | 定義 | 計算方法 | データソース | 目標 | 閾値（Warn/Fail） | オーナー | 更新頻度 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | K1 | Gate pass rate | eval/check の通過率 | pass runs / total runs | runs/quality | >= 95% | warn < 95, fail < 90 |  | weekly |
-| K2 | legacy_match_count | 互換依存件数 | impact_report.legacy_match_count | impact report JSON | 0 継続 | warn > 0 |  | weekly |
+| K2 | impacted_case_count | 影響ケース件数 | len(impact_report.impacted_case_ids) | impact report JSON | 想定レンジ内 | warn: 急増 |  | weekly |
 | K3 | unresolved_legacy_refs | 移行未解決件数 | migration_report.unresolved_legacy_refs | migration report JSON | 0 | fail > 0 |  | weekly |
-| K4 | strict_only stability | strict-only での影響安定性 | impacted_case_ids 件数推移 | strict-only impact report | 変動許容内 | warn: 急増 |  | weekly |
+| K4 | impact stability | impact での影響安定性 | impacted_case_ids 件数推移 | impact report | 変動許容内 | warn: 急増 |  | weekly |
 | K5 | MTTR for gate fail | gate fail から復旧まで | 復旧時刻 - fail 時刻 | PR/CI log | <= X 日 | warn > X |  | weekly |
 
 ### 2-3. KPI 収集コマンド（例）
 
-1. impact（strict-only）
+1. impact
 
-- qgate impact --old-snapshot <old> --new-snapshot <new> --cases <cases> --output <impact_strict.json> --strict-only
+- qgate impact --old-snapshot <old> --new-snapshot <new> --cases <cases> --output <impact.json>
 
 2. migrate-cases
 
@@ -125,9 +125,9 @@
 | KPI | 先週値 | 今週値 | 差分 | 判定（Green/Yellow/Red） | コメント |
 | --- | ---: | ---: | ---: | --- | --- |
 | Gate pass rate |  |  |  |  |  |
-| legacy_match_count |  |  |  |  |  |
+| impacted_case_count |  |  |  |  |  |
 | unresolved_legacy_refs |  |  |  |  |  |
-| strict_only stability |  |  |  |  |  |
+| impact stability |  |  |  |  |  |
 | MTTR for gate fail |  |  |  |  |  |
 
 ### 3-4. インシデント / 失敗分析
@@ -138,7 +138,7 @@
 
 ### 3-5. 互換削減トラッキング（Phase2 用）
 
-| case_source | owner | baseline legacy | current legacy | unresolved refs | target_zero_date | 今週の進捗 |
+| case_source | owner | baseline impacted | current impacted | unresolved refs | target_zero_date | 今週の進捗 |
 | --- | --- | ---: | ---: | ---: | --- | --- |
 |  |  |  |  |  |  |  |
 

@@ -13,7 +13,7 @@ import hashlib
 import logging
 import sys
 import uuid
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -163,14 +163,6 @@ def cmd_impact(args: argparse.Namespace) -> int:
         print(f"[ERROR] Failed to load cases: {exc}", file=sys.stderr)
         return 1
 
-    reference_date: date | None = None
-    if args.reference_date:
-        try:
-            reference_date = date.fromisoformat(args.reference_date)
-        except ValueError as exc:
-            print(f"[ERROR] Invalid --reference-date (expected YYYY-MM-DD): {exc}", file=sys.stderr)
-            return 1
-
     try:
         report = build_impact_report(
             old_snapshot,
@@ -178,8 +170,6 @@ def cmd_impact(args: argparse.Namespace) -> int:
             cases,
             old_snapshot_path=args.old_snapshot,
             new_snapshot_path=args.new_snapshot,
-            reference_date=reference_date,
-            strict_only=args.strict_only,
         )
     except ValueError as exc:
         print(f"[ERROR] Impact analysis failed: {exc}", file=sys.stderr)
@@ -189,9 +179,6 @@ def cmd_impact(args: argparse.Namespace) -> int:
     print(f"Saved impact report JSON to {output_path}")
     print(f"Changed evidence count: {len(report.changed_evidence_ids)}")
     print(f"Impacted case count: {len(report.impacted_case_ids)}")
-    compat_state = "active" if report.legacy_compatibility_active else "inactive"
-    print(f"Legacy compatibility: {compat_state}")
-    print(f"Legacy compatibility matches: {report.legacy_match_count}")
 
     if args.review_output:
         try:
@@ -452,16 +439,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_impact.add_argument("--new-snapshot", required=True, help="Path to new DocumentSnapshot JSON")
     p_impact.add_argument("--cases", required=True, help="Path to EvalCase JSON or CSV")
     p_impact.add_argument("--output", required=True, help="Path to impact report JSON")
-    p_impact.add_argument(
-        "--reference-date",
-        default=None,
-        help="Optional simulation date (YYYY-MM-DD) for legacy compatibility window",
-    )
-    p_impact.add_argument(
-        "--strict-only",
-        action="store_true",
-        help="Disable legacy compatibility matching regardless of date",
-    )
     p_impact.add_argument(
         "--review-output",
         default=None,

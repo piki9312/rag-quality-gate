@@ -13,14 +13,11 @@ def _single_line(value: str) -> str:
 
 def render_impact_report_review_markdown(report: ImpactReport) -> str:
     """Render an ImpactReport into review-friendly Markdown."""
-    compat_state = "active" if report.legacy_compatibility_active else "inactive"
     lines: list[str] = [
         "# Impact Report Review",
         "",
         f"- Old Snapshot: {_single_line(report.old_snapshot_id)}",
         f"- New Snapshot: {_single_line(report.new_snapshot_id)}",
-        f"- Legacy Compatibility: {compat_state}",
-        f"- Legacy Compatibility Matches: {report.legacy_match_count}",
         "",
         "## Changed Evidence",
     ]
@@ -47,13 +44,7 @@ def render_impact_report_review_markdown(report: ImpactReport) -> str:
             lines.append(f"- Question: {_single_line(question) if question else '(none)'}")
             for detail in details:
                 matched_evidence_id = detail.matched_evidence_id.strip()
-                if detail.match_mode == "legacy_compat":
-                    label = (
-                        f"{_single_line(matched_evidence_id) if matched_evidence_id else '(none)'} "
-                        "(legacy-compat)"
-                    )
-                else:
-                    label = _single_line(matched_evidence_id) if matched_evidence_id else "(none)"
+                label = _single_line(matched_evidence_id) if matched_evidence_id else "(none)"
                 lines.append(f"- Matched Evidence: {label}")
             lines.append("")
     else:

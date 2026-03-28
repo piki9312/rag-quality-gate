@@ -169,22 +169,6 @@ qgate impact \
   --cases artifacts/eval_cases.json \
   --output artifacts/impact_report.json \
   --review-output artifacts/impact_report_review.md
-
-# 期限後シミュレーション（任意）
-qgate impact \
-  --old-snapshot artifacts/old_snapshot.json \
-  --new-snapshot artifacts/new_snapshot.json \
-  --cases artifacts/eval_cases.json \
-  --output artifacts/impact_report_strict.json \
-  --reference-date 2026-07-01
-
-# 日付に関係なく strict matching のみで評価（任意）
-qgate impact \
-  --old-snapshot artifacts/old_snapshot.json \
-  --new-snapshot artifacts/new_snapshot.json \
-  --cases artifacts/eval_cases.json \
-  --output artifacts/impact_report_strict.json \
-  --strict-only
 ```
 
 入力:
@@ -192,8 +176,6 @@ qgate impact \
 - --old-snapshot: 変更前 DocumentSnapshot JSON
 - --new-snapshot: 変更後 DocumentSnapshot JSON
 - --cases: EvalCase JSON または CSV
-- --reference-date: 互換有効期間を判定する基準日（YYYY-MM-DD, 任意）
-- --strict-only: 互換有無に関係なく strict matching のみで判定（任意）
 
 出力:
 
@@ -203,8 +185,6 @@ qgate impact \
   - changed_evidence_ids
   - impacted_case_ids
   - details (case_id, matched_evidence_id, question, match_mode)
-  - legacy_match_count
-  - legacy_compatibility_active
   - created_at
 - review-output 指定時のみレビュー用 Markdown
 
@@ -212,20 +192,16 @@ CLI 標準出力には以下のサマリも表示されます。
 
 - Changed evidence count
 - Impacted case count
-- Legacy compatibility (active/inactive)
-- Legacy compatibility matches
 
 運用メモ (Phase 1.5 仕上げ):
 
 - section_id は doc_id ベースで生成されます（パス変更に強くするため）
-- 既存ケースに source_path ベース expected_evidence が残っていても、impact 判定では後方互換マッチを行います
-- 後方互換マッチの有効期間は 2026-03-27 から 2026-06-30 までです
 - 新規ケース作成時は doc_id を安定した論理IDとして運用してください
 
-移行完了条件 (後方互換ロジック終了の目安):
+移行完了条件:
 
 - source_path ベース expected_evidence を doc_id ベースへ移行完了
-- legacy 互換マッチ 0 件を継続確認
+- unresolved_legacy_refs 0 件を継続確認
 
 ### expected_evidence 移行補助ツール
 
@@ -251,7 +227,7 @@ rqg migrate-cases \
 3. 文書を更新
 4. 更新後文書を ingest して snapshot を保存
 5. qgate impact を実行
-6. Legacy compatibility matches を確認し、必要なら rqg migrate-cases でケース移行
+6. unresolved_legacy_refs を確認し、必要なら rqg migrate-cases でケース移行
 7. impacted cases を優先レビュー
 8. rqg eval と rqg check を実行
 9. 必要な修正後に pass を確認
@@ -283,7 +259,7 @@ python -m rqg.demo.impact_cycle
 Phase2（旧形式の計画的削減）へ進む前に、以下を固定してください。
 
 1. 対象ケース母集団の確定（owner/期限を明記）
-2. legacy_match_count と unresolved_legacy_refs の週次計測
+2. impacted_case_count と unresolved_legacy_refs の週次計測
 3. migrate-cases 実行手順とロールバック条件の合意
 4. 期限後撤去タスクの担当・実行タイミング確定
 

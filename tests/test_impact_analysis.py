@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import date
 from pathlib import Path
 
 from rqg.cli import main
@@ -182,8 +181,6 @@ def test_render_impact_report_markdown():
     markdown = render_impact_report_review_markdown(report)
     assert "# Impact Report Review" in markdown
     assert "- Old Snapshot: old-snapshot" in markdown
-    assert "- Legacy Compatibility:" in markdown
-    assert "- Legacy Compatibility Matches:" in markdown
     assert "## Changed Evidence" in markdown
     assert "## Impacted Cases" in markdown
     assert "### Case: case-xyz" in markdown
@@ -249,7 +246,7 @@ def test_impact_cli_writes_markdown_review_when_requested(tmp_path: Path, capsys
     assert review_file.exists()
     assert "# Impact Report Review" in review_file.read_text(encoding="utf-8")
     stdout = capsys.readouterr().out
-    assert "Legacy compatibility matches:" in stdout
+    assert "Impacted case count:" in stdout
 
 
 def test_impact_cli_without_review_output_does_not_create_markdown(tmp_path: Path):
@@ -288,53 +285,7 @@ def test_impact_cli_without_review_output_does_not_create_markdown(tmp_path: Pat
     assert not review_file.exists()
 
 
-def test_legacy_source_path_evidence_still_matches_doc_id_based_change():
-    old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy-old.md"
-    new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy-new.md"
-    old_doc.write_text("# Policy\n\nSubmit request 5 business days in advance.", encoding="utf-8")
-    new_doc.write_text("# Policy\n\nSubmit request 3 business days in advance.", encoding="utf-8")
-
-    old_snapshot = DocumentSnapshot(
-        snapshot_id="snap-old",
-        doc_id="policy/leave",
-        title="Policy",
-        source_path=old_doc.as_posix(),
-        content_hash="hash-old",
-        created_at="2026-03-23T00:00:00Z",
-    )
-    new_snapshot = DocumentSnapshot(
-        snapshot_id="snap-new",
-        doc_id="policy/leave",
-        title="Policy",
-        source_path=new_doc.as_posix(),
-        content_hash="hash-new",
-        created_at="2026-03-23T00:00:00Z",
-    )
-
-    legacy_case = EvalCase(
-        case_id="legacy-case-001",
-        question="When should request be submitted?",
-        expected_evidence=[f"{old_doc.as_posix()}#sec-1"],
-        expected_keywords=[],
-        risk_level="S2",
-        doc_snapshot_id="snap-old",
-    )
-
-    report = build_impact_report(
-        old_snapshot,
-        new_snapshot,
-        [legacy_case],
-        reference_date=date(2026, 4, 1),
-    )
-
-    assert "legacy-case-001" in report.impacted_case_ids
-    assert report.legacy_compatibility_active is True
-    assert report.legacy_match_count == 1
-    assert any(detail.case_id == "legacy-case-001" for detail in report.details)
-    assert any(detail.match_mode == "legacy_compat" for detail in report.details)
-
-
-def test_unrelated_legacy_path_with_same_fragment_is_not_impacted():
+def test_doc_id_expected_evidence_matches_in_strict_mode():
     old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy2-old.md"
     new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy2-new.md"
     old_doc.write_text("# Policy\n\nA", encoding="utf-8")
@@ -357,26 +308,22 @@ def test_unrelated_legacy_path_with_same_fragment_is_not_impacted():
         created_at="2026-03-23T00:00:00Z",
     )
 
-    unrelated_case = EvalCase(
-        case_id="other-doc-case",
-        question="Other doc question",
-        expected_evidence=["other/doc/path.md#sec-1"],
+    strict_case = EvalCase(
+        case_id="strict-case",
+        question="Policy question",
+        expected_evidence=["policy/leave#sec-1"],
         expected_keywords=[],
         risk_level="S2",
-        doc_snapshot_id="other-snapshot",
+        doc_snapshot_id="snap-old",
     )
 
-    report = build_impact_report(
-        old_snapshot,
-        new_snapshot,
-        [unrelated_case],
-        reference_date=date(2026, 4, 1),
-    )
+    report = build_impact_report(old_snapshot, new_snapshot, [strict_case])
 
-    assert "other-doc-case" not in report.impacted_case_ids
+    assert "strict-case" in report.impacted_case_ids
+    assert any(detail.match_mode == "strict" for detail in report.details)
 
 
-def test_legacy_source_path_evidence_does_not_match_after_compat_expiry():
+def test_path_based_expected_evidence_is_not_impacted_in_strict_mode():
     old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy3-old.md"
     new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy3-new.md"
     old_doc.write_text("# Policy\n\nold", encoding="utf-8")
@@ -408,96 +355,6 @@ def test_legacy_source_path_evidence_does_not_match_after_compat_expiry():
         doc_snapshot_id="snap-old",
     )
 
-    report = build_impact_report(
-        old_snapshot,
-        new_snapshot,
-        [legacy_case],
-        reference_date=date(2026, 7, 1),
-    )
+    report = build_impact_report(old_snapshot, new_snapshot, [legacy_case])
 
-    assert report.legacy_compatibility_active is False
-    assert report.legacy_match_count == 0
     assert "legacy-case-expired" not in report.impacted_case_ids
-
-
-def test_strict_only_disables_legacy_compatibility_within_window():
-    old_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy4-old.md"
-    new_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-legacy4-new.md"
-    old_doc.write_text("# Policy\n\nold", encoding="utf-8")
-    new_doc.write_text("# Policy\n\nnew", encoding="utf-8")
-
-    old_snapshot = DocumentSnapshot(
-        snapshot_id="snap-old",
-        doc_id="policy/leave",
-        title="Policy",
-        source_path=old_doc.as_posix(),
-        content_hash="hash-old",
-        created_at="2026-03-23T00:00:00Z",
-    )
-    new_snapshot = DocumentSnapshot(
-        snapshot_id="snap-new",
-        doc_id="policy/leave",
-        title="Policy",
-        source_path=new_doc.as_posix(),
-        content_hash="hash-new",
-        created_at="2026-03-23T00:00:00Z",
-    )
-
-    legacy_case = EvalCase(
-        case_id="legacy-case-strict-only",
-        question="legacy question",
-        expected_evidence=[f"{old_doc.as_posix()}#sec-1"],
-        expected_keywords=[],
-        risk_level="S2",
-        doc_snapshot_id="snap-old",
-    )
-
-    report = build_impact_report(
-        old_snapshot,
-        new_snapshot,
-        [legacy_case],
-        reference_date=date(2026, 4, 1),
-        strict_only=True,
-    )
-
-    assert report.legacy_compatibility_active is False
-    assert report.legacy_match_count == 0
-    assert "legacy-case-strict-only" not in report.impacted_case_ids
-
-
-def test_impact_cli_invalid_reference_date_returns_error(tmp_path: Path, capsys):
-    old_doc = tmp_path / "old.md"
-    new_doc = tmp_path / "new.md"
-    old_snapshot_file = tmp_path / "old_snapshot.json"
-    new_snapshot_file = tmp_path / "new_snapshot.json"
-    cases_file = tmp_path / "cases.json"
-    output_file = tmp_path / "impact_report.json"
-
-    old_doc.write_text("# A\n\nOne", encoding="utf-8")
-    new_doc.write_text("# A\n\nTwo", encoding="utf-8")
-    old_snapshot = _make_snapshot(old_doc, snapshot_id="old")
-    new_snapshot = _make_snapshot(new_doc, snapshot_id="new")
-
-    old_snapshot_file.write_text(old_snapshot.model_dump_json(indent=2), encoding="utf-8")
-    new_snapshot_file.write_text(new_snapshot.model_dump_json(indent=2), encoding="utf-8")
-    cases_file.write_text("[]", encoding="utf-8")
-
-    exit_code = main(
-        [
-            "impact",
-            "--old-snapshot",
-            str(old_snapshot_file),
-            "--new-snapshot",
-            str(new_snapshot_file),
-            "--cases",
-            str(cases_file),
-            "--output",
-            str(output_file),
-            "--reference-date",
-            "2026-13-99",
-        ]
-    )
-
-    stderr = capsys.readouterr().err
-    assert exit_code == 1
-    assert "Invalid --reference-date" in stderr
