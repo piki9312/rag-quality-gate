@@ -1,0 +1,68 @@
+name: Phase2.5 Weekly Ops Review Issue
+
+on:
+  schedule:
+    - cron: "45 0 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-weekly-review-issue:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create or reuse weekly review issue
+        id: weekly_review_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const now = new Date();
+            const weekday = now.getUTCDay();
+            const diffToMonday = (weekday + 6) % 7;
+            const weekStartDate = new Date(
+              Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
+            );
+            const weekStart = weekStartDate.toISOString().slice(0, 10);
+            const title = `[Phase2.5][Weekly Review] ${weekStart}`;
+
+            const query = `repo:${owner}/${repo} is:issue is:open in:title "${title}"`;
+            const existing = await github.rest.search.issuesAndPullRequests({ q: query });
+            if (existing.data.total_count > 0) {
+              core.info(`Existing weekly review issue found: ${existing.data.items[0].html_url}`);
+              return existing.data.items[0].html_url;
+            }
+
+            const body = [
+              `Week start: ${weekStart}`,
+              '',
+              '## Weekly Ops Checklist',
+              '- [ ] Phase2.5 weekly metrics summary reviewed',
+              '- [ ] investigate issue open/close status reviewed',
+              '- [ ] failure_category to action quality reviewed',
+              '- [ ] override / warn-only / no-data exceptions reviewed',
+              '- [ ] case quality weekly review completed',
+              '- [ ] onboarding / weekly ops measured values validated',
+              '',
+              '## Related Files',
+              '- docs/ops/phase2-5-weekly-metrics-register.md',
+              '- docs/ops/phase2-5-investigate-response-flow.md',
+              '- docs/ops/phase2-5-ws2-failure-review-template.md',
+              '- docs/ops/phase2-5-ws3-gate-exception-approval-template.md',
+              '- docs/ops/phase2-5-case-quality-weekly-review.md',
+            ].join('\n');
+
+            const created = await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+            });
+            core.info(`Created weekly review issue: ${created.data.html_url}`);
+            return created.data.html_url;
+
+      - name: Print weekly review issue URL
+        run: echo "weekly_review_issue_url=${{ steps.weekly_review_issue.outputs.result }}"

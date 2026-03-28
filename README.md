@@ -282,9 +282,13 @@ Phase2.5（実運用で壊れにくくする）へ移行する場合は、以下
 - docs/ops/phase2-5-ws3-gate-exception-approval-template.md
 - docs/ops/phase2-5-weekly-metrics-register.md
 - docs/ops/phase2-5-first-sprint-completion-record.md
+- docs/ops/phase2-5-investigate-response-flow.md
+- docs/ops/phase2-5-case-quality-weekly-review.md
 - .github/workflows/phase2-5-weekly-metrics.yml
+- .github/workflows/phase2-5-weekly-review-issue.yml
 
 Phase2.5 weekly metrics workflow は、週次メトリクスレジスタ更新を自動で PR 化します。
+Weekly review issue workflow は、ケース品質レビューを含む運用チェックを定例 issue 化します。
 
 WS1 の時間 target（初回導入 30分以内 / 週次運用 15分以内）は、以下の測定条件を固定した値として扱います。
 
