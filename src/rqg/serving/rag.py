@@ -138,9 +138,7 @@ class RAGStore:
     # Ingest
     # ------------------------------------------------------------------
 
-    def add_text(
-        self, source: str, text: str, chunk_size: int = 900, overlap: int = 150
-    ) -> int:
+    def add_text(self, source: str, text: str, chunk_size: int = 900, overlap: int = 150) -> int:
         """テキストを chunk 化して index に追加。重複ドキュメントはスキップ。"""
         doc_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
         if doc_hash in self.doc_ids:

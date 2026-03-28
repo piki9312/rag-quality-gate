@@ -49,7 +49,9 @@ def _collect_snapshot_paths(snapshot_paths: list[str], snapshot_dir: str | None)
     return unique
 
 
-def load_snapshots(snapshot_paths: list[str], snapshot_dir: str | None = None) -> list[DocumentSnapshot]:
+def load_snapshots(
+    snapshot_paths: list[str], snapshot_dir: str | None = None
+) -> list[DocumentSnapshot]:
     snapshots: list[DocumentSnapshot] = []
     for path in _collect_snapshot_paths(snapshot_paths, snapshot_dir):
         snapshots.append(_load_snapshot(path))

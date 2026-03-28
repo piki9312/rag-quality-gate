@@ -22,7 +22,9 @@ def render_eval_case_review_markdown(cases: list[EvalCase]) -> str:
         lines.append(f"- Question: {_single_line(case.question)}")
         lines.append("- Expected Evidence:")
         if case.expected_evidence:
-            lines.extend(f"  - {_single_line(evidence_id)}" for evidence_id in case.expected_evidence)
+            lines.extend(
+                f"  - {_single_line(evidence_id)}" for evidence_id in case.expected_evidence
+            )
         else:
             lines.append("  - (none)")
 

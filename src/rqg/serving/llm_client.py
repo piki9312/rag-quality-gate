@@ -57,14 +57,21 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay:
                 except RateLimitError as e:
                     if attempt < max_retries - 1:
                         wait = min(base_delay * (2**attempt), max_delay)
-                        logger.warning("rate limited (attempt %d/%d), waiting %.1fs", attempt + 1, max_retries, wait)
+                        logger.warning(
+                            "rate limited (attempt %d/%d), waiting %.1fs",
+                            attempt + 1,
+                            max_retries,
+                            wait,
+                        )
                         time.sleep(wait)
                     else:
                         raise
                 except APITimeoutError as e:
                     if attempt < max_retries - 1:
                         wait = min(base_delay * (2**attempt), max_delay)
-                        logger.warning("timeout (attempt %d/%d), waiting %.1fs", attempt + 1, max_retries, wait)
+                        logger.warning(
+                            "timeout (attempt %d/%d), waiting %.1fs", attempt + 1, max_retries, wait
+                        )
                         time.sleep(wait)
                     else:
                         raise
@@ -84,9 +91,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 @retry_with_backoff()
-def call_openai_chat(
-    model: str, system: str, user_msg: str, max_tokens: int
-) -> dict[str, Any]:
+def call_openai_chat(model: str, system: str, user_msg: str, max_tokens: int) -> dict[str, Any]:
     """OpenAI chat.completions を呼び出す。"""
     client = get_openai_client()
     resp = client.chat.completions.create(

@@ -8,8 +8,8 @@ import pytest
 
 from rqg.quality.aggregate import (
     case_pass_rates,
-    failure_category_breakdown,
     failure_breakdown,
+    failure_category_breakdown,
     percentile,
     severity_pass_rate,
 )

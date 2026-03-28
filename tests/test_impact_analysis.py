@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import json
+import uuid
 from datetime import date
 from pathlib import Path
-import uuid
 
 from rqg.cli import main
 from rqg.domain import DocumentSnapshot, EvalCase
-from rqg.quality.impact_analysis import build_impact_report, detect_changed_evidence_ids
 from rqg.presentation.markdown import render_impact_report_review_markdown
+from rqg.quality.impact_analysis import build_impact_report, detect_changed_evidence_ids
 
 
 def _make_snapshot(path: Path, *, snapshot_id: str) -> DocumentSnapshot:

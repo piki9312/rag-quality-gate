@@ -10,7 +10,6 @@ import pytest
 from rqg.quality.models import EvalResult, EvalRun, QATestCase
 from rqg.quality.runner import RAGQualityRunner
 
-
 # ------------------------------------------------------------------
 # Mock RAGStore
 # ------------------------------------------------------------------
@@ -105,9 +104,7 @@ class TestSaveJsonl:
     def test_save_and_read(self, tmp_path, s1_case, s2_case):
         runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
         run = runner.run_all([s1_case, s2_case])
-        jsonl_path = RAGQualityRunner.save_jsonl(
-            run, [s1_case, s2_case], str(tmp_path / "logs")
-        )
+        jsonl_path = RAGQualityRunner.save_jsonl(run, [s1_case, s2_case], str(tmp_path / "logs"))
         assert jsonl_path.exists()
         lines = jsonl_path.read_text(encoding="utf-8").strip().split("\n")
         assert len(lines) == 2

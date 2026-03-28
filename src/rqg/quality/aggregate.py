@@ -6,9 +6,7 @@ import math
 from typing import Any
 
 
-def severity_pass_rate(
-    results: list, severity: str
-) -> tuple[float, int, int]:
+def severity_pass_rate(results: list, severity: str) -> tuple[float, int, int]:
     """特定 severity のパス率を計算する。"""
     filtered = [r for r in results if r.severity == severity]
     total = len(filtered)

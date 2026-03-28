@@ -26,7 +26,15 @@ def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
         with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(
                 f,
-                fieldnames=["case_id", "question", "expected_evidence", "expected_keywords", "risk_level", "doc_snapshot_id", "notes"],
+                fieldnames=[
+                    "case_id",
+                    "question",
+                    "expected_evidence",
+                    "expected_keywords",
+                    "risk_level",
+                    "doc_snapshot_id",
+                    "notes",
+                ],
             )
             writer.writeheader()
             for case in cases:

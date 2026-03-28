@@ -10,9 +10,7 @@ def retrieval_hit(retrieved_ids: list[str], expected_chunks: list[str]) -> bool:
     return any(ec in retrieved_ids for ec in expected_chunks)
 
 
-def retrieval_precision_at_k(
-    retrieved_ids: list[str], expected_chunks: list[str]
-) -> float:
+def retrieval_precision_at_k(retrieved_ids: list[str], expected_chunks: list[str]) -> float:
     """Precision@k: top-k の中に expected chunk が何割含まれるか。"""
     if not expected_chunks:
         return 1.0

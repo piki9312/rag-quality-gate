@@ -19,7 +19,6 @@ from rqg.quality.check import (
 )
 from rqg.quality.models import QARunRecord
 
-
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------
