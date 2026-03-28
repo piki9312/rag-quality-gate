@@ -278,6 +278,12 @@ Phase2.5（実運用で壊れにくくする）へ移行する場合は、以下
 
 - docs/ops/phase2-5-hardening-plan.md
 
+WS1 の時間 target（初回導入 30分以内 / 週次運用 15分以内）は、以下の測定条件を固定した値として扱います。
+
+- 対象は sample repo への導入（例: packs/hr ベース）
+- 既存顧客 repo への組み込みは別トラックで測定（target 判定対象外）
+- 初回ケース設計・ケース追加の時間は除外（導入/運用フローのみ計測）
+
 ## Phase 1 / 1.5 実装状況
 
 - [x] ingest 時に DocumentSnapshot を自動生成
