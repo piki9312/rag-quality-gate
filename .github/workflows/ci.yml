@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   test:
@@ -75,7 +75,7 @@ jobs:
             --output-file runs/quality/gate-report.md \
             --decision-file runs/quality/gate-decision.json
 
-        - name: Verify legacy match migration baseline
+      - name: Verify legacy match migration baseline
         run: |
           python - <<'PY'
           import json
