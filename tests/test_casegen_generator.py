@@ -8,8 +8,14 @@ from rqg.casegen.generator import generate_eval_cases_from_snapshot
 from rqg.domain import DocumentSnapshot
 
 
+def _tmp_doc(suffix: str) -> Path:
+    tmp_dir = Path("tests/.tmp")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    return tmp_dir / f"{uuid.uuid4()}-{suffix}.md"
+
+
 def test_generate_eval_cases_from_snapshot_rule_mode():
-    doc = Path("tests/.tmp") / f"{uuid.uuid4()}-generator.md"
+    doc = _tmp_doc("generator")
     doc.write_text(
         "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.",
         encoding="utf-8",
@@ -32,7 +38,7 @@ def test_generate_eval_cases_from_snapshot_rule_mode():
 
 
 def test_generate_eval_cases_hybrid_uses_rule_when_llm_fails():
-    doc = Path("tests/.tmp") / f"{uuid.uuid4()}-generator2.md"
+    doc = _tmp_doc("generator2")
     doc.write_text(
         "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.",
         encoding="utf-8",
@@ -55,7 +61,7 @@ def test_generate_eval_cases_hybrid_uses_rule_when_llm_fails():
 
 
 def test_generate_eval_cases_dedupes_semantic_duplicate_questions():
-    doc = Path("tests/.tmp") / f"{uuid.uuid4()}-generator3.md"
+    doc = _tmp_doc("generator3")
     doc.write_text(
         "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.",
         encoding="utf-8",
@@ -87,7 +93,7 @@ def test_generate_eval_cases_dedupes_semantic_duplicate_questions():
 
 
 def test_generate_eval_cases_skips_low_information_section():
-    doc = Path("tests/.tmp") / f"{uuid.uuid4()}-generator4.md"
+    doc = _tmp_doc("generator4")
     doc.write_text("# Leave Policy\n\n短文", encoding="utf-8")
     snapshot = DocumentSnapshot(
         snapshot_id="snapshot-001",
