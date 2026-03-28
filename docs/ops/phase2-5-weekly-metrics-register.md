@@ -23,6 +23,7 @@ Update one row per week (or per workflow_dispatch run for ad-hoc checks).
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
 | 2026-03-28 | 23675763638 | https://github.com/piki9312/rag-quality-gate/actions/runs/23675763638 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | initial Phase2.5 baseline from WS1 measurement, WS2 template kickoff, WS3 exception template kickoff |
 | 2026-03-23 | 23676386099 | https://github.com/piki9312/rag-quality-gate/actions/runs/23676386099 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | workflow_dispatch run; notes: WS1 baseline measured_date=2026-03-28, WS2 no failure rows this week, WS3 active=0 overdue=0 |
+| 2026-03-23 | 23679795825 | https://github.com/piki9312/rag-quality-gate/actions/runs/23679795825 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | WS1 baseline measured_date=2026-03-28, WS2 no failure rows this week, WS3 active=0, overdue=0 |
 
 ## Update procedure
 
