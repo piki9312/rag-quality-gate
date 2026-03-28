@@ -9,7 +9,6 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 WS1_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws1-baseline-sheet.md"
