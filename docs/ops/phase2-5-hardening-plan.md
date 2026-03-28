@@ -77,6 +77,14 @@ Phase2.5 の完了条件:
 - M5 overdue_exceptions_count
 - Automation: .github/workflows/phase2-5-weekly-metrics.yml がレジスタ更新 PR を自動作成
 
+## 5.1 Near-term Operational Controls
+
+- failure category ごとの推奨アクションを WS2 テンプレートで標準化
+- investigate 発生時は標準対応フローに従って issue 駆動で対応
+- override / warn-only / no-data は WS3 strict controls で制御
+- case品質レビューは週次 issue とチェックリストで定例化
+- onboarding / weekly ops 実測値は weekly register へ継続蓄積
+
 ## 6. Ownership
 
 - Phase owner: quality owner
@@ -93,4 +101,7 @@ Phase2.5 の完了条件:
 - docs/ops/phase2-5-ws3-gate-exception-approval-template.md
 - docs/ops/phase2-5-weekly-metrics-register.md
 - docs/ops/phase2-5-first-sprint-completion-record.md
+- docs/ops/phase2-5-investigate-response-flow.md
+- docs/ops/phase2-5-case-quality-weekly-review.md
 - .github/workflows/phase2-5-weekly-metrics.yml
+- .github/workflows/phase2-5-weekly-review-issue.yml

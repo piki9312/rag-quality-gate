@@ -40,3 +40,17 @@ Update one row per week (or per workflow_dispatch run for ad-hoc checks).
 - Artifact name: phase2-5-weekly-metrics
 - Summary file: runs/phase2-5-weekly/summary.json
 - Auto PR branch: automation/phase2-5-weekly-metrics-<run_id>
+
+## Near-term Standard Operation
+
+- failure action quality:
+	- docs/ops/phase2-5-ws2-failure-review-template.md の Recommended Actions に従う
+- investigate response:
+	- docs/ops/phase2-5-investigate-response-flow.md のタイムラインで対応する
+- exception strictness:
+	- docs/ops/phase2-5-ws3-gate-exception-approval-template.md の Strict Controls を適用する
+- case quality regular review:
+	- .github/workflows/phase2-5-weekly-review-issue.yml で週次 issue を生成し
+		docs/ops/phase2-5-case-quality-weekly-review.md を用いてレビューする
+- onboarding / weekly ops accumulation:
+	- weekly metrics workflow で summary を継続生成し、register の Current records へ蓄積する

@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   phase2-5-weekly-metrics:
@@ -53,7 +54,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: docs: update phase2.5 weekly metrics register (run ${{ github.run_id }})
+          commit-message: "docs: update phase2.5 weekly metrics register (run ${{ github.run_id }})"
           branch: automation/phase2-5-weekly-metrics-${{ github.run_id }}
           delete-branch: true
           title: "Phase2.5 weekly metrics update (run ${{ github.run_id }})"
@@ -75,6 +76,68 @@ jobs:
         if: steps.register_diff.outputs.changed != 'true'
         run: echo "No register changes detected. Skipping PR creation."
 
+      - name: Create investigate issue
+        id: investigate_issue
+        if: always() && steps.collect.outputs.collector_exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const runId = process.env.GITHUB_RUN_ID;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`;
+            const { owner, repo } = context.repo;
+
+            let summary = {};
+            let weekStart = 'unknown';
+            try {
+              summary = JSON.parse(fs.readFileSync('runs/phase2-5-weekly/summary.json', 'utf8'));
+              weekStart = summary.week_start || weekStart;
+            } catch (error) {
+              core.warning(`Failed to parse summary.json: ${error.message}`);
+            }
+
+            const title = `[Phase2.5][Investigate] weekly metrics alert (${weekStart}) run ${runId}`;
+            const query = `repo:${owner}/${repo} is:issue is:open in:title "${title}"`;
+            const existing = await github.rest.search.issuesAndPullRequests({ q: query });
+            if (existing.data.total_count > 0) {
+              core.info(`Existing investigate issue found: ${existing.data.items[0].html_url}`);
+              return existing.data.items[0].html_url;
+            }
+
+            const body = [
+              'Phase2.5 weekly metrics detected investigate decision.',
+              '',
+              `- week_start: ${summary.week_start ?? 'unknown'}`,
+              `- run_id: ${summary.run_id ?? runId}`,
+              `- run_url: ${summary.run_url ?? runUrl}`,
+              `- onboarding_time_minutes: ${summary.onboarding_time_minutes ?? 'n/a'}`,
+              `- weekly_ops_time_minutes: ${summary.weekly_ops_time_minutes ?? 'n/a'}`,
+              `- failure_action_coverage_rate: ${summary.failure_action_coverage_rate ?? 'n/a'}`,
+              `- gate_exception_count: ${summary.gate_exception_count ?? 'n/a'}`,
+              `- overdue_exceptions_count: ${summary.overdue_exceptions_count ?? 'n/a'}`,
+              '',
+              '## Standard Response Checklist',
+              '- [ ] T+0: owner / due date / impact scope recorded',
+              '- [ ] T+1d: root_cause_hypothesis documented',
+              '- [ ] T+3d: permanent_fix applied and rerun evidence attached',
+              '- [ ] T+5d: close criteria evaluated',
+              '',
+              'Reference: docs/ops/phase2-5-investigate-response-flow.md',
+            ].join('\n');
+
+            const created = await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+            });
+            core.info(`Created investigate issue: ${created.data.html_url}`);
+            return created.data.html_url;
+
+      - name: Print investigate issue URL
+        if: always() && steps.collect.outputs.collector_exit_code != '0'
+        run: echo "investigate_issue_url=${{ steps.investigate_issue.outputs.result }}"
+
       - name: Upload phase2.5 weekly metrics
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,5 +148,5 @@ jobs:
       - name: Fail workflow on investigate decision
         if: always() && steps.collect.outputs.collector_exit_code != '0'
         run: |
-          echo "Phase2.5 metrics decision is investigate. See summary artifact and generated PR."
+          echo "Phase2.5 metrics decision is investigate. See summary artifact, register PR, and investigate issue."
           exit 1

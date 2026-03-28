@@ -10,6 +10,21 @@ WS3 (Gate anti-erosion controls) を運用で機能させるための、
 - 例外理由と影響範囲を記録する
 - 期限超過の例外は無効とし、継続には再承認が必要
 
+## 1.1 Strict Controls (override / warn-only / no-data)
+
+- warn_only_override:
+   - 期限は最大 7 日
+   - quality owner と domain owner の 2者承認を必須
+   - 同一スコープで連続 2 回以上は自動で investigate 扱い
+- no_data_temporary:
+   - 期限は最大 3 日
+   - 根本対応の due_date を必須
+   - 連続 3 run で no-data が続く場合は例外無効
+- manual_override:
+   - 重大障害時のみ許可
+   - 事前承認と issue リンクを必須
+   - 5 営業日以内の postmortem を必須
+
 ## 2. Exception Categories
 
 - warn_only_override: fail を一時的に warn 相当で運用する例外
@@ -62,3 +77,9 @@ WS3 (Gate anti-erosion controls) を運用で機能させるための、
 | week_start | active_exceptions | overdue_exceptions | actions_taken | reviewer |
 | --- | ---: | ---: | --- | --- |
 | YYYY-MM-DD | 0 | 0 | summary | owner-name |
+
+## 9. Violation Handling
+
+1. 期限切れ、未承認、必須項目不足の例外を検出したら status を expired に更新。
+2. 例外を利用した判定は再実行し、結果を週次レビューに記録。
+3. 同一カテゴリの違反が 2 週連続で発生した場合は investigate issue を起票。
