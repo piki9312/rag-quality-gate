@@ -50,6 +50,7 @@ jobs:
           fi
 
       - name: Create pull request for weekly register update
+        id: register_pr
         if: steps.register_diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
@@ -75,6 +76,63 @@ jobs:
       - name: No register update detected
         if: steps.register_diff.outputs.changed != 'true'
         run: echo "No register changes detected. Skipping PR creation."
+
+      - name: Link weekly metrics run to weekly review issue
+        id: link_weekly_metrics
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          REGISTER_PR_URL: ${{ steps.register_pr.outputs.pull-request-url }}
+        with:
+          script: |
+            const fs = require('fs');
+            const runId = process.env.GITHUB_RUN_ID;
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${runId}`;
+            const registerPrUrl = process.env.REGISTER_PR_URL || '';
+            const { owner, repo } = context.repo;
+
+            let summary = {};
+            let weekStart = 'unknown';
+            try {
+              summary = JSON.parse(fs.readFileSync('runs/phase2-5-weekly/summary.json', 'utf8'));
+              weekStart = summary.week_start || weekStart;
+            } catch (error) {
+              core.warning(`Failed to parse summary.json: ${error.message}`);
+            }
+
+            const weeklyTitle = `[Phase2.5][Weekly Review] ${weekStart}`;
+            const query = `repo:${owner}/${repo} is:issue is:open in:title "${weeklyTitle}"`;
+            const existing = await github.rest.search.issuesAndPullRequests({ q: query });
+
+            if (existing.data.total_count === 0) {
+              core.warning(`Weekly review issue not found for ${weekStart}. Skipping link comment.`);
+              return '';
+            }
+
+            const issue = existing.data.items[0];
+            const body = [
+              'Phase2.5 weekly metrics run linked from automation.',
+              '',
+              `- week_start: ${summary.week_start ?? weekStart}`,
+              `- run_id: ${summary.run_id ?? runId}`,
+              `- run_url: ${summary.run_url ?? runUrl}`,
+              `- decision: ${summary.decision ?? 'unknown'}`,
+              `- register_pr: ${registerPrUrl || 'not created (no register diff)'}`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issue.number,
+              body,
+            });
+
+            core.info(`Posted weekly metrics link comment to ${issue.html_url}`);
+            return issue.html_url;
+
+      - name: Print weekly review issue URL
+        if: always()
+        run: echo "weekly_review_issue_url=${{ steps.link_weekly_metrics.outputs.result }}"
 
       - name: Create investigate issue
         id: investigate_issue
