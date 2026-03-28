@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 WS1_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws1-baseline-sheet.md"
 WS2_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws2-failure-review-template.md"
 WS3_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws3-gate-exception-approval-template.md"
+REGISTER_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-weekly-metrics-register.md"
 
 DEFAULT_OUTPUT = REPO_ROOT / "runs" / "phase2-5-weekly" / "summary.json"
 
@@ -30,6 +31,33 @@ class WeeklyMetricsSummary:
     overdue_exceptions_count: int
     decision: str
     notes: list[str]
+
+
+def render_register_row(summary: WeeklyMetricsSummary, reviewer: str) -> str:
+    notes_text = ", ".join(summary.notes)
+    return (
+        f"| {summary.week_start} | {summary.run_id} | {summary.run_url} | "
+        f"{summary.onboarding_time_minutes:.2f} | {summary.weekly_ops_time_minutes:.2f} | "
+        f"{summary.failure_action_coverage_rate:.2f} | {summary.gate_exception_count} | "
+        f"{summary.overdue_exceptions_count} | {summary.decision} | {reviewer} | {notes_text} |"
+    )
+
+
+def append_register_row(register_path: Path, row: str, run_id: str) -> bool:
+    content = register_path.read_text(encoding="utf-8")
+    if f"| {run_id} |" in content:
+        return False
+
+    marker = "## Update procedure"
+    idx = content.find(marker)
+    if idx < 0:
+        raise ValueError("Register file does not contain '## Update procedure' section")
+
+    head = content[:idx].rstrip()
+    tail = content[idx:]
+    new_content = f"{head}\n{row}\n\n{tail}"
+    register_path.write_text(new_content, encoding="utf-8")
+    return True
 
 
 def _extract_table_rows(path: Path, header_start: str) -> list[list[str]]:
@@ -196,6 +224,26 @@ def main(argv: list[str] | None = None) -> int:
         default=str(DEFAULT_OUTPUT),
         help="Output path for summary JSON",
     )
+    parser.add_argument(
+        "--print-register-row",
+        action="store_true",
+        help="Print markdown row for phase2.5 weekly metrics register",
+    )
+    parser.add_argument(
+        "--append-register",
+        action="store_true",
+        help="Append markdown row to phase2.5 weekly metrics register",
+    )
+    parser.add_argument(
+        "--register-path",
+        default=str(REGISTER_PATH),
+        help="Path to phase2.5 weekly metrics register markdown file",
+    )
+    parser.add_argument(
+        "--reviewer",
+        default=os.getenv("GITHUB_ACTOR", "owner-name"),
+        help="Reviewer name written to the register row",
+    )
     args = parser.parse_args(argv)
 
     summary = collect_summary()
@@ -204,6 +252,18 @@ def main(argv: list[str] | None = None) -> int:
     output_path.write_text(json.dumps(asdict(summary), indent=2), encoding="utf-8")
 
     print(json.dumps(asdict(summary), indent=2))
+
+    row = render_register_row(summary, args.reviewer)
+    if args.print_register_row:
+        print(row)
+
+    if args.append_register:
+        register_path = Path(args.register_path)
+        appended = append_register_row(register_path, row, summary.run_id)
+        if appended:
+            print(f"appended register row to {register_path}")
+        else:
+            print(f"register row already exists for run_id={summary.run_id}")
 
     if summary.decision == "investigate":
         return 1

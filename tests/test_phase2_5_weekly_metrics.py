@@ -151,6 +151,69 @@ def test_main_writes_output_and_returns_exit_codes(
     assert payload["decision"] == "investigate"
 
 
+def test_render_register_row_formats_values(metrics_docs: tuple[Path, Path, Path]) -> None:
+    ws1, ws2, ws3 = metrics_docs
+    _write(ws1, _ws1_markdown(with_real_row=True))
+    _write(ws2, _ws2_markdown(real_rows=[]))
+    _write(ws3, _ws3_markdown(real_rows=[]))
+
+    summary = metrics.collect_summary(today=date(2026, 3, 28))
+    row = metrics.render_register_row(summary, "piki9312")
+
+    assert row.startswith("| 2026-03-23 | local |")
+    assert "| 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 |" in row
+
+
+def test_append_register_row_is_idempotent(tmp_path: Path) -> None:
+    register = tmp_path / "register.md"
+    register.write_text(
+        "# Register\n\n## Current records\n\n| h |\n| - |\n\n## Update procedure\n1. step\n",
+        encoding="utf-8",
+    )
+    row = "| 2026-03-23 | 111 | https://example.com | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | me | note |"
+
+    first = metrics.append_register_row(register, row, "111")
+    second = metrics.append_register_row(register, row, "111")
+
+    content = register.read_text(encoding="utf-8")
+    assert first is True
+    assert second is False
+    assert content.count("| 2026-03-23 | 111 |") == 1
+
+
+def test_main_append_register_writes_row(
+    metrics_docs: tuple[Path, Path, Path],
+    tmp_path: Path,
+) -> None:
+    ws1, ws2, ws3 = metrics_docs
+    _write(ws1, _ws1_markdown(with_real_row=True))
+    _write(ws2, _ws2_markdown(real_rows=[]))
+    _write(ws3, _ws3_markdown(real_rows=[]))
+
+    out = tmp_path / "summary.json"
+    register = tmp_path / "register.md"
+    register.write_text(
+        "# Register\n\n## Current records\n\n| h |\n| - |\n\n## Update procedure\n1. step\n",
+        encoding="utf-8",
+    )
+
+    exit_code = metrics.main(
+        [
+            "--output",
+            str(out),
+            "--append-register",
+            "--register-path",
+            str(register),
+            "--reviewer",
+            "piki9312",
+        ]
+    )
+
+    assert exit_code == 0
+    content = register.read_text(encoding="utf-8")
+    assert "| keep-going | piki9312 |" in content
+
+
 def test_extract_table_rows_returns_empty_when_header_not_found(tmp_path: Path) -> None:
     path = tmp_path / "table.md"
     _write(path, "# no table here\n")
