@@ -75,6 +75,7 @@ Phase2.5 の完了条件:
 - M3 failure_action_coverage_rate
 - M4 gate_exception_count
 - M5 overdue_exceptions_count
+- Automation: .github/workflows/phase2-5-weekly-metrics.yml がレジスタ更新 PR を自動作成
 
 ## 6. Ownership
 
