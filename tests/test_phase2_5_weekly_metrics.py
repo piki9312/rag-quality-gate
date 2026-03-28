@@ -68,7 +68,9 @@ def metrics_docs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path,
     return ws1, ws2, ws3
 
 
-def test_collect_summary_keep_going(metrics_docs: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+def test_collect_summary_keep_going(
+    metrics_docs: tuple[Path, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
     ws1, ws2, ws3 = metrics_docs
     _write(ws1, _ws1_markdown(with_real_row=True))
     _write(ws2, _ws2_markdown(real_rows=[]))
