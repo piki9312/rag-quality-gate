@@ -282,6 +282,7 @@ Phase2.5（実運用で壊れにくくする）へ移行する場合は、以下
 - docs/ops/phase2-5-ws3-gate-exception-approval-template.md
 - docs/ops/phase2-5-weekly-metrics-register.md
 - docs/ops/phase2-5-first-sprint-completion-record.md
+- .github/workflows/phase2-5-weekly-metrics.yml
 
 WS1 の時間 target（初回導入 30分以内 / 週次運用 15分以内）は、以下の測定条件を固定した値として扱います。
 

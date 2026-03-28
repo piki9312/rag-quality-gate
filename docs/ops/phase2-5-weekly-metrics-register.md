@@ -28,6 +28,12 @@ Update one row per week (or per workflow_dispatch run for ad-hoc checks).
 1. Collect WS1 time values from docs/ops/phase2-5-ws1-baseline-sheet.md.
 2. Collect WS2 failure_action_coverage_rate from docs/ops/phase2-5-ws2-failure-review-template.md records.
 3. Collect WS3 exception counts from docs/ops/phase2-5-ws3-gate-exception-approval-template.md records.
-4. Run workflow Phase2 Weekly Migration Metrics for run URL traceability.
+4. Run workflow Phase2.5 Weekly Hardening Metrics for run URL traceability.
 5. Copy values into the table above.
 6. If any metric violates expected range, set decision=investigate and open a follow-up issue.
+
+## CI artifact
+
+- Workflow: .github/workflows/phase2-5-weekly-metrics.yml
+- Artifact name: phase2-5-weekly-metrics
+- Summary file: runs/phase2-5-weekly/summary.json
