@@ -5,6 +5,10 @@ on:
     - cron: "30 0 * * 1"
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   phase2-5-weekly-metrics:
     runs-on: ubuntu-latest
@@ -23,8 +27,53 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Collect phase2.5 metrics
+        id: collect
+        continue-on-error: true
         run: |
-          python -m rqg.demo.phase2_5_weekly_metrics --output runs/phase2-5-weekly/summary.json
+          set +e
+          python -m rqg.demo.phase2_5_weekly_metrics \
+            --output runs/phase2-5-weekly/summary.json \
+            --append-register \
+            --reviewer "${GITHUB_ACTOR}"
+          collector_exit_code=$?
+          set -e
+          echo "collector_exit_code=${collector_exit_code}" >> "$GITHUB_OUTPUT"
+
+      - name: Detect register changes
+        id: register_diff
+        run: |
+          if git diff --quiet -- docs/ops/phase2-5-weekly-metrics-register.md; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request for weekly register update
+        if: steps.register_diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: docs: update phase2.5 weekly metrics register (run ${{ github.run_id }})
+          branch: automation/phase2-5-weekly-metrics-${{ github.run_id }}
+          delete-branch: true
+          title: "Phase2.5 weekly metrics update (run ${{ github.run_id }})"
+          body: |
+            Auto-generated update from Phase2.5 Weekly Hardening Metrics workflow.
+
+            - run_id: ${{ github.run_id }}
+            - run_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - source summary: runs/phase2-5-weekly/summary.json
+
+            This PR updates the weekly register with one row for this run.
+          labels: |
+            documentation
+            automation
+          add-paths: |
+            docs/ops/phase2-5-weekly-metrics-register.md
+
+      - name: No register update detected
+        if: steps.register_diff.outputs.changed != 'true'
+        run: echo "No register changes detected. Skipping PR creation."
 
       - name: Upload phase2.5 weekly metrics
         if: always()
@@ -32,3 +81,9 @@ jobs:
         with:
           name: phase2-5-weekly-metrics
           path: runs/phase2-5-weekly/
+
+      - name: Fail workflow on investigate decision
+        if: always() && steps.collect.outputs.collector_exit_code != '0'
+        run: |
+          echo "Phase2.5 metrics decision is investigate. See summary artifact and generated PR."
+          exit 1
