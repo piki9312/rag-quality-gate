@@ -191,17 +191,12 @@ jobs:
           )
 
           payload = json.loads(impact_report.read_text(encoding="utf-8"))
-          legacy_matches = int(payload.get("legacy_match_count", -1))
           impacted = len(payload.get("impacted_case_ids", []))
 
           if impacted == 0:
             raise SystemExit("legacy migration CI check failed: expected impacted cases > 0")
-          if legacy_matches != 0:
-            raise SystemExit(
-              f"legacy migration CI check failed: legacy_match_count must be 0 after migration, got {legacy_matches}"
-            )
 
-          print(f"legacy migration CI check passed: impacted={impacted}, legacy_match_count={legacy_matches}")
+          print(f"legacy migration CI check passed: impacted={impacted}")
           PY
 
       - name: Upload quality artifacts

@@ -5,12 +5,12 @@ Post-expiry cleanup for Issue #4. This PR removes legacy source_path compatibili
 - [ ] Remove legacy alias expansion in impact analysis runtime
 - [ ] Remove date-window guard for legacy compatibility
 - [ ] Re-evaluate legacy fields in ImpactReport and review markdown
-- [ ] Update tests for strict-only behavior
+- [ ] Update tests for strict behavior (default)
 - [ ] Update docs for post-expiry operation
 
 ## Preconditions
-- [ ] Confirm legacy_match_count == 0 in recent CI runs
-- [ ] Confirm legacy_match_count == 0 in production-like operation data
+- [ ] Confirm unresolved_legacy_refs == 0 in recent CI runs
+- [ ] Confirm unresolved_legacy_refs == 0 in production-like operation data
 - [ ] Attach evidence links for both checks
 
 ## Changes
@@ -31,7 +31,7 @@ Post-expiry cleanup for Issue #4. This PR removes legacy source_path compatibili
 ## Validation
 - [ ] pytest -q
 - [ ] CI is green on PR
-- [ ] Strict-only impact output checked manually
+- [ ] Impact output checked manually
 - [ ] No runtime path-based compatibility branch remains
 
 ## Risk and rollback
@@ -47,6 +47,6 @@ Post-expiry cleanup for Issue #4. This PR removes legacy source_path compatibili
   - [ ] <paste run url>
 
 ## Reviewer checklist
-- [ ] Strict-only behavior is consistent across runtime, report, and docs
+- [ ] Strict behavior is consistent across runtime, report, and docs
 - [ ] Legacy compatibility code path is fully removed
 - [ ] Migration operation remains executable after this change
