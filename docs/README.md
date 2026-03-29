@@ -31,6 +31,7 @@ Phase2.5 を運用する:
 設計意図を確認する:
 
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
+- [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
 
 ## まず確認する順番
 
@@ -79,6 +80,7 @@ Operating Phase2.5:
 Architecture rationale:
 
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
+- [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
 
 ### Suggested Reading Order
 

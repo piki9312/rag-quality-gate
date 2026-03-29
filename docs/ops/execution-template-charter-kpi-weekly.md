@@ -66,6 +66,28 @@
 - 原則2: 運用で回ることを優先する
 - 原則3: 再現性のない改善は採用しない
 
+### 1-8. 実装優先順位（固定）
+
+1. 品質ゲートとしての核を壊さない
+2. 導入障壁を下げる
+3. 実運用で嫌われないようにする
+4. fail から改善につながるループを強化する
+5. Pack 化・有償 PoC 化・将来 SaaS 化につながる形で整理する
+
+### 1-9. いま優先しないこと（固定）
+
+- AI アプリ本体の機能拡張
+- 不要に大きい UI 化
+- 早すぎる SaaS インフラ実装
+- 何でも対応しようとする入力媒体の一般化
+- 本質価値に直結しない機能追加
+
+### 1-10. Issue / PR 判断短文テンプレート
+
+- This change improves safe update/operation of the quality gate, not model intelligence itself.
+- Scope stays in document-diff quality gate for this phase.
+- Legacy compatibility remains temporary and removable.
+
 ---
 
 ## 2. KPI テンプレート

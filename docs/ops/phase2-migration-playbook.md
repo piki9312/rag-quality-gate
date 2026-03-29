@@ -3,6 +3,12 @@
 Phase2 は「互換維持」から「旧形式の計画的削減」に移行するための運用フェーズです。
 このドキュメントは、Phase2 開始前に固定する運用ルールを定義します。
 
+上位方針:
+
+- `docs/adr/0002-product-charter-and-development-priorities.md` を準拠先とする
+- legacy 互換は恒久化しない（移行完了後に撤去する）
+- 変更判断は「安全な更新・運用」を優先し、AI 本体機能拡張を優先しない
+
 関連ファイル:
 
 - docs/ops/phase2-kickoff-board.md
