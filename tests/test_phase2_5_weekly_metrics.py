@@ -93,6 +93,29 @@ def test_collect_summary_keep_going(
     assert summary.decision == "keep-going"
 
 
+def test_collect_summary_with_week_start_override(
+    metrics_docs: tuple[Path, Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ws1, ws2, ws3 = metrics_docs
+    _write(ws1, _ws1_markdown(with_real_row=True))
+    _write(ws2, _ws2_markdown(real_rows=[]))
+    _write(ws3, _ws3_markdown(real_rows=[]))
+
+    monkeypatch.setenv("GITHUB_RUN_ID", "654321")
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://github.com")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+
+    summary = metrics.collect_summary(
+        today=date(2026, 3, 28),
+        week_start_override=date(2026, 3, 16),
+    )
+
+    assert summary.week_start == "2026-03-16"
+    assert summary.run_id == "654321"
+    assert any("week_start_override=2026-03-16" in note for note in summary.notes)
+
+
 def test_collect_summary_investigate(metrics_docs: tuple[Path, Path, Path]) -> None:
     ws1, ws2, ws3 = metrics_docs
     _write(ws1, _ws1_markdown(with_real_row=False))
@@ -143,6 +166,11 @@ def test_main_writes_output_and_returns_exit_codes(
     assert ok_exit == 0
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["decision"] == "keep-going"
+
+    backfill_exit = metrics.main(["--output", str(out), "--week-start", "2026-03-16"])
+    assert backfill_exit == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["week_start"] == "2026-03-16"
 
     _write(ws1, _ws1_markdown(with_real_row=False))
     fail_exit = metrics.main(["--output", str(out)])
