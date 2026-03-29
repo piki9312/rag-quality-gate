@@ -63,6 +63,18 @@ jobs:
           set -e
           echo "exit_gate_exit_code=${exit_gate_exit_code}" >> "$GITHUB_OUTPUT"
 
+      - name: Evaluate residual risk closure controls (RC1-RC2)
+        id: risk_closure
+        continue-on-error: true
+        run: |
+          set +e
+          python -m rqg.demo.phase2_5_risk_closure_check \
+            --lookback-days 31 \
+            --summary-output runs/phase2-5-risk-closure/summary.json
+          risk_closure_exit_code=$?
+          set -e
+          echo "risk_closure_exit_code=${risk_closure_exit_code}" >> "$GITHUB_OUTPUT"
+
       - name: Detect register changes
         id: register_diff
         run: |
@@ -135,6 +147,7 @@ jobs:
           REGISTER_PR_URL: ${{ steps.register_pr_ref.outputs.register_pr_url }}
           REGISTER_PR_NOTE: ${{ steps.register_pr_ref.outputs.register_pr_note }}
           EXIT_GATE_EXIT_CODE: ${{ steps.exit_gate.outputs.exit_gate_exit_code }}
+          RISK_CLOSURE_EXIT_CODE: ${{ steps.risk_closure.outputs.risk_closure_exit_code }}
         with:
           script: |
             const fs = require('fs');
@@ -143,6 +156,7 @@ jobs:
             const registerPrUrl = process.env.REGISTER_PR_URL || '';
             const registerPrNote = process.env.REGISTER_PR_NOTE || '';
             const exitGateExitCode = process.env.EXIT_GATE_EXIT_CODE || '';
+            const riskClosureExitCode = process.env.RISK_CLOSURE_EXIT_CODE || '';
             const { owner, repo } = context.repo;
 
             let summary = {};
@@ -161,11 +175,21 @@ jobs:
               core.warning(`Failed to parse exit gate summary: ${error.message}`);
             }
 
+            let riskClosureSummary = {};
+            try {
+              riskClosureSummary = JSON.parse(fs.readFileSync('runs/phase2-5-risk-closure/summary.json', 'utf8'));
+            } catch (error) {
+              core.warning(`Failed to parse risk closure summary: ${error.message}`);
+            }
+
             const gateWeekStarts = Array.isArray(exitGateSummary.evaluated_week_starts)
               ? exitGateSummary.evaluated_week_starts.join(', ')
               : 'n/a';
             const gateNotes = Array.isArray(exitGateSummary.notes) && exitGateSummary.notes.length > 0
               ? exitGateSummary.notes.join(' | ')
+              : 'none';
+            const riskClosureNotes = Array.isArray(riskClosureSummary.notes) && riskClosureSummary.notes.length > 0
+              ? riskClosureSummary.notes.join(' | ')
               : 'none';
 
             const weeklyTitle = `[Phase2.5][Weekly Review] ${weekStart}`;
@@ -197,6 +221,15 @@ jobs:
               `- overall_pass: ${exitGateSummary.overall_pass ?? 'n/a'}`,
               `- evaluated_week_starts: ${gateWeekStarts}`,
               `- exit_gate_notes: ${gateNotes}`,
+              '',
+              '## Residual Risk Closure (RC1-RC2)',
+              `- risk_closure_exit_code: ${riskClosureExitCode || 'n/a'}`,
+              `- rc1_customer_track_recent: ${riskClosureSummary.rc1_customer_track_recent ?? 'n/a'}`,
+              `- rc1_latest_customer_measurement_date: ${riskClosureSummary.rc1_latest_customer_measurement_date ?? 'n/a'}`,
+              `- rc2_synthetic_regression_recent: ${riskClosureSummary.rc2_synthetic_regression_recent ?? 'n/a'}`,
+              `- rc2_latest_synthetic_regression_date: ${riskClosureSummary.rc2_latest_synthetic_regression_date ?? 'n/a'}`,
+              `- residual_risk_overall_pass: ${riskClosureSummary.overall_pass ?? 'n/a'}`,
+              `- residual_risk_notes: ${riskClosureNotes}`,
             ].join('\n');
 
             await github.rest.issues.createComment({
@@ -215,7 +248,7 @@ jobs:
 
       - name: Create investigate issue
         id: investigate_issue
-        if: always() && steps.collect.outputs.collector_exit_code != '0'
+        if: always() && (steps.collect.outputs.collector_exit_code != '0' || steps.risk_closure.outputs.risk_closure_exit_code != '0')
         uses: actions/github-script@v7
         with:
           script: |
@@ -231,6 +264,13 @@ jobs:
               weekStart = summary.week_start || weekStart;
             } catch (error) {
               core.warning(`Failed to parse summary.json: ${error.message}`);
+            }
+
+            let riskClosureSummary = {};
+            try {
+              riskClosureSummary = JSON.parse(fs.readFileSync('runs/phase2-5-risk-closure/summary.json', 'utf8'));
+            } catch (error) {
+              core.warning(`Failed to parse risk closure summary: ${error.message}`);
             }
 
             const title = `[Phase2.5][Investigate] weekly metrics alert (${weekStart}) run ${runId}`;
@@ -252,6 +292,9 @@ jobs:
               `- failure_action_coverage_rate: ${summary.failure_action_coverage_rate ?? 'n/a'}`,
               `- gate_exception_count: ${summary.gate_exception_count ?? 'n/a'}`,
               `- overdue_exceptions_count: ${summary.overdue_exceptions_count ?? 'n/a'}`,
+              `- rc1_customer_track_recent: ${riskClosureSummary.rc1_customer_track_recent ?? 'n/a'}`,
+              `- rc2_synthetic_regression_recent: ${riskClosureSummary.rc2_synthetic_regression_recent ?? 'n/a'}`,
+              `- residual_risk_overall_pass: ${riskClosureSummary.overall_pass ?? 'n/a'}`,
               '',
               '## Standard Response Checklist',
               '- [ ] T+0: owner / due date / impact scope recorded',
@@ -272,7 +315,7 @@ jobs:
             return created.data.html_url;
 
       - name: Print investigate issue URL
-        if: always() && steps.collect.outputs.collector_exit_code != '0'
+        if: always() && (steps.collect.outputs.collector_exit_code != '0' || steps.risk_closure.outputs.risk_closure_exit_code != '0')
         run: echo "investigate_issue_url=${{ steps.investigate_issue.outputs.result }}"
 
       - name: Upload phase2.5 weekly metrics
@@ -283,9 +326,10 @@ jobs:
           path: |
             runs/phase2-5-weekly/
             runs/phase2-5-exit-gate/
+            runs/phase2-5-risk-closure/
 
-      - name: Fail workflow on investigate decision
-        if: always() && steps.collect.outputs.collector_exit_code != '0'
+      - name: Fail workflow on investigate decision or residual risk control miss
+        if: always() && (steps.collect.outputs.collector_exit_code != '0' || steps.risk_closure.outputs.risk_closure_exit_code != '0')
         run: |
-          echo "Phase2.5 metrics decision is investigate. See summary artifact, register PR, and investigate issue."
+          echo "Phase2.5 metrics decision or residual risk closure control failed. See summary artifact, register PR, and investigate issue."
           exit 1
