@@ -111,6 +111,13 @@ def _parse_date(value: str) -> date | None:
         return None
 
 
+def _parse_iso_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Expected ISO date format: YYYY-MM-DD") from exc
+
+
 def _collect_ws1_times() -> tuple[float | None, float | None, str]:
     rows = _extract_table_rows(WS1_PATH, "| measured_date |")
     real_rows = [row for row in rows if not _is_placeholder(row)]
@@ -170,11 +177,19 @@ def _build_run_metadata() -> tuple[str, str]:
     return run_id, run_url
 
 
-def collect_summary(today: date | None = None) -> WeeklyMetricsSummary:
+def collect_summary(
+    today: date | None = None,
+    *,
+    week_start_override: date | None = None,
+) -> WeeklyMetricsSummary:
     if today is None:
         today = datetime.now(UTC).date()
 
-    week_start = (today - timedelta(days=today.weekday())).isoformat()
+    if week_start_override is None:
+        week_start = (today - timedelta(days=today.weekday())).isoformat()
+    else:
+        week_start = week_start_override.isoformat()
+
     run_id, run_url = _build_run_metadata()
 
     notes: list[str] = []
@@ -187,6 +202,9 @@ def collect_summary(today: date | None = None) -> WeeklyMetricsSummary:
 
     gate_exception_count, overdue_exceptions_count, ws3_note = _collect_ws3_exception_counts(today)
     notes.append(ws3_note)
+
+    if week_start_override is not None:
+        notes.append(f"week_start_override={week_start}")
 
     decision = "keep-going"
 
@@ -244,9 +262,14 @@ def main(argv: list[str] | None = None) -> int:
         default=os.getenv("GITHUB_ACTOR", "owner-name"),
         help="Reviewer name written to the register row",
     )
+    parser.add_argument(
+        "--week-start",
+        type=_parse_iso_date,
+        help="Override week_start in summary/register row (YYYY-MM-DD)",
+    )
     args = parser.parse_args(argv)
 
-    summary = collect_summary()
+    summary = collect_summary(week_start_override=args.week_start)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(asdict(summary), indent=2), encoding="utf-8")

@@ -27,6 +27,7 @@ class QATestCase:
     category: str = "general"
     owner: str = ""
     min_pass_rate: float = 0.0
+    last_reviewed_at: str = ""
 
 
 # ------------------------------------------------------------------

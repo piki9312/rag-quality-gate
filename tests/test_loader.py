@@ -25,6 +25,7 @@ def cases_csv(tmp_path):
             "category": "就業規則",
             "owner": "hr-team",
             "min_pass_rate": "100",
+            "last_reviewed_at": "2026-03-29",
         },
         {
             "case_id": "T002",
@@ -37,6 +38,7 @@ def cases_csv(tmp_path):
             "category": "経費",
             "owner": "",
             "min_pass_rate": "",
+            "last_reviewed_at": "",
         },
     ]
     with open(path, "w", newline="", encoding="utf-8") as f:
@@ -69,6 +71,11 @@ class TestLoadCases:
         cases = load_cases(cases_csv)
         assert cases[0].min_pass_rate == 100.0
         assert cases[1].min_pass_rate == 0.0
+
+    def test_last_reviewed_at_parsed(self, cases_csv):
+        cases = load_cases(cases_csv)
+        assert cases[0].last_reviewed_at == "2026-03-29"
+        assert cases[1].last_reviewed_at == ""
 
     def test_file_not_found(self):
         with pytest.raises(FileNotFoundError):

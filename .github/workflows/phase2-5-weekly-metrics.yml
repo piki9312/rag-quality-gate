@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "30 0 * * 1"
   workflow_dispatch:
+    inputs:
+      week_start_override:
+        description: "Optional week_start override (YYYY-MM-DD) for backfill runs"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -32,10 +37,15 @@ jobs:
         continue-on-error: true
         run: |
           set +e
+          extra_args=()
+          if [ -n "${{ github.event.inputs.week_start_override }}" ]; then
+            extra_args+=(--week-start "${{ github.event.inputs.week_start_override }}")
+          fi
           python -m rqg.demo.phase2_5_weekly_metrics \
             --output runs/phase2-5-weekly/summary.json \
             --append-register \
-            --reviewer "${GITHUB_ACTOR}"
+            --reviewer "${GITHUB_ACTOR}" \
+            "${extra_args[@]}"
           collector_exit_code=$?
           set -e
           echo "collector_exit_code=${collector_exit_code}" >> "$GITHUB_OUTPUT"

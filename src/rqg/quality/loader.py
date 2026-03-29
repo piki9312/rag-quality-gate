@@ -21,6 +21,7 @@ def eval_case_to_qa_test_case(
     category: str = "general",
     owner: str = "",
     min_pass_rate: float = 0.0,
+    last_reviewed_at: str = "",
 ) -> QATestCase:
     """Adapt an EvalCase into the legacy runner input model."""
     return QATestCase(
@@ -34,6 +35,7 @@ def eval_case_to_qa_test_case(
         category=category,
         owner=owner,
         min_pass_rate=min_pass_rate,
+        last_reviewed_at=last_reviewed_at,
     )
 
 
@@ -95,7 +97,8 @@ def load_cases(file_path: str) -> list[QATestCase]:
 
     CSV カラム（必須: case_id, name, question。他はオプション）:
         case_id, name, severity, question, expected_chunks,
-        expected_keywords, golden_answer, category, owner, min_pass_rate
+        expected_keywords, golden_answer, category, owner, min_pass_rate,
+        last_reviewed_at
     """
     path = Path(file_path)
     if not path.exists():
@@ -126,6 +129,7 @@ def load_cases(file_path: str) -> list[QATestCase]:
                 category=row.get("category", "general"),
                 owner=row.get("owner", ""),
                 min_pass_rate=min_pr,
+                last_reviewed_at=row.get("last_reviewed_at", "").strip(),
             )
             cases.append(case)
     return cases

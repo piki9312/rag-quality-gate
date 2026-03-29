@@ -1,2 +1,2 @@
-case_id,name,severity,question,expected_chunks,expected_keywords,golden_answer,category,owner,min_pass_rate
-DEMO001,Leave policy gate,S1,What is the paid leave request policy?,,paid leave;5 business days,,demo,demo-team,100
+case_id,name,severity,question,expected_chunks,expected_keywords,golden_answer,category,owner,min_pass_rate,last_reviewed_at
+DEMO001,Leave policy gate,S1,What is the paid leave request policy?,,paid leave;5 business days,,demo,demo-team,100,2026-03-29

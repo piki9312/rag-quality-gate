@@ -13,7 +13,7 @@
 - [ ] 重複ケースの確認（同一意図・同一根拠）
 - [ ] expected_evidence の有効性確認
 - [ ] expected_keywords の過不足確認
-- [ ] stale case（更新から 30 日超）の抽出
+- [ ] stale case（cases.csv の last_reviewed_at から 30 日超）の抽出
 - [ ] high-risk case（S1/S2）の網羅確認
 - [ ] 今週の fail に対応する新規ケース追加確認
 
@@ -22,7 +22,13 @@
 | week_start | total_cases | stale_cases | duplicate_candidates | evidence_mismatch | new_cases_added | reviewer | notes |
 | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
 | YYYY-MM-DD | 0 | 0 | 0 | 0 | 0 | owner-name | summary |
-| 2026-03-23 | 10 | 0 | 0 | 0 | 0 | piki9312 | packs/hr のケースを確認。WS2 failure row は 0 件、追加ケースは不要。stale 判定用 timestamp 列は未整備のため暫定 0 扱い。 |
+| 2026-03-23 | 10 | 0 | 0 | 0 | 0 | piki9312 | packs/hr のケースを確認。WS2 failure row は 0 件、追加ケースは不要。stale は last_reviewed_at 基準で算出。 |
+
+## 3.1 Stale Rule
+
+- stale 判定条件: `today - last_reviewed_at > 30 days`
+- 対象データ項目: `packs/*/cases.csv` の `last_reviewed_at` (YYYY-MM-DD)
+- `last_reviewed_at` が空欄のケースは stale 扱いとし、当週レビューで補完する
 
 ## 4. Standard Actions
 
