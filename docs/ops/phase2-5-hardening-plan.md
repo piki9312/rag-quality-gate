@@ -16,6 +16,26 @@ Phase2.5 の完了条件:
 - 運用時の fail 原因が分類され、改善アクションに接続されている
 - ゲート形骸化対策が定義され、週次でレビューされている
 
+## 2.1 Provisional Exit Decision Criteria (fixed)
+
+Phase2.5 の provisional exit decision は、以下をすべて満たした場合のみ宣言する。
+
+- C1 4週連続証跡:
+  - 異なる week_start が直近 4 週連続で存在する
+  - 各週で "証跡あり" 判定が pass である
+- C2 exception 健全性:
+  - 各週 overdue_exceptions_count = 0
+- C3 stale timestamp risk 解消:
+  - 運用対象 pack の cases.csv に last_reviewed_at 列が定義されている
+  - 週次レビューで stale を "today - last_reviewed_at > 30 days" で再現計算できる
+- C4 failure action coverage:
+  - 各週 failure_action_coverage_rate >= 1.00
+
+運用ルール:
+
+- 1項目でも未達の場合、exit recommendation は hold とする
+- provisional exit decision を宣言する場合、unresolved risk 一覧（owner と monitoring plan 付き）を同一ドキュメントに併記する
+
 ## 3. Workstreams
 
 ### WS1: Onboarding/Ops bottleneck reduction

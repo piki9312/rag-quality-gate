@@ -11,6 +11,26 @@ Update one row per week (or per workflow_dispatch run for ad-hoc checks).
 - gate_exception_count: WS3 で status=active の例外件数
 - overdue_exceptions_count: WS3 で期限超過かつ status=active の例外件数
 
+## Weekly Evidence Minimum Set (fixed)
+
+week_start ごとに「証跡あり」と判定する最小条件:
+
+- E1 row existence:
+	- 当該 week_start の行が Current records に 1 行以上ある
+- E2 traceability:
+	- run_id と run_url が空でない
+- E3 metric completeness:
+	- M1, M2, M3, M4, M5 がすべて記録されている
+- E4 weekly threshold:
+	- decision = keep-going
+	- failure_action_coverage_rate >= 1.00
+	- overdue_exceptions_count = 0
+
+補足:
+
+- 同じ week_start に複数行ある場合は、E4 を満たす行が 1 行以上あれば pass とする
+- provisional exit decision 判定では、4 週連続で E1-E4 を満たすことを必須とする
+
 ## Weekly log template
 
 | week_start | run_id | run_url | onboarding_time_minutes | weekly_ops_time_minutes | failure_action_coverage_rate | gate_exception_count | overdue_exceptions_count | decision | reviewer | notes |
@@ -37,6 +57,7 @@ Update one row per week (or per workflow_dispatch run for ad-hoc checks).
 5. Workflow automatically appends one row and creates a PR if register changed.
 6. For local/manual fallback, run `python -m rqg.demo.phase2_5_weekly_metrics --append-register --reviewer <name>`.
 7. If any metric violates expected range, set decision=investigate and open a follow-up issue.
+8. For provisional exit decision, evaluate E1-E4 per week and confirm 4-week consecutive pass.
 
 ## CI artifact
 
