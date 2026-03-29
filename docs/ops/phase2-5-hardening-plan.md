@@ -93,6 +93,7 @@ Phase2.5 の完了条件:
 
 ## 7. Related Files
 
+- docs/adr/0002-product-charter-and-development-priorities.md
 - docs/ops/execution-template-charter-kpi-weekly.md
 - docs/ops/phase2-weekly-metrics-register.md
 - docs/ops/phase2-kickoff-board.md
