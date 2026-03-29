@@ -22,6 +22,7 @@
 | week_start | total_cases | stale_cases | duplicate_candidates | evidence_mismatch | new_cases_added | reviewer | notes |
 | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
 | YYYY-MM-DD | 0 | 0 | 0 | 0 | 0 | owner-name | summary |
+| 2026-03-23 | 10 | 0 | 0 | 0 | 0 | piki9312 | packs/hr のケースを確認。WS2 failure row は 0 件、追加ケースは不要。stale 判定用 timestamp 列は未整備のため暫定 0 扱い。 |
 
 ## 4. Standard Actions
 
