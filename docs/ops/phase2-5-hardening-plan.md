@@ -101,6 +101,7 @@ Phase2.5 の完了条件:
 - docs/ops/phase2-5-ws2-failure-review-template.md
 - docs/ops/phase2-5-ws3-gate-exception-approval-template.md
 - docs/ops/phase2-5-weekly-metrics-register.md
+- docs/ops/phase2-5-exit-readiness-check-2026-03-29.md
 - docs/ops/phase2-5-first-sprint-completion-record.md
 - docs/ops/phase2-5-investigate-response-flow.md
 - docs/ops/phase2-5-case-quality-weekly-review.md
