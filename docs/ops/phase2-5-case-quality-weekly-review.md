@@ -13,22 +13,37 @@
 - [ ] 重複ケースの確認（同一意図・同一根拠）
 - [ ] expected_evidence の有効性確認
 - [ ] expected_keywords の過不足確認
+- [ ] keyword_miss の人手レビュー（valid_failure / false_negative）
 - [ ] stale case（cases.csv の last_reviewed_at から 30 日超）の抽出
 - [ ] high-risk case（S1/S2）の網羅確認
 - [ ] 今週の fail に対応する新規ケース追加確認
 
 ## 3. Review Log Template
 
-| week_start | total_cases | stale_cases | duplicate_candidates | evidence_mismatch | new_cases_added | reviewer | notes |
-| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| YYYY-MM-DD | 0 | 0 | 0 | 0 | 0 | owner-name | summary |
-| 2026-03-23 | 10 | 0 | 0 | 0 | 0 | piki9312 | packs/hr のケースを確認。WS2 failure row は 0 件、追加ケースは不要。stale は last_reviewed_at 基準で算出。 |
+| week_start | total_cases | stale_cases | duplicate_candidates | evidence_mismatch | keyword_miss_total | keyword_miss_reviewed | keyword_miss_false_negative_rate | new_cases_added | reviewer | notes |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| YYYY-MM-DD | 0 | 0 | 0 | 0 | 0 | 0 | 0.00 | 0 | owner-name | summary |
+| 2026-03-23 | 10 | 0 | 0 | 0 | 1 | 1 | 0.00 | 0 | piki9312 | packs/hr を確認。keyword_miss 1件は valid_failure 判定。stale は last_reviewed_at 基準で算出。 |
 
 ## 3.1 Stale Rule
 
 - stale 判定条件: `today - last_reviewed_at > 30 days`
 - 対象データ項目: `packs/*/cases.csv` の `last_reviewed_at` (YYYY-MM-DD)
 - `last_reviewed_at` が空欄のケースは stale 扱いとし、当週レビューで補完する
+
+## 3.2 keyword_miss False Negative KPI
+
+- KPI 定義:
+  - false_negative_rate = false_negative_count / reviewed_keyword_miss_count
+- review_verdict の値:
+  - valid_failure: keyword_miss は妥当（正しく fail）
+  - false_negative: 意味的には妥当回答だが語形ゆれ等で誤って fail
+- 週次運用手順（例）:
+  - 1) テンプレート作成
+    - `python -m rqg.demo.phase2_5_keyword_miss_kpi --results-jsonl runs/quality/20260330.jsonl --cases-csv packs/hr/cases.csv --export-review-csv runs/phase2-5-keyword-miss/review-20260330.csv --output runs/phase2-5-keyword-miss/summary-20260330.json`
+  - 2) `review-*.csv` の `review_verdict` を記入
+  - 3) KPI 集計
+    - `python -m rqg.demo.phase2_5_keyword_miss_kpi --results-jsonl runs/quality/20260330.jsonl --review-csv runs/phase2-5-keyword-miss/review-20260330.csv --output runs/phase2-5-keyword-miss/summary-20260330-reviewed.json --max-false-negative-rate 0.2`
 
 ## 4. Standard Actions
 
@@ -38,6 +53,8 @@
   - expected_evidence を修正し、再実行で妥当性確認
 - stale_cases > 0:
   - 優先度順に更新し、期限を設定
+- keyword_miss_false_negative_rate > 0.2:
+  - expected_keywords の OR 同義語候補を追加し、評価器の揺れ許容設定を見直す
 
 ## 5. Done Criteria (weekly)
 
@@ -49,3 +66,4 @@
 
 - docs/ops/phase2-5-ws2-failure-review-template.md
 - docs/ops/phase2-5-weekly-metrics-register.md
+- src/rqg/demo/phase2_5_keyword_miss_kpi.py

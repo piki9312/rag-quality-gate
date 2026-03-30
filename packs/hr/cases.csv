@@ -1,5 +1,5 @@
 case_id,name,severity,question,expected_chunks,expected_keywords,golden_answer,category,owner,min_pass_rate,last_reviewed_at
-HR001,有給申請期限,S1,"有給休暇の申請期限はいつですか？","","有給;申請;期限;営業日","",deadline,hr-team,100,2026-03-30
+HR001,有給申請期限,S1,"有給休暇の申請期限はいつですか？","","有給;申請;営業日;5営業日前","",deadline,hr-team,100,2026-03-30
 HR002,有給申請手順,S2,"有給休暇はどの手順で申請しますか？","","有給;申請;システム","",procedure,hr-team,85,2026-03-30
 HR003,経費精算締め日,S1,"経費精算の締め日はいつですか？","","経費;締め日;申請","",deadline,finance-team,100,2026-03-30
 HR004,経費証憑要件,S2,"経費精算に必要な証憑は何ですか？","","経費;証憑;レシート","",procedure,finance-team,85,2026-03-30
