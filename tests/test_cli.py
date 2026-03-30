@@ -179,8 +179,34 @@ class TestCLIParsing:
         assert args.output_dir == "packs/wiki_pack"
         assert args.profile == "wiki"
 
+    def test_init_pack_list_profiles_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["init-pack", "--list-profiles"])
+        assert args.command == "init-pack"
+        assert args.output_dir is None
+        assert args.list_profiles is True
+
 
 class TestPhase1CLI:
+    def test_init_pack_list_profiles(self, capsys):
+        exit_code = main(["init-pack", "--list-profiles"])
+
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "Available init-pack profiles" in captured.out
+        assert "sample" in captured.out
+        assert "hr" in captured.out
+        assert "wiki" in captured.out
+
+    def test_init_pack_requires_output_dir_without_list(self, capsys):
+        exit_code = main(["init-pack"])
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "output_dir is required" in captured.err
+
     def test_init_pack_scaffolds_template(self):
         target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack"
 
