@@ -32,6 +32,18 @@ class TestKeywordMatch:
     def test_case_insensitive(self):
         assert keyword_match_rate("Hello World", ["hello", "WORLD"]) == 1.0
 
+    def test_or_keyword_match(self):
+        answer = "有給休暇は5営業日前までに申請してください。"
+        assert keyword_match_rate(answer, ["期限|5営業日前", "申請"]) == 1.0
+
+    def test_or_keyword_partial_match(self):
+        answer = "5営業日前までに手続きしてください。"
+        assert keyword_match_rate(answer, ["期限|締切", "申請|手続き"]) == 0.5
+
+    def test_empty_keyword_specs_are_ignored(self):
+        answer = "hello world"
+        assert keyword_match_rate(answer, ["", " ", "hello|hi"]) == 1.0
+
 
 # ==================================================================
 # retrieval_hit
