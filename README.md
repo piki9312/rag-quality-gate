@@ -66,6 +66,14 @@ python -m rqg.demo.onboarding_quickstart
 
 1. テンプレートを配置
 
+最短コマンド:
+
+```bash
+rqg init-pack packs/my_pack
+```
+
+手動で配置する場合:
+
 Bash (macOS/Linux):
 
 ```bash
@@ -195,6 +203,14 @@ python -m rqg.demo.onboarding_quickstart
 ## Fast Setup (3 Steps)
 
 1. Place templates
+
+Fastest command:
+
+```bash
+rqg init-pack packs/my_pack
+```
+
+If you prefer manual placement:
 
 Bash (macOS/Linux):
 
