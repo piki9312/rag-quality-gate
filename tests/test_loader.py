@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 
 import pytest
 
@@ -48,6 +49,44 @@ def cases_csv(tmp_path):
     return str(path)
 
 
+@pytest.fixture()
+def cases_json_eval_case(tmp_path):
+    path = tmp_path / "cases.json"
+    payload = [
+        {
+            "case_id": "J001",
+            "question": "When should paid leave be requested?",
+            "expected_evidence": ["doc/leave-policy#section-1"],
+            "expected_keywords": ["paid leave", "5 business days"],
+            "risk_level": "S1",
+            "doc_snapshot_id": "snapshot-001",
+            "notes": "generated from snapshot",
+        }
+    ]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return str(path)
+
+
+@pytest.fixture()
+def cases_json_qa_shape(tmp_path):
+    path = tmp_path / "qa_cases.json"
+    payload = [
+        {
+            "case_id": "J002",
+            "name": "json qa case",
+            "question": "How should employees submit paid leave requests?",
+            "severity": "s2",
+            "expected_chunks": ["chunk-1"],
+            "expected_keywords": ["submit", "HR system"],
+            "category": "procedure",
+            "owner": "hr-team",
+            "min_pass_rate": 85,
+        }
+    ]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return str(path)
+
+
 class TestLoadCases:
     def test_load_count(self, cases_csv):
         cases = load_cases(cases_csv)
@@ -80,3 +119,24 @@ class TestLoadCases:
     def test_file_not_found(self):
         with pytest.raises(FileNotFoundError):
             load_cases("/nonexistent/cases.csv")
+
+    def test_load_json_eval_case_shape(self, cases_json_eval_case):
+        cases = load_cases(cases_json_eval_case)
+        assert len(cases) == 1
+        assert cases[0].case_id == "J001"
+        assert cases[0].severity == "S1"
+        assert cases[0].name == "J001"
+        assert "paid leave" in cases[0].expected_keywords
+
+    def test_load_json_qa_shape(self, cases_json_qa_shape):
+        cases = load_cases(cases_json_qa_shape)
+        assert len(cases) == 1
+        assert cases[0].case_id == "J002"
+        assert cases[0].severity == "S2"
+        assert cases[0].expected_chunks == ["chunk-1"]
+
+    def test_invalid_json_raises_value_error(self, tmp_path):
+        path = tmp_path / "broken.json"
+        path.write_text("{invalid", encoding="utf-8")
+        with pytest.raises(ValueError):
+            load_cases(str(path))

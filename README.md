@@ -58,6 +58,9 @@ pip install -e ".[dev]"
 
 ```bash
 python -m rqg.demo.onboarding_quickstart
+
+# Wiki/FAQ profile example:
+python -m rqg.demo.onboarding_quickstart --profile wiki
 ```
 
 3. 実行結果を確認
@@ -204,6 +207,9 @@ pip install -e ".[dev]"
 
 ```bash
 python -m rqg.demo.onboarding_quickstart
+
+# Wiki/FAQ profile example:
+python -m rqg.demo.onboarding_quickstart --profile wiki
 ```
 
 3. Check outputs
