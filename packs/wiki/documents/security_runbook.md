@@ -1,8 +1,8 @@
 # Security Runbook
 
-Internal wiki runbooks must be reviewed and refreshed weekly by the assigned knowledge owner.
+P1 security incidents escalate to security on-call within 15 minutes. Weekly runbooks review is required.
 
-P1 security incidents must be escalated to the security on-call channel within 15 minutes of detection.
+Assigned knowledge owners refresh internal wiki runbooks during the weekly review cycle.
 
 Primary contact order:
 
