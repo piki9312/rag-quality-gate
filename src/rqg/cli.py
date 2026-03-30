@@ -4,6 +4,7 @@ Usage:
     rqg eval   cases.csv --docs documents/ --log-dir runs/quality
     rqg check  --log-dir runs/quality --config .rqg.yml
     rqg ingest documents/
+    rqg init-pack packs/my_pack
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import logging
+import shutil
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -70,6 +72,13 @@ def _snapshot_output_path(index_dir: str | Path, snapshot: DocumentSnapshot) -> 
     return Path(index_dir) / "snapshots" / f"{snapshot.snapshot_id}.json"
 
 
+def _resolve_sample_pack_template_dir() -> Path:
+    template_dir = Path(__file__).resolve().parents[2] / "templates" / "sample_pack"
+    if template_dir.exists():
+        return template_dir
+    raise FileNotFoundError(f"Sample pack template not found: {template_dir}")
+
+
 def cmd_init_snapshot(args: argparse.Namespace) -> int:
     content_hash = hashlib.sha256(args.content.encode("utf-8")).hexdigest()
     snapshot = DocumentSnapshot(
@@ -112,6 +121,36 @@ def cmd_create_sample_gate(args: argparse.Namespace) -> int:
     )
     output_path = _write_json_output(args.output, gate)
     print(f"Saved gate decision JSON to {output_path}")
+    return 0
+
+
+def cmd_init_pack(args: argparse.Namespace) -> int:
+    """Scaffold a new pack directory from templates/sample_pack."""
+    try:
+        template_dir = _resolve_sample_pack_template_dir()
+    except FileNotFoundError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+
+    target_dir = Path(args.output_dir)
+
+    if target_dir.exists() and not target_dir.is_dir():
+        print(f"[ERROR] Output path is not a directory: {target_dir}", file=sys.stderr)
+        return 1
+
+    if target_dir.exists() and any(target_dir.iterdir()) and not args.force:
+        print(
+            f"[ERROR] Target directory is not empty: {target_dir}. Use --force to overwrite.",
+            file=sys.stderr,
+        )
+        return 1
+
+    if target_dir.exists() and args.force:
+        shutil.rmtree(target_dir)
+
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(template_dir, target_dir)
+    print(f"Initialized sample pack at {target_dir}")
     return 0
 
 
@@ -495,6 +534,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_sample_gate.add_argument("--output", required=True)
 
+    # --- init-pack ---
+    p_init_pack = sub.add_parser(
+        "init-pack",
+        help="Initialize a pack directory from templates/sample_pack",
+    )
+    p_init_pack.add_argument("output_dir", help="Destination path for the new pack")
+    p_init_pack.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite target directory if it already exists",
+    )
+
     return parser
 
 
@@ -517,6 +568,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_create_sample_case(args)
     elif args.command == "create-sample-gate":
         return cmd_create_sample_gate(args)
+    elif args.command == "init-pack":
+        return cmd_init_pack(args)
     elif args.command == "gen-cases":
         return cmd_gen_cases(args)
     elif args.command == "impact":

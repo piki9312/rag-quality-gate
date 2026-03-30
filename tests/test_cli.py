@@ -27,6 +27,7 @@ class TestCLIHelp:
         assert "init-snapshot" in result.stdout
         assert "create-sample-case" in result.stdout
         assert "create-sample-gate" in result.stdout
+        assert "init-pack" in result.stdout
         assert "gen-cases" in result.stdout
         assert "impact" in result.stdout
         assert "migrate-cases" in result.stdout
@@ -159,8 +160,38 @@ class TestCLIParsing:
         assert args.old_snapshot == "old.json"
         assert args.new_snapshot == "new.json"
 
+    def test_init_pack_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["init-pack", "packs/my_pack", "--force"])
+        assert args.command == "init-pack"
+        assert args.output_dir == "packs/my_pack"
+        assert args.force is True
+
 
 class TestPhase1CLI:
+    def test_init_pack_scaffolds_template(self):
+        target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack"
+
+        exit_code = main(["init-pack", str(target)])
+
+        assert exit_code == 0
+        assert (target / "cases.csv").exists()
+        assert (target / "gate.yml").exists()
+        assert (target / "quality-pack.yml").exists()
+        assert (target / "documents" / "leave_policy.md").exists()
+
+    def test_init_pack_fails_on_non_empty_target_without_force(self):
+        target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack-non-empty"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "existing.txt").write_text("already here", encoding="utf-8")
+
+        exit_code = main(["init-pack", str(target)])
+
+        assert exit_code == 1
+        assert (target / "existing.txt").exists()
+
     def test_create_sample_case_writes_json(self):
         output = Path("tests/.tmp") / f"{uuid.uuid4()}-case.json"
 
