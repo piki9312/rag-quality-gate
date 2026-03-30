@@ -1,0 +1,66 @@
+# Internal Documents Quality Pack (Wiki/FAQ Profile)
+pack:
+  name: internal-docs-wiki-faq-profile
+  version: "1.0"
+  domain: "Internal Documents"
+  profile: "Wiki/FAQ"
+  description: >
+    Internal knowledge-base and FAQ profile for assistant AI quality gating.
+    Focuses on access guidance, security escalation, and runbook operation accuracy.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+severity_policy:
+  s1_definition:
+    - security/compliance escalation guidance errors
+    - wrong deadline guidance for access-critical requests
+    - operational risk from incorrect owner/contact routes
+  s2_definition:
+    - non-critical procedure explanation gaps
+    - clarity/completeness degradation without immediate critical impact
+
+kpis:
+  keyword_match_rate:
+    description: "Share of answers containing required domain keywords"
+    target: 0.80
+    weight: 0.35
+  retrieval_hit_rate:
+    description: "Share of runs where expected evidence appears in retrieval"
+    target: 0.85
+    weight: 0.25
+  reference_accuracy:
+    description: "Share of cited evidence matching retrieved chunks"
+    target: 0.90
+    weight: 0.20
+  s1_pass_rate:
+    description: "Pass rate for critical (S1) cases"
+    target: 1.00
+    weight: 0.20
+
+slo:
+  s1_pass_rate: 1.00
+  overall_pass_rate: 0.85
+  retrieval_precision_min: 0.70
+  regression_tolerance: 0.05
+
+weekly_review_focus:
+  - impacted_case_count trend
+  - s1 failures and owner assignment
+  - stale cases based on last_reviewed_at
+  - unresolved investigate issues
+
+common_failure_patterns:
+  - name: retrieval_miss
+    symptom: "Expected evidence not found in top-k retrieval"
+    first_action: "Review chunking/retrieval settings and expected_chunks"
+  - name: stale_case_definition
+    symptom: "expected_keywords are outdated after document updates"
+    first_action: "Update cases.csv and set last_reviewed_at"
+  - name: procedure_drift
+    symptom: "Runbook procedure changed but cases remained old"
+    first_action: "Add impacted cases and verify via review outputs"
+  - name: escalation_gap
+    symptom: "No owner/contact route after failure"
+    first_action: "Set owner/due in weekly review issue"

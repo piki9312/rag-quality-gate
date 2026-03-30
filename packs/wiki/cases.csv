@@ -1,0 +1,5 @@
+case_id,name,severity,question,expected_chunks,expected_keywords,golden_answer,category,owner,min_pass_rate,last_reviewed_at
+WIKI001,VPN exception deadline,S1,When should temporary VPN exception access be requested?,,vpn;exception;2 business days,,deadline,it-helpdesk,100,2026-03-30
+WIKI002,VPN exception request method,S2,How should employees submit a temporary VPN exception request?,,vpn;request;service portal,,procedure,it-helpdesk,85,2026-03-30
+WIKI003,Security incident escalation,S1,Who must be contacted first for a P1 security incident?,,security;incident;on-call,,compliance,security-team,100,2026-03-30
+WIKI004,Knowledge update cadence,S2,How often must internal wiki runbooks be reviewed?,,runbooks;weekly,,policy,knowledge-team,85,2026-03-30
