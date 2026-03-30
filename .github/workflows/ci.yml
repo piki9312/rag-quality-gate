@@ -302,6 +302,10 @@ jobs:
             Path("packs/hr/gate.yml"),
             Path("packs/hr/quality-pack.yml"),
             Path("packs/hr/README.md"),
+            Path("packs/wiki/cases.csv"),
+            Path("packs/wiki/gate.yml"),
+            Path("packs/wiki/quality-pack.yml"),
+            Path("packs/wiki/README.md"),
           ]
 
           missing = [str(p) for p in required_files if not p.exists()]
@@ -336,7 +340,11 @@ jobs:
               if "S2" not in severities:
                 raise SystemExit(f"{path} must contain at least one S2 case")
 
-          for csv_path in [Path("templates/sample_pack/cases.csv"), Path("packs/hr/cases.csv")]:
+          for csv_path in [
+            Path("templates/sample_pack/cases.csv"),
+            Path("packs/hr/cases.csv"),
+            Path("packs/wiki/cases.csv"),
+          ]:
             validate_cases(csv_path)
 
           required_quality_keys = {"pack", "cases_file", "documents_dir", "kpis", "slo"}
@@ -362,6 +370,7 @@ jobs:
           for quality_path in [
             Path("templates/sample_pack/quality-pack.yml"),
             Path("packs/hr/quality-pack.yml"),
+            Path("packs/wiki/quality-pack.yml"),
           ]:
             validate_quality_pack(quality_path)
 

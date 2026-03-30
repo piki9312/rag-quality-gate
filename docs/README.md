@@ -32,6 +32,8 @@ Phase2.5 を運用する:
 Phase3 で社内文書向け縦パックを整備する:
 
 - [phase3-internal-docs-vertical-pack](ops/phase3-internal-docs-vertical-pack.md)
+- [packs/hr guide](../packs/hr/README.md)
+- [packs/wiki guide](../packs/wiki/README.md)
 
 設計意図を確認する:
 
@@ -86,6 +88,8 @@ Operating Phase2.5:
 Preparing an internal-documents vertical pack in Phase3:
 
 - [phase3-internal-docs-vertical-pack](ops/phase3-internal-docs-vertical-pack.md)
+- [packs/hr guide](../packs/hr/README.md)
+- [packs/wiki guide](../packs/wiki/README.md)
 
 Architecture rationale:
 

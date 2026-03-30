@@ -365,6 +365,7 @@ FAQ/Wiki pack を追加する際の変更が packs/ と docs/ 中心で完結す
 
 - templates/sample_pack/
 - packs/hr/
+- packs/wiki/
 - docs/README.md
 
 ---
@@ -374,5 +375,6 @@ FAQ/Wiki pack を追加する際の変更が packs/ と docs/ 中心で完結す
 - README で価値訴求が明確
 - sample_pack が最小構成を満たす
 - hr pack が見本製品として説明可能
+- wiki pack が FAQ/Wiki 拡張見本として説明可能
 - 週次 review 観点が固定される
 - 責務分離原則が docs で参照可能
