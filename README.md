@@ -74,6 +74,8 @@ python -m rqg.demo.onboarding_quickstart
 
 ```bash
 rqg init-pack packs/my_pack
+# Wiki/FAQ profile example:
+rqg init-pack packs/my_pack --profile wiki
 ```
 
 手動で配置する場合:
@@ -216,6 +218,8 @@ Fastest command:
 
 ```bash
 rqg init-pack packs/my_pack
+# Wiki/FAQ profile example:
+rqg init-pack packs/my_pack --profile wiki
 ```
 
 If you prefer manual placement:
