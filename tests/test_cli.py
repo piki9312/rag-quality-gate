@@ -60,6 +60,15 @@ class TestCLIParsing:
         parser = build_parser()
         args = parser.parse_args(["check"])
         assert args.command == "check"
+        assert args.quality_pack is None
+
+    def test_check_quality_pack_arg(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["check", "--quality-pack", "packs/hr/quality-pack.yml"])
+        assert args.command == "check"
+        assert args.quality_pack == "packs/hr/quality-pack.yml"
 
     def test_ingest_args(self):
         from rqg.cli import build_parser

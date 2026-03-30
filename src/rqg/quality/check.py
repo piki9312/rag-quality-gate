@@ -44,6 +44,41 @@ class GateConfig:
         )
 
 
+def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
+    """Load failure category -> next action hints from quality-pack.yml."""
+    import yaml
+
+    file_path = Path(path)
+    if not file_path.exists():
+        return {}
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+    patterns = data.get("common_failure_patterns", [])
+    if not isinstance(patterns, list):
+        return {}
+
+    actions: dict[str, str] = {}
+    for item in patterns:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+
+        # Accept both legacy "action" and current "first_action" fields.
+        action = item.get("first_action") or item.get("action")
+        if not isinstance(action, str) or not action.strip():
+            continue
+
+        actions[name.strip()] = action.strip()
+    return actions
+
+
 # ------------------------------------------------------------------
 # Results
 # ------------------------------------------------------------------
@@ -299,7 +334,10 @@ def render_gate_markdown(result: CheckResult) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_gate_markdown(result: CheckResult) -> str:
+def render_gate_markdown(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+) -> str:
     """Render a gate check result as Markdown."""
     status = "PASS" if result.gate_passed else "FAIL"
     lines = [f"## RAG Quality Gate: {status}\n"]
@@ -325,5 +363,16 @@ def render_gate_markdown(result: CheckResult) -> str:
         lines.append("|----------|-------|")
         for category, count in result.failure_categories.items():
             lines.append(f"| {category} | {count} |")
+
+    if result.failure_categories:
+        lines.append("\n### Next Actions")
+        lines.append("| Failure Category | Next Action | Owner | Due |")
+        lines.append("|------------------|-------------|-------|-----|")
+        for category in result.failure_categories:
+            action = "Define next action in weekly review issue"
+            if failure_actions and category in failure_actions:
+                action = failure_actions[category]
+            safe_action = action.replace("|", "\\|")
+            lines.append(f"| {category} | {safe_action} | T.B.D. | T.B.D. |")
 
     return "\n".join(lines) + "\n"
