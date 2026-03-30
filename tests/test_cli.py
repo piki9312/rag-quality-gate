@@ -167,7 +167,17 @@ class TestCLIParsing:
         args = parser.parse_args(["init-pack", "packs/my_pack", "--force"])
         assert args.command == "init-pack"
         assert args.output_dir == "packs/my_pack"
+        assert args.profile == "sample"
         assert args.force is True
+
+    def test_init_pack_profile_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["init-pack", "packs/wiki_pack", "--profile", "wiki"])
+        assert args.command == "init-pack"
+        assert args.output_dir == "packs/wiki_pack"
+        assert args.profile == "wiki"
 
 
 class TestPhase1CLI:
@@ -181,6 +191,18 @@ class TestPhase1CLI:
         assert (target / "gate.yml").exists()
         assert (target / "quality-pack.yml").exists()
         assert (target / "documents" / "leave_policy.md").exists()
+
+    def test_init_pack_scaffolds_wiki_profile(self):
+        target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack-wiki"
+
+        exit_code = main(["init-pack", str(target), "--profile", "wiki"])
+
+        assert exit_code == 0
+        assert (target / "cases.csv").exists()
+        assert (target / "gate.yml").exists()
+        assert (target / "quality-pack.yml").exists()
+        assert (target / "documents" / "access_faq.md").exists()
+        assert (target / "documents" / "security_runbook.md").exists()
 
     def test_init_pack_fails_on_non_empty_target_without_force(self):
         target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack-non-empty"

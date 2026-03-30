@@ -5,6 +5,7 @@ Usage:
     rqg check  --log-dir runs/quality --config .rqg.yml
     rqg ingest documents/
     rqg init-pack packs/my_pack
+    rqg init-pack packs/my_pack --profile wiki
 """
 
 from __future__ import annotations
@@ -72,11 +73,18 @@ def _snapshot_output_path(index_dir: str | Path, snapshot: DocumentSnapshot) -> 
     return Path(index_dir) / "snapshots" / f"{snapshot.snapshot_id}.json"
 
 
-def _resolve_sample_pack_template_dir() -> Path:
-    template_dir = Path(__file__).resolve().parents[2] / "templates" / "sample_pack"
+def _resolve_pack_template_dir(profile: str) -> Path:
+    root_dir = Path(__file__).resolve().parents[2]
+    template_by_profile = {
+        "sample": root_dir / "templates" / "sample_pack",
+        "hr": root_dir / "packs" / "hr",
+        "wiki": root_dir / "packs" / "wiki",
+    }
+
+    template_dir = template_by_profile[profile]
     if template_dir.exists():
         return template_dir
-    raise FileNotFoundError(f"Sample pack template not found: {template_dir}")
+    raise FileNotFoundError(f"Pack template not found for profile '{profile}': {template_dir}")
 
 
 def cmd_init_snapshot(args: argparse.Namespace) -> int:
@@ -125,9 +133,9 @@ def cmd_create_sample_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_init_pack(args: argparse.Namespace) -> int:
-    """Scaffold a new pack directory from templates/sample_pack."""
+    """Scaffold a new pack directory from the selected profile template."""
     try:
-        template_dir = _resolve_sample_pack_template_dir()
+        template_dir = _resolve_pack_template_dir(args.profile)
     except FileNotFoundError as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1
@@ -150,7 +158,7 @@ def cmd_init_pack(args: argparse.Namespace) -> int:
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(template_dir, target_dir)
-    print(f"Initialized sample pack at {target_dir}")
+    print(f"Initialized {args.profile} pack at {target_dir}")
     return 0
 
 
@@ -537,9 +545,15 @@ def build_parser() -> argparse.ArgumentParser:
     # --- init-pack ---
     p_init_pack = sub.add_parser(
         "init-pack",
-        help="Initialize a pack directory from templates/sample_pack",
+        help="Initialize a pack directory from bundled templates/profiles",
     )
     p_init_pack.add_argument("output_dir", help="Destination path for the new pack")
+    p_init_pack.add_argument(
+        "--profile",
+        choices=["sample", "hr", "wiki"],
+        default="sample",
+        help="Template profile to scaffold (default: sample)",
+    )
     p_init_pack.add_argument(
         "--force",
         action="store_true",
