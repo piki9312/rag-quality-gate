@@ -176,8 +176,17 @@ class TestCLIParsing:
         args = parser.parse_args(["init-pack", "packs/my_pack", "--force"])
         assert args.command == "init-pack"
         assert args.output_dir == "packs/my_pack"
-        assert args.profile == "sample"
+        assert args.profile == "demo_cycle"
         assert args.force is True
+
+    def test_init_pack_profile_alias_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["init-pack", "packs/sample_pack", "--profile", "sample"])
+        assert args.command == "init-pack"
+        assert args.output_dir == "packs/sample_pack"
+        assert args.profile == "sample"
 
     def test_init_pack_profile_args(self):
         from rqg.cli import build_parser
@@ -205,7 +214,9 @@ class TestPhase1CLI:
         captured = capsys.readouterr()
         assert exit_code == 0
         assert "Available init-pack profiles" in captured.out
+        assert "demo_cycle" in captured.out
         assert "sample" in captured.out
+        assert "sample -> demo_cycle" in captured.out
         assert "hr" in captured.out
         assert "wiki" in captured.out
 
@@ -220,6 +231,17 @@ class TestPhase1CLI:
         target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack"
 
         exit_code = main(["init-pack", str(target)])
+
+        assert exit_code == 0
+        assert (target / "cases.csv").exists()
+        assert (target / "gate.yml").exists()
+        assert (target / "quality-pack.yml").exists()
+        assert (target / "documents" / "leave_policy.md").exists()
+
+    def test_init_pack_scaffolds_sample_alias(self):
+        target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack-sample-alias"
+
+        exit_code = main(["init-pack", str(target), "--profile", "sample"])
 
         assert exit_code == 0
         assert (target / "cases.csv").exists()

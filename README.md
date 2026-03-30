@@ -77,6 +77,10 @@ python -m rqg.demo.onboarding_quickstart --profile wiki
 
 ```bash
 rqg init-pack packs/my_pack
+# Demo cycle profile example (default):
+rqg init-pack packs/my_pack --profile demo_cycle
+# Legacy alias example (same as demo_cycle):
+rqg init-pack packs/my_pack --profile sample
 # Show available profile names:
 rqg init-pack --list-profiles
 # Wiki/FAQ profile example:
@@ -231,6 +235,10 @@ Fastest command:
 
 ```bash
 rqg init-pack packs/my_pack
+# Demo cycle profile example (default):
+rqg init-pack packs/my_pack --profile demo_cycle
+# Legacy alias example (same as demo_cycle):
+rqg init-pack packs/my_pack --profile sample
 # Show available profile names:
 rqg init-pack --list-profiles
 # Wiki/FAQ profile example:

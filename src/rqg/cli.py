@@ -5,6 +5,7 @@ Usage:
     rqg check  --log-dir runs/quality --config .rqg.yml
     rqg ingest documents/
     rqg init-pack packs/my_pack
+    rqg init-pack packs/my_pack --profile demo_cycle
     rqg init-pack packs/my_pack --profile wiki
     rqg init-pack --list-profiles
 """
@@ -77,9 +78,9 @@ def _snapshot_output_path(index_dir: str | Path, snapshot: DocumentSnapshot) -> 
 def _pack_profile_templates() -> dict[str, tuple[Path, str]]:
     root_dir = Path(__file__).resolve().parents[2]
     return {
-        "sample": (
+        "demo_cycle": (
             root_dir / "templates" / "sample_pack",
-            "Starter sample pack template",
+            "Demo cycle starter pack template",
         ),
         "hr": (
             root_dir / "packs" / "hr",
@@ -92,16 +93,29 @@ def _pack_profile_templates() -> dict[str, tuple[Path, str]]:
     }
 
 
+_PACK_PROFILE_ALIASES: dict[str, str] = {
+    "sample": "demo_cycle",
+}
+
+
+def _normalize_pack_profile(profile: str) -> str:
+    return _PACK_PROFILE_ALIASES.get(profile, profile)
+
+
 def _resolve_pack_template_dir(profile: str) -> Path:
+    normalized_profile = _normalize_pack_profile(profile)
     template_by_profile = {
         profile_name: template_path
         for profile_name, (template_path, _) in _pack_profile_templates().items()
     }
 
-    template_dir = template_by_profile[profile]
+    template_dir = template_by_profile[normalized_profile]
     if template_dir.exists():
         return template_dir
-    raise FileNotFoundError(f"Pack template not found for profile '{profile}': {template_dir}")
+    raise FileNotFoundError(
+        "Pack template not found for profile "
+        f"'{profile}' (resolved to '{normalized_profile}'): {template_dir}"
+    )
 
 
 def cmd_init_snapshot(args: argparse.Namespace) -> int:
@@ -156,6 +170,10 @@ def cmd_init_pack(args: argparse.Namespace) -> int:
         for profile_name, (template_dir, description) in _pack_profile_templates().items():
             status = "ok" if template_dir.exists() else "missing"
             print(f"  - {profile_name}: {description} ({status}) -> {template_dir}")
+        if _PACK_PROFILE_ALIASES:
+            print("Aliases:")
+            for alias_name, profile_name in sorted(_PACK_PROFILE_ALIASES.items()):
+                print(f"  - {alias_name} -> {profile_name}")
         return 0
 
     if not args.output_dir:
@@ -165,8 +183,11 @@ def cmd_init_pack(args: argparse.Namespace) -> int:
         )
         return 1
 
+    requested_profile = args.profile
+    selected_profile = _normalize_pack_profile(requested_profile)
+
     try:
-        template_dir = _resolve_pack_template_dir(args.profile)
+        template_dir = _resolve_pack_template_dir(requested_profile)
     except FileNotFoundError as exc:
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1
@@ -189,7 +210,13 @@ def cmd_init_pack(args: argparse.Namespace) -> int:
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(template_dir, target_dir)
-    print(f"Initialized {args.profile} pack at {target_dir}")
+    if requested_profile == selected_profile:
+        print(f"Initialized {selected_profile} pack at {target_dir}")
+    else:
+        print(
+            f"Initialized {selected_profile} pack at {target_dir} "
+            f"(requested alias: {requested_profile})"
+        )
     return 0
 
 
@@ -601,9 +628,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_init_pack.add_argument(
         "--profile",
-        choices=["sample", "hr", "wiki"],
-        default="sample",
-        help="Template profile to scaffold (default: sample)",
+        choices=["demo_cycle", "sample", "hr", "wiki"],
+        default="demo_cycle",
+        help="Template profile to scaffold (default: demo_cycle; alias: sample)",
     )
     p_init_pack.add_argument(
         "--list-profiles",
