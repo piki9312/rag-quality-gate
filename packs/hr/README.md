@@ -22,6 +22,7 @@
    - rqg eval packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality
 3. check
    - rqg check --log-dir runs/quality --config packs/hr/gate.yml
+   - rqg check --log-dir runs/quality --config packs/hr/gate.yml --quality-pack packs/hr/quality-pack.yml
 4. impact (optional)
    - rqg impact --old-snapshot <old_snapshot.json> --new-snapshot <new_snapshot.json> --cases packs/hr/cases.csv --output runs/quality/impact-report.json
 

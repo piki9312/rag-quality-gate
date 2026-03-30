@@ -22,6 +22,7 @@ Principles:
    - rqg eval packs/wiki/cases.csv --docs packs/wiki/documents --mock --index-dir index --log-dir runs/quality
 3. check
    - rqg check --log-dir runs/quality --config packs/wiki/gate.yml
+   - rqg check --log-dir runs/quality --config packs/wiki/gate.yml --quality-pack packs/wiki/quality-pack.yml
 
 ## What This Pack Protects
 

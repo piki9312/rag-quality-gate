@@ -424,6 +424,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     from .quality.check import (
         GateConfig,
         build_gate_decision,
+        load_failure_actions_from_quality_pack,
         render_gate_markdown,
         run_check,
     )
@@ -445,7 +446,17 @@ def cmd_check(args: argparse.Namespace) -> int:
         cases_file=args.cases_file,
     )
 
-    md = render_gate_markdown(result)
+    quality_pack_path = args.quality_pack
+    if not quality_pack_path and args.config:
+        inferred_quality_pack = Path(args.config).with_name("quality-pack.yml")
+        if inferred_quality_pack.exists():
+            quality_pack_path = str(inferred_quality_pack)
+
+    failure_actions: dict[str, str] = {}
+    if quality_pack_path:
+        failure_actions = load_failure_actions_from_quality_pack(quality_pack_path)
+
+    md = render_gate_markdown(result, failure_actions=failure_actions)
     print(md)
     decision = build_gate_decision(result)
 
@@ -493,6 +504,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--baseline-dir", default=None)
     p_check.add_argument("--baseline-days", type=int, default=7)
     p_check.add_argument("--cases-file", default=None)
+    p_check.add_argument(
+        "--quality-pack",
+        default=None,
+        help="Optional path to quality-pack.yml for failure next-action hints",
+    )
     p_check.add_argument("--s1-threshold", type=float, default=100.0)
     p_check.add_argument("--overall-threshold", type=float, default=80.0)
     p_check.add_argument("--output-file", default=None)

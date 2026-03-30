@@ -13,6 +13,7 @@ from rqg.quality.check import (
     GateConfig,
     ThresholdResult,
     build_gate_decision,
+    load_failure_actions_from_quality_pack,
     load_records,
     render_gate_markdown,
     run_check,
@@ -90,6 +91,23 @@ class TestGateConfig:
         cfg = GateConfig.from_yaml(str(yaml_path))
         assert cfg.s1_pass_rate == 95.0
         assert cfg.overall_pass_rate == 75.0
+
+    def test_load_failure_actions_from_quality_pack(self, tmp_path):
+        quality_pack = tmp_path / "quality-pack.yml"
+        quality_pack.write_text(
+            """
+common_failure_patterns:
+  - name: retrieval_miss
+    first_action: Review chunking/retrieval settings
+  - name: synthesis
+    action: Refresh expected evidence and keywords
+""".strip(),
+            encoding="utf-8",
+        )
+
+        actions = load_failure_actions_from_quality_pack(quality_pack)
+        assert actions["retrieval_miss"] == "Review chunking/retrieval settings"
+        assert actions["synthesis"] == "Refresh expected evidence and keywords"
 
 
 class TestLoadRecords:
@@ -177,3 +195,26 @@ class TestRenderMarkdown:
         assert "FAIL" in md
         assert "Failure Categories" in md
         assert "retrieval_miss" in md
+
+    def test_fail_rendering_with_next_actions(self):
+        result = CheckResult(
+            run_id="run-002",
+            current_runs=8,
+            baseline_runs=0,
+            overall_rate=62.5,
+            s1_rate=50.0,
+            s1_passed=1,
+            s1_total=2,
+            thresholds=[ThresholdResult("S1", 100.0, 50.0, False, "1/2")],
+            failure_categories={"retrieval_miss": 2, "unknown": 1},
+        )
+
+        md = render_gate_markdown(
+            result,
+            failure_actions={"retrieval_miss": "Review retrieval settings"},
+        )
+
+        assert "Next Actions" in md
+        assert "Review retrieval settings" in md
+        assert "Define next action in weekly review issue" in md
+        assert "T.B.D." in md

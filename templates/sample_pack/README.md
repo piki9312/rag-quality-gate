@@ -22,6 +22,7 @@ Quick usage:
    - rqg ingest packs/my_pack/documents --index-dir index
    - rqg eval packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality
    - rqg check --log-dir runs/quality --config packs/my_pack/gate.yml
+   - rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
 3. For onboarding smoke, use python -m rqg.demo.onboarding_quickstart.
 
 Minimum review checklist:
