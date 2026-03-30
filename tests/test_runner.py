@@ -85,6 +85,26 @@ class TestRunCase:
         result = runner.run_case(s1_case)
         assert "検索結果がありません" in result.answer
 
+    def test_mock_llm_keeps_tail_keywords(self):
+        class LongTailStore:
+            def search(self, q, top_k=20):
+                return [{"chunk_id": "chunk_tail", "text": "x" * 140 + " on-call"}]
+
+        case = QATestCase(
+            case_id="QA-tail",
+            name="tail keyword",
+            question="Who is the escalation owner?",
+            severity="S2",
+            expected_keywords=["on-call"],
+            expected_chunks=[],
+            category="escalation",
+        )
+
+        runner = RAGQualityRunner(store=LongTailStore(), mock_llm=True)
+        result = runner.run_case(case)
+        assert result.passed is True
+        assert "on-call" in result.answer
+
 
 class TestRunAll:
     def test_run_all_returns_eval_run(self, s1_case, s2_case):
