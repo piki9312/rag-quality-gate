@@ -14,6 +14,12 @@ Run one end-to-end sequence:
 6. re-evaluate and observe fail
 7. fix document and pass again
 
+Why impact is required:
+
+- Document updates do not fail loudly by default
+- A small wording change can break critical cases
+- Impact narrows review scope to affected cases before release gate judgment
+
 ## Command
 
 Run from repository root:
@@ -40,6 +46,12 @@ Expected status flow:
 - `phase1_gate=pass`
 - `phase2_gate=fail`
 - `phase3_gate=pass`
+
+Release interpretation:
+
+- pass: release can proceed
+- fail: block release and run review + corrective action
+- pass after fix: release can resume with evidence
 
 `impact_report.json` contains:
 

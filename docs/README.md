@@ -11,6 +11,7 @@
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
+- [packs/hr guide](../packs/hr/README.md)
 
 Phase2 を運用する:
 
@@ -27,6 +28,10 @@ Phase2.5 を運用する:
 - [phase2-5-weekly-metrics-register](ops/phase2-5-weekly-metrics-register.md)
 - [phase2-5-investigate-response-flow](ops/phase2-5-investigate-response-flow.md)
 - [phase2-5-case-quality-weekly-review](ops/phase2-5-case-quality-weekly-review.md)
+
+Phase3 で社内文書向け縦パックを整備する:
+
+- [phase3-internal-docs-vertical-pack](ops/phase3-internal-docs-vertical-pack.md)
 
 設計意図を確認する:
 
@@ -60,6 +65,7 @@ Getting started:
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
+- [packs/hr guide](../packs/hr/README.md)
 
 Operating Phase2:
 
@@ -76,6 +82,10 @@ Operating Phase2.5:
 - [phase2-5-weekly-metrics-register](ops/phase2-5-weekly-metrics-register.md)
 - [phase2-5-investigate-response-flow](ops/phase2-5-investigate-response-flow.md)
 - [phase2-5-case-quality-weekly-review](ops/phase2-5-case-quality-weekly-review.md)
+
+Preparing an internal-documents vertical pack in Phase3:
+
+- [phase3-internal-docs-vertical-pack](ops/phase3-internal-docs-vertical-pack.md)
 
 Architecture rationale:
 

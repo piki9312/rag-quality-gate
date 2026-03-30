@@ -13,6 +13,8 @@ Run a single flow end-to-end:
 5. impact
 6. review output
 
+This flow is the baseline for internal-documents assistant AI where document updates can change answers silently.
+
 ## Command
 
 Run from repository root.
@@ -55,3 +57,4 @@ Expected summary values:
 
 - This demo is designed for first-time users and keeps commands minimal.
 - It uses the `packs/demo_cycle` sample pack and writes all outputs to `demo_runs/`.
+- In production, start from `templates/sample_pack` and tune cases for your internal policy/FAQ/procedure documents.

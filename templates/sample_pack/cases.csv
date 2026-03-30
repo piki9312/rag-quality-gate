@@ -1,2 +1,4 @@
 case_id,name,severity,question,expected_chunks,expected_keywords,golden_answer,category,owner,min_pass_rate,last_reviewed_at
-DEMO001,Leave policy gate,S1,What is the paid leave request policy?,,paid leave;5 business days,,demo,demo-team,100,2026-03-29
+DOC001,Leave request deadline,S1,When should paid leave be requested?,,paid leave;5 business days;advance,,policy,hr-team,100,2026-03-30
+DOC002,Leave request method,S2,How should employees submit paid leave requests?,,submit;HR system;requests,,procedure,hr-team,85,2026-03-30
+DOC003,Escalation owner,S2,Who should be contacted if the HR system is unavailable for leave requests?,,HR;contact;fallback,,escalation,hr-team,80,2026-03-30

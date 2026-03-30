@@ -1,0 +1,57 @@
+# Internal Documents Quality Pack Template
+pack:
+  name: internal-docs-starter
+  version: "1.0"
+  domain: "Internal Documents"
+  profile: "HR-first"
+  description: >
+    Starter quality pack for assistant AI that relies on internal policy,
+    procedure, FAQ, and knowledge-base documents.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+severity_policy:
+  s1_definition:
+    - policy or compliance critical errors
+    - wrong deadlines or amount limits
+    - wrong rights/eligibility guidance
+  s2_definition:
+    - non-critical explanation gaps
+    - clarity/completeness issues without immediate critical impact
+
+kpis:
+  keyword_match_rate:
+    description: "Share of answers containing required domain keywords"
+    target: 0.80
+  retrieval_hit_rate:
+    description: "Share of runs where expected evidence appears in retrieval"
+    target: 0.85
+  reference_accuracy:
+    description: "Share of cited evidence matching retrieved chunks"
+    target: 0.90
+  s1_pass_rate:
+    description: "Pass rate for critical (S1) cases"
+    target: 1.00
+
+slo:
+  s1_pass_rate: 1.00
+  overall_pass_rate: 0.85
+  regression_tolerance: 0.05
+
+weekly_review_focus:
+  - impacted_case_count trend
+  - s1 failures and owner assignment
+  - stale cases based on last_reviewed_at
+  - unresolved investigate issues
+
+common_failure_patterns:
+  - name: retrieval_miss
+    action: "Check chunking, source update, expected evidence"
+  - name: stale_case_definition
+    action: "Update expected keywords/evidence and last_reviewed_at"
+  - name: procedure_drift
+    action: "Sync cases with latest process steps"
+  - name: escalation_gap
+    action: "Add owner/contact path in source docs and cases"
