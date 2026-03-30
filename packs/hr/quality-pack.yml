@@ -1,44 +1,76 @@
-# HR Quality Pack — 人事・労務 FAQ 向け品質パック
+# Internal Documents Quality Pack (HR Profile)
 pack:
-  name: hr-faq
-  version: "1.0"
-  domain: "人事・労務"
+  name: internal-docs-hr-profile
+  version: "1.1"
+  domain: "Internal Documents"
+  profile: "HR/Policy"
   description: >
-    社内の就業規則・経費精算・勤怠・福利厚生に関する
-    FAQ を対象とした品質パック。
+    社内文書を知識源にする業務支援 AI の品質ゲート向けパック。
+    このプロファイルは人事・就業規則・経費関連の文書で最初の導入価値を示す。
 
 cases_file: cases.csv
 documents_dir: documents
+gate_file: gate.yml
 
-# --- KPI 定義 ---
+severity_policy:
+  s1_definition:
+    - 法令・規程違反リスクにつながる誤回答
+    - 期限や金額上限などの重大誤案内
+    - 権利・資格・懲戒など重大判断の誤案内
+  s2_definition:
+    - 補足情報不足
+    - 手順説明の粒度不足
+    - 非重大な説明品質劣化
+
+# KPI 定義
 kpis:
   keyword_match_rate:
     description: "回答にドメイン固有キーワードが含まれる割合"
     target: 0.80
-    weight: 0.4
+    weight: 0.35
   retrieval_hit_rate:
-    description: "正しいチャンクが検索結果に含まれる割合"
+    description: "期待根拠が検索結果に含まれる割合"
     target: 0.85
-    weight: 0.3
+    weight: 0.25
   reference_accuracy:
-    description: "回答内の参照が実際の検索チャンクと一致する割合"
+    description: "回答の参照根拠が retrieval 結果と整合する割合"
     target: 0.90
-    weight: 0.2
+    weight: 0.20
   s1_pass_rate:
     description: "重大ケース (S1) の合格率"
     target: 1.00
-    weight: 0.1
+    weight: 0.20
 
-# --- SLO (Gate に使用) ---
+# SLO (Gate 判断で使う)
 slo:
-  s1_pass_rate: 1.0
+  s1_pass_rate: 1.00
   overall_pass_rate: 0.85
   retrieval_precision_min: 0.70
   regression_tolerance: 0.05
 
-# --- ROI メモ ---
+weekly_review_focus:
+  - impacted_case_count の急増/急減
+  - S1 fail の有無と改善 owner/due の設定
+  - last_reviewed_at 基準で stale case の抽出
+  - investigate issue の未解決件数
+  - failure_action_coverage_rate の維持
+
+common_failure_patterns:
+  - name: retrieval_miss
+    symptom: "期待根拠が top-k に現れない"
+    first_action: "chunking/retrieval 設定と expected_chunks を再確認"
+  - name: stale_case_definition
+    symptom: "文書更新後に expected_keywords が古い"
+    first_action: "cases.csv を更新し last_reviewed_at を当日に更新"
+  - name: procedure_drift
+    symptom: "手順変更がケースに反映されていない"
+    first_action: "影響ケースを追加し review 出力で差分確認"
+  - name: escalation_gap
+    symptom: "fail 後の担当と期限が未設定"
+    first_action: "weekly review issue で owner/due を必須入力"
+
+# ROI メモ
 roi:
-  current_process: "問い合わせ → Slack で人事担当が手動回答 (平均 15 分/件)"
-  expected_improvement: "回答の 70% を自動化 → 月 40 時間削減"
-  cost_baseline_monthly_jpy: 200000
-  target_payback_months: 3
+  current_process: "問い合わせごとに担当者が手動回答"
+  expected_improvement: "重大ケースを守りながら回答品質確認を定例化"
+  target_effect: "レビュー起点の修正時間短縮とリリース判断の迅速化"

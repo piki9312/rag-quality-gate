@@ -10,6 +10,11 @@ Run the system in three phases:
 2. fail after breaking the document content
 3. pass again after restoring the document
 
+This demonstrates the release-gate behavior for internal-document updates:
+
+- fail blocks unsafe release
+- fix evidence is required before unblocking
+
 ## Command
 
 Run from the repository root:
@@ -38,6 +43,11 @@ Expected statuses:
 - `01-pass`: `pass`
 - `02-fail`: `fail`
 - `03-pass`: `pass`
+
+Operational meaning:
+
+- `02-fail` should trigger review and action assignment
+- `03-pass` provides evidence for release resume
 
 Each phase also leaves:
 
