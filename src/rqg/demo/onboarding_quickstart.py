@@ -11,6 +11,7 @@ Flow:
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -23,6 +24,7 @@ from rqg.cli import main as cli_main
 
 @dataclass
 class QuickstartSummary:
+    profile: str
     run_id: str
     old_snapshot: str
     new_snapshot: str
@@ -35,12 +37,17 @@ class QuickstartSummary:
     impacted_case_count: int
 
 
+@dataclass(frozen=True)
+class QuickstartProfileConfig:
+    template_pack_dir: Path
+    scenario_doc_relpath: Path
+    doc_id: str
+    title: str
+    good_doc: str
+    updated_doc: str
+
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
-TEMPLATE_PACK_DIR = REPO_ROOT / "packs" / "demo_cycle"
-WORK_ROOT = REPO_ROOT / "demo_runs" / "onboarding_quickstart" / uuid.uuid4().hex[:8]
-PACK_DIR = WORK_ROOT / "pack"
-DOC_PATH = PACK_DIR / "documents" / "leave_policy.md"
-SUMMARY_PATH = WORK_ROOT / "summary.json"
 
 GOOD_DOC = """# Leave Policy
 
@@ -54,6 +61,48 @@ Paid leave requests must be submitted 3 business days in advance.
 Employees should submit the request through the HR system.
 """
 
+WIKI_GOOD_DOC = """# VPN Exception FAQ
+
+Temporary VPN exception access requests must be submitted 2 business days in advance.
+Employees should submit requests via the service portal.
+P1 security incidents must be escalated to the security on-call owner first.
+"""
+
+WIKI_UPDATED_DOC = """# VPN Exception FAQ
+
+Temporary VPN exception access requests must be submitted 1 business day in advance.
+Employees should submit requests via the service portal.
+P1 security incidents must be escalated to the security on-call owner first.
+"""
+
+
+PROFILE_CONFIGS: dict[str, QuickstartProfileConfig] = {
+    "demo_cycle": QuickstartProfileConfig(
+        template_pack_dir=REPO_ROOT / "packs" / "demo_cycle",
+        scenario_doc_relpath=Path("documents/quickstart_policy.md"),
+        doc_id="demo-quickstart-policy",
+        title="Quickstart Policy",
+        good_doc=GOOD_DOC,
+        updated_doc=UPDATED_DOC,
+    ),
+    "hr": QuickstartProfileConfig(
+        template_pack_dir=REPO_ROOT / "packs" / "hr",
+        scenario_doc_relpath=Path("documents/quickstart_policy.md"),
+        doc_id="hr-quickstart-policy",
+        title="HR Quickstart Policy",
+        good_doc=GOOD_DOC,
+        updated_doc=UPDATED_DOC,
+    ),
+    "wiki": QuickstartProfileConfig(
+        template_pack_dir=REPO_ROOT / "packs" / "wiki",
+        scenario_doc_relpath=Path("documents/quickstart_policy.md"),
+        doc_id="wiki-quickstart-policy",
+        title="Wiki Quickstart Policy",
+        good_doc=WIKI_GOOD_DOC,
+        updated_doc=WIKI_UPDATED_DOC,
+    ),
+}
+
 
 def _run_cli(args: list[str], step: str) -> None:
     exit_code = cli_main(args)
@@ -61,12 +110,19 @@ def _run_cli(args: list[str], step: str) -> None:
         raise RuntimeError(f"{step} failed with exit code {exit_code}")
 
 
-def _prepare_pack() -> None:
-    WORK_ROOT.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(TEMPLATE_PACK_DIR, PACK_DIR)
+def _prepare_pack(template_pack_dir: Path, work_root: Path, pack_dir: Path) -> None:
+    work_root.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(template_pack_dir, pack_dir)
 
 
-def _init_snapshot_from_doc(doc_path: Path, output_path: Path, snapshot_id: str) -> Path:
+def _init_snapshot_from_doc(
+    doc_path: Path,
+    output_path: Path,
+    snapshot_id: str,
+    *,
+    doc_id: str,
+    title: str,
+) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     text = doc_path.read_text(encoding="utf-8")
     _run_cli(
@@ -75,9 +131,9 @@ def _init_snapshot_from_doc(doc_path: Path, output_path: Path, snapshot_id: str)
             "--snapshot-id",
             snapshot_id,
             "--doc-id",
-            "demo-leave-policy",
+            doc_id,
             "--title",
-            "Leave Policy",
+            title,
             "--source-path",
             str(doc_path),
             "--content",
@@ -90,25 +146,32 @@ def _init_snapshot_from_doc(doc_path: Path, output_path: Path, snapshot_id: str)
     return output_path
 
 
-def run_demo() -> QuickstartSummary:
+def run_demo(profile: str = "demo_cycle") -> tuple[QuickstartSummary, Path]:
+    config = PROFILE_CONFIGS[profile]
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
     os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
-    _prepare_pack()
+    work_root = REPO_ROOT / "demo_runs" / "onboarding_quickstart" / uuid.uuid4().hex[:8]
+    pack_dir = work_root / "pack"
+    summary_path = work_root / "summary.json"
+    doc_path = pack_dir / config.scenario_doc_relpath
 
-    artifacts_dir = WORK_ROOT / "artifacts"
-    index_dir = WORK_ROOT / "index"
-    log_dir = WORK_ROOT / "runs"
+    _prepare_pack(config.template_pack_dir, work_root, pack_dir)
+
+    artifacts_dir = work_root / "artifacts"
+    index_dir = work_root / "index"
+    log_dir = work_root / "runs"
     report_file = log_dir / "gate-report.md"
     decision_file = log_dir / "gate-decision.json"
 
-    DOC_PATH.write_text(GOOD_DOC, encoding="utf-8")
+    doc_path.parent.mkdir(parents=True, exist_ok=True)
+    doc_path.write_text(config.good_doc, encoding="utf-8")
 
     # 1) ingest
     _run_cli(
         [
             "ingest",
-            str(PACK_DIR / "documents"),
+            str(pack_dir / "documents"),
             "--index-dir",
             str(index_dir),
         ],
@@ -116,13 +179,15 @@ def run_demo() -> QuickstartSummary:
     )
 
     # Build a stable old snapshot from a copied file to avoid path-overwrite issues.
-    old_doc_copy = artifacts_dir / "leave_policy_old.md"
+    old_doc_copy = artifacts_dir / f"{profile}_policy_old.md"
     old_doc_copy.parent.mkdir(parents=True, exist_ok=True)
-    old_doc_copy.write_text(GOOD_DOC, encoding="utf-8")
+    old_doc_copy.write_text(config.good_doc, encoding="utf-8")
     old_snapshot = _init_snapshot_from_doc(
         old_doc_copy,
         artifacts_dir / "old_snapshot.json",
         "quickstart-old",
+        doc_id=config.doc_id,
+        title=config.title,
     )
 
     # 2) gen-cases
@@ -147,9 +212,9 @@ def run_demo() -> QuickstartSummary:
     _run_cli(
         [
             "eval",
-            str(PACK_DIR / "cases.csv"),
+            str(generated_cases),
             "--docs",
-            str(PACK_DIR / "documents"),
+            str(pack_dir / "documents"),
             "--mock",
             "--index-dir",
             str(index_dir),
@@ -166,7 +231,7 @@ def run_demo() -> QuickstartSummary:
             "--log-dir",
             str(log_dir),
             "--config",
-            str(PACK_DIR / "gate.yml"),
+            str(pack_dir / "gate.yml"),
             "--output-file",
             str(report_file),
             "--decision-file",
@@ -178,13 +243,15 @@ def run_demo() -> QuickstartSummary:
     decision = json.loads(decision_file.read_text(encoding="utf-8"))
 
     # Prepare updated document and new snapshot for impact.
-    DOC_PATH.write_text(UPDATED_DOC, encoding="utf-8")
-    new_doc_copy = artifacts_dir / "leave_policy_new.md"
-    new_doc_copy.write_text(UPDATED_DOC, encoding="utf-8")
+    doc_path.write_text(config.updated_doc, encoding="utf-8")
+    new_doc_copy = artifacts_dir / f"{profile}_policy_new.md"
+    new_doc_copy.write_text(config.updated_doc, encoding="utf-8")
     new_snapshot = _init_snapshot_from_doc(
         new_doc_copy,
         artifacts_dir / "new_snapshot.json",
         "quickstart-new",
+        doc_id=config.doc_id,
+        title=config.title,
     )
 
     # 5) impact
@@ -210,7 +277,8 @@ def run_demo() -> QuickstartSummary:
     impact_payload = json.loads(impact_report_path.read_text(encoding="utf-8"))
 
     summary = QuickstartSummary(
-        run_id=WORK_ROOT.name,
+        profile=profile,
+        run_id=work_root.name,
         old_snapshot=str(old_snapshot),
         new_snapshot=str(new_snapshot),
         generated_cases=str(generated_cases),
@@ -221,12 +289,25 @@ def run_demo() -> QuickstartSummary:
         changed_evidence_count=len(impact_payload.get("changed_evidence_ids", [])),
         impacted_case_count=len(impact_payload.get("impacted_case_ids", [])),
     )
-    SUMMARY_PATH.write_text(json.dumps(asdict(summary), indent=2), encoding="utf-8")
-    return summary
+    summary_path.write_text(json.dumps(asdict(summary), indent=2), encoding="utf-8")
+    return summary, summary_path
 
 
-def main() -> int:
-    summary = run_demo()
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run onboarding quickstart demo flow")
+    parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILE_CONFIGS.keys()),
+        default="demo_cycle",
+        help="Pack profile used for onboarding quickstart",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    summary, summary_path = run_demo(profile=args.profile)
+    print(f"profile={summary.profile}")
     print(f"run_id={summary.run_id}")
     print(f"gate_status={summary.gate_status}")
     print(f"changed_evidence_count={summary.changed_evidence_count}")
@@ -235,7 +316,7 @@ def main() -> int:
     print(f"generated_cases_review={summary.generated_cases_review}")
     print(f"impact_report={summary.impact_report}")
     print(f"impact_review={summary.impact_review}")
-    print(f"summary={SUMMARY_PATH}")
+    print(f"summary={summary_path}")
     return 0
 
 

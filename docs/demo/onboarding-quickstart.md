@@ -1,6 +1,6 @@
 # Onboarding Quickstart Demo
 
-This is the shortest first-time onboarding path for Phase 2.
+This is the shortest first-time onboarding path for Phase 3 profile-based onboarding.
 
 ## Goal
 
@@ -23,12 +23,18 @@ Bash (macOS/Linux):
 
 ```bash
 python -m rqg.demo.onboarding_quickstart
+
+# Wiki/FAQ profile example:
+python -m rqg.demo.onboarding_quickstart --profile wiki
 ```
 
 PowerShell (Windows):
 
 ```powershell
 python -m rqg.demo.onboarding_quickstart
+
+# Wiki/FAQ profile example:
+python -m rqg.demo.onboarding_quickstart --profile wiki
 ```
 
 ## Expected output
@@ -56,5 +62,6 @@ Expected summary values:
 ## Notes
 
 - This demo is designed for first-time users and keeps commands minimal.
-- It uses the `packs/demo_cycle` sample pack and writes all outputs to `demo_runs/`.
+- Default profile is `demo_cycle`, and `--profile hr|wiki` is also supported.
+- It writes all outputs to `demo_runs/`.
 - In production, start from `templates/sample_pack` and tune cases for your internal policy/FAQ/procedure documents.
