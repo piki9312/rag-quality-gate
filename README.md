@@ -103,6 +103,9 @@ Copy-Item templates/github/workflows/rqg-onboarding.yml .github/workflows/
 Copy-Item templates/sample_pack packs/my_pack -Recurse
 ```
 
+GitHub Actions の `RQG Onboarding Smoke` を `Run workflow` で実行する場合は、
+`profile` 入力で `demo_cycle` / `hr` / `wiki` を選択できます（未指定時は `demo_cycle`）。
+
 2. サンプル pack で評価と判定を実行
 
 ```bash
@@ -251,6 +254,9 @@ New-Item -ItemType Directory -Path .github/workflows -Force | Out-Null
 Copy-Item templates/github/workflows/rqg-onboarding.yml .github/workflows/
 Copy-Item templates/sample_pack packs/my_pack -Recurse
 ```
+
+When running `RQG Onboarding Smoke` via `Run workflow`, you can choose
+the `profile` input (`demo_cycle`, `hr`, `wiki`). The default is `demo_cycle`.
 
 2. Run evaluation and gate decision with the sample pack
 
