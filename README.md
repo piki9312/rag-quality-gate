@@ -74,6 +74,8 @@ python -m rqg.demo.onboarding_quickstart
 
 ```bash
 rqg init-pack packs/my_pack
+# Show available profile names:
+rqg init-pack --list-profiles
 # Wiki/FAQ profile example:
 rqg init-pack packs/my_pack --profile wiki
 ```
@@ -218,6 +220,8 @@ Fastest command:
 
 ```bash
 rqg init-pack packs/my_pack
+# Show available profile names:
+rqg init-pack --list-profiles
 # Wiki/FAQ profile example:
 rqg init-pack packs/my_pack --profile wiki
 ```

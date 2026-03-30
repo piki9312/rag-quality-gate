@@ -6,6 +6,7 @@ Usage:
     rqg ingest documents/
     rqg init-pack packs/my_pack
     rqg init-pack packs/my_pack --profile wiki
+    rqg init-pack --list-profiles
 """
 
 from __future__ import annotations
@@ -73,12 +74,28 @@ def _snapshot_output_path(index_dir: str | Path, snapshot: DocumentSnapshot) -> 
     return Path(index_dir) / "snapshots" / f"{snapshot.snapshot_id}.json"
 
 
-def _resolve_pack_template_dir(profile: str) -> Path:
+def _pack_profile_templates() -> dict[str, tuple[Path, str]]:
     root_dir = Path(__file__).resolve().parents[2]
+    return {
+        "sample": (
+            root_dir / "templates" / "sample_pack",
+            "Starter sample pack template",
+        ),
+        "hr": (
+            root_dir / "packs" / "hr",
+            "HR internal-documents profile",
+        ),
+        "wiki": (
+            root_dir / "packs" / "wiki",
+            "Wiki/FAQ internal-documents profile",
+        ),
+    }
+
+
+def _resolve_pack_template_dir(profile: str) -> Path:
     template_by_profile = {
-        "sample": root_dir / "templates" / "sample_pack",
-        "hr": root_dir / "packs" / "hr",
-        "wiki": root_dir / "packs" / "wiki",
+        profile_name: template_path
+        for profile_name, (template_path, _) in _pack_profile_templates().items()
     }
 
     template_dir = template_by_profile[profile]
@@ -134,6 +151,20 @@ def cmd_create_sample_gate(args: argparse.Namespace) -> int:
 
 def cmd_init_pack(args: argparse.Namespace) -> int:
     """Scaffold a new pack directory from the selected profile template."""
+    if args.list_profiles:
+        print("Available init-pack profiles:")
+        for profile_name, (template_dir, description) in _pack_profile_templates().items():
+            status = "ok" if template_dir.exists() else "missing"
+            print(f"  - {profile_name}: {description} ({status}) -> {template_dir}")
+        return 0
+
+    if not args.output_dir:
+        print(
+            "[ERROR] output_dir is required unless --list-profiles is used",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         template_dir = _resolve_pack_template_dir(args.profile)
     except FileNotFoundError as exc:
@@ -547,12 +578,21 @@ def build_parser() -> argparse.ArgumentParser:
         "init-pack",
         help="Initialize a pack directory from bundled templates/profiles",
     )
-    p_init_pack.add_argument("output_dir", help="Destination path for the new pack")
+    p_init_pack.add_argument(
+        "output_dir",
+        nargs="?",
+        help="Destination path for the new pack (required unless --list-profiles)",
+    )
     p_init_pack.add_argument(
         "--profile",
         choices=["sample", "hr", "wiki"],
         default="sample",
         help="Template profile to scaffold (default: sample)",
+    )
+    p_init_pack.add_argument(
+        "--list-profiles",
+        action="store_true",
+        help="List available init-pack profiles and exit",
     )
     p_init_pack.add_argument(
         "--force",
