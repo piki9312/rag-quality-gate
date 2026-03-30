@@ -90,8 +90,11 @@ class RAGQualityRunner:
             if not retrieved:
                 answer = "検索結果がありません。文書を投入してください。"
             elif self.mock_llm:
-                # Mock: retrieved chunk のテキストを結合して返す
-                answer = " ".join(r["text"][:100] for r in retrieved)
+                # Mock: retrieved chunk のテキストをそのまま結合して返す
+                # 文字数で切り捨てると末尾キーワードが欠落し、偽陰性になりやすい。
+                answer = " ".join(
+                    str(r.get("text", "")) for r in retrieved if str(r.get("text", "")).strip()
+                )
             else:
                 answer, meta = generate_answer(case.question, retrieved, self.max_new_tokens)
                 usage = meta.get("usage", {})
