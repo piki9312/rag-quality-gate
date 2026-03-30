@@ -6,8 +6,9 @@ import csv
 import json
 from pathlib import Path
 
-from rqg.domain import EvalCase
 from pydantic import ValidationError
+
+from rqg.domain import EvalCase
 
 from .models import QATestCase
 
