@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from rqg.domain import GateDecision
+from rqg.domain import GateDecision, GateNextAction
 
 from .aggregate import case_pass_rates, failure_category_breakdown, severity_pass_rate
 from .models import QARunRecord
@@ -77,6 +77,9 @@ def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
 
         actions[name.strip()] = action.strip()
     return actions
+
+
+DEFAULT_NEXT_ACTION_HINT = "Define next action in weekly review issue"
 
 
 # ------------------------------------------------------------------
@@ -268,7 +271,40 @@ def run_check(
     )
 
 
-def build_gate_decision(result: CheckResult) -> GateDecision:
+def _build_structured_next_actions(
+    failure_categories: dict[str, int],
+    failure_actions: dict[str, str] | None = None,
+) -> list[GateNextAction]:
+    if not failure_categories:
+        return []
+
+    next_actions: list[GateNextAction] = []
+    for category in sorted(failure_categories):
+        count = failure_categories.get(category, 0)
+        if count <= 0:
+            continue
+
+        action = DEFAULT_NEXT_ACTION_HINT
+        if failure_actions and category in failure_actions:
+            hinted = failure_actions[category].strip()
+            if hinted:
+                action = hinted
+
+        next_actions.append(
+            GateNextAction(
+                failure_category=category,
+                count=count,
+                action=action,
+            )
+        )
+
+    return next_actions
+
+
+def build_gate_decision(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+) -> GateDecision:
     """Convert a gate check result into a GateDecision model."""
     failed_thresholds = [t for t in result.thresholds if not t.passed]
     failed_case_thresholds = [t for t in result.case_thresholds if not t.passed]
@@ -289,12 +325,14 @@ def build_gate_decision(result: CheckResult) -> GateDecision:
         "current_runs": float(result.current_runs),
         "baseline_runs": float(result.baseline_runs),
     }
+    next_actions = _build_structured_next_actions(result.failure_categories, failure_actions)
 
     return GateDecision(
         run_id=result.run_id,
         status=status,
         reasons=reasons,
         metrics=metrics,
+        next_actions=next_actions,
         created_at=datetime.now(timezone.utc),
     )
 
@@ -369,7 +407,7 @@ def render_gate_markdown(
         lines.append("| Failure Category | Next Action | Owner | Due |")
         lines.append("|------------------|-------------|-------|-----|")
         for category in result.failure_categories:
-            action = "Define next action in weekly review issue"
+            action = DEFAULT_NEXT_ACTION_HINT
             if failure_actions and category in failure_actions:
                 action = failure_actions[category]
             safe_action = action.replace("|", "\\|")

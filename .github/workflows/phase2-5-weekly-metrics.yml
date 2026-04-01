@@ -168,6 +168,24 @@ jobs:
               core.warning(`Failed to parse summary.json: ${error.message}`);
             }
 
+            const nextActions = Array.isArray(summary.next_actions) ? summary.next_actions : [];
+            const nonTechnicalSummary = Array.isArray(summary.non_technical_summary)
+              ? summary.non_technical_summary
+              : [];
+            const nextActionLines = nextActions.length > 0
+              ? nextActions.slice(0, 10).map((action, index) => {
+                  const category = action.failure_category || 'unknown';
+                  const recommendedAction = action.recommended_action || 'Define next action in weekly review issue';
+                  const owner = action.owner || 'T.B.D.';
+                  const dueDate = action.due_date || 'T.B.D.';
+                  const status = action.status || 'open';
+                  return `- [${index + 1}] ${category}: ${recommendedAction} (owner: ${owner}, due: ${dueDate}, status: ${status})`;
+                })
+              : ['- none'];
+            const nonTechnicalLines = nonTechnicalSummary.length > 0
+              ? nonTechnicalSummary.slice(0, 8).map((line) => `- ${line}`)
+              : ['- summary unavailable'];
+
             let exitGateSummary = {};
             try {
               exitGateSummary = JSON.parse(fs.readFileSync('runs/phase2-5-exit-gate/summary.json', 'utf8'));
@@ -211,6 +229,12 @@ jobs:
               `- decision: ${summary.decision ?? 'unknown'}`,
               `- register_pr: ${registerPrUrl || 'not created (no register diff)'}`,
               `- register_pr_note: ${registerPrNote || 'n/a'}`,
+              '',
+              '## Next Actions (auto)',
+              ...nextActionLines,
+              '',
+              '## Non-Technical Weekly Summary',
+              ...nonTechnicalLines,
               '',
               '## Provisional Exit Gate (C1-C4)',
               `- exit_gate_exit_code: ${exitGateExitCode || 'n/a'}`,

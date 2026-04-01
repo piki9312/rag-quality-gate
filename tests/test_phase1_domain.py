@@ -78,10 +78,18 @@ def test_gate_decision_valid() -> None:
         status="pass",
         reasons=["All checks passed."],
         metrics={"pass_rate": 1.0},
+        next_actions=[
+            {
+                "failure_category": "retrieval_miss",
+                "count": 2,
+                "action": "Review retrieval settings",
+            }
+        ],
         created_at=datetime.now(timezone.utc),
     )
 
     assert decision.status == "pass"
+    assert decision.next_actions[0].failure_category == "retrieval_miss"
     assert '"run_id":"run-001"' in decision.model_dump_json()
 
 

@@ -157,6 +157,32 @@ class TestCheckResult:
         )
         assert result.gate_passed is True
 
+    def test_build_gate_decision_includes_structured_next_actions(self):
+        result = CheckResult(
+            run_id="run-structured-actions",
+            current_runs=5,
+            baseline_runs=3,
+            overall_rate=60.0,
+            s1_rate=50.0,
+            s1_passed=1,
+            s1_total=2,
+            thresholds=[
+                ThresholdResult("S1 pass rate", 100.0, 50.0, False, "1/2"),
+            ],
+            failure_categories={"retrieval_miss": 2, "other": 1},
+        )
+
+        decision = build_gate_decision(
+            result,
+            failure_actions={"retrieval_miss": "Review retrieval settings"},
+        )
+
+        actions = {item.failure_category: item for item in decision.next_actions}
+        assert actions["retrieval_miss"].count == 2
+        assert actions["retrieval_miss"].action == "Review retrieval settings"
+        assert actions["other"].count == 1
+        assert actions["other"].action == "Define next action in weekly review issue"
+
 
 class TestRenderMarkdown:
     def test_pass_rendering(self):

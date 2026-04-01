@@ -91,6 +91,8 @@ def test_collect_summary_keep_going(
     assert summary.gate_exception_count == 0
     assert summary.overdue_exceptions_count == 0
     assert summary.decision == "keep-going"
+    assert summary.next_actions == []
+    assert any("Weekly decision: keep-going" in line for line in summary.non_technical_summary)
 
 
 def test_collect_summary_with_week_start_override(
@@ -145,6 +147,9 @@ def test_collect_summary_investigate(metrics_docs: tuple[Path, Path, Path]) -> N
     assert summary.gate_exception_count == 1
     assert summary.overdue_exceptions_count == 1
     assert summary.decision == "investigate"
+    assert len(summary.next_actions) == 2
+    assert summary.next_actions[0].recommended_action
+    assert any("Weekly decision: investigate" in line for line in summary.non_technical_summary)
     assert any("M1 onboarding_time_minutes is missing" in note for note in summary.notes)
     assert any("M2 weekly_ops_time_minutes is missing" in note for note in summary.notes)
     assert any("M3 failure_action_coverage_rate is below 1.0" in note for note in summary.notes)
@@ -166,6 +171,8 @@ def test_main_writes_output_and_returns_exit_codes(
     assert ok_exit == 0
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["decision"] == "keep-going"
+    assert "next_actions" in payload
+    assert "non_technical_summary" in payload
 
     backfill_exit = metrics.main(["--output", str(out), "--week-start", "2026-03-16"])
     assert backfill_exit == 0
