@@ -255,7 +255,9 @@ def _build_non_technical_summary(
         return summary
 
     open_actions = [
-        action for action in next_actions if action.status.strip().lower() in {"open", "in-progress"}
+        action
+        for action in next_actions
+        if action.status.strip().lower() in {"open", "in-progress"}
     ]
     if not open_actions:
         summary.append("All recorded WS2 actions are marked done.")
