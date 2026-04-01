@@ -168,6 +168,24 @@ jobs:
               core.warning(`Failed to parse summary.json: ${error.message}`);
             }
 
+            const nextActions = Array.isArray(summary.next_actions) ? summary.next_actions : [];
+            const nonTechnicalSummary = Array.isArray(summary.non_technical_summary)
+              ? summary.non_technical_summary
+              : [];
+            const nextActionLines = nextActions.length > 0
+              ? nextActions.slice(0, 10).map((action, index) => {
+                  const category = action.failure_category || 'unknown';
+                  const recommendedAction = action.recommended_action || 'Define next action in weekly review issue';
+                  const owner = action.owner || 'T.B.D.';
+                  const dueDate = action.due_date || 'T.B.D.';
+                  const status = action.status || 'open';
+                  return `- [${index + 1}] ${category}: ${recommendedAction} (owner: ${owner}, due: ${dueDate}, status: ${status})`;
+                })
+              : ['- none'];
+            const nonTechnicalLines = nonTechnicalSummary.length > 0
+              ? nonTechnicalSummary.slice(0, 8).map((line) => `- ${line}`)
+              : ['- summary unavailable'];
+
             let exitGateSummary = {};
             try {
               exitGateSummary = JSON.parse(fs.readFileSync('runs/phase2-5-exit-gate/summary.json', 'utf8'));
@@ -196,12 +214,24 @@ jobs:
             const query = `repo:${owner}/${repo} is:issue is:open in:title "${weeklyTitle}"`;
             const existing = await github.rest.search.issuesAndPullRequests({ q: query });
 
-            if (existing.data.total_count === 0) {
+            const matchingIssues = existing.data.items
+              .filter((item) => !item.pull_request)
+              .sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+
+            if (matchingIssues.length === 0) {
               core.warning(`Weekly review issue not found for ${weekStart}. Skipping link comment.`);
               return '';
             }
 
-            const issue = existing.data.items[0];
+            const issue = matchingIssues[0];
+            if (matchingIssues.length > 1) {
+              core.info(
+                `Multiple weekly review issues found (${matchingIssues.length}); ` +
+                `selected latest created_at: ${issue.html_url}`
+              );
+            }
             const body = [
               'Phase2.5 weekly metrics run linked from automation.',
               '',
@@ -211,6 +241,12 @@ jobs:
               `- decision: ${summary.decision ?? 'unknown'}`,
               `- register_pr: ${registerPrUrl || 'not created (no register diff)'}`,
               `- register_pr_note: ${registerPrNote || 'n/a'}`,
+              '',
+              '## Next Actions (auto)',
+              ...nextActionLines,
+              '',
+              '## Non-Technical Weekly Summary',
+              ...nonTechnicalLines,
               '',
               '## Provisional Exit Gate (C1-C4)',
               `- exit_gate_exit_code: ${exitGateExitCode || 'n/a'}`,

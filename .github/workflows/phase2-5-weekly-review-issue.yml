@@ -31,9 +31,21 @@ jobs:
 
             const query = `repo:${owner}/${repo} is:issue is:open in:title "${title}"`;
             const existing = await github.rest.search.issuesAndPullRequests({ q: query });
-            if (existing.data.total_count > 0) {
-              core.info(`Existing weekly review issue found: ${existing.data.items[0].html_url}`);
-              return existing.data.items[0].html_url;
+            const matchingIssues = existing.data.items
+              .filter((item) => !item.pull_request)
+              .sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+            if (matchingIssues.length > 0) {
+              const selectedIssue = matchingIssues[0];
+              if (matchingIssues.length > 1) {
+                core.info(
+                  `Multiple weekly review issues found (${matchingIssues.length}); ` +
+                  `selected latest created_at: ${selectedIssue.html_url}`
+                );
+              }
+              core.info(`Existing weekly review issue found: ${selectedIssue.html_url}`);
+              return selectedIssue.html_url;
             }
 
             const body = [
@@ -46,6 +58,9 @@ jobs:
               '- [ ] override / warn-only / no-data exceptions reviewed',
               '- [ ] case quality weekly review completed',
               '- [ ] onboarding / weekly ops measured values validated',
+              '',
+              '## Automation Updates',
+              '- Weekly metrics workflow posts next_actions and a non-technical weekly summary as a comment.',
               '',
               '## Related Files',
               '- docs/ops/phase2-5-weekly-metrics-register.md',

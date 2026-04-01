@@ -30,6 +30,7 @@ def test_build_gate_decision_from_check_result_pass() -> None:
     assert decision.status == "pass"
     assert decision.metrics["overall_pass_rate"] == 90.0
     assert decision.reasons == []
+    assert decision.next_actions == []
 
 
 def test_build_gate_decision_from_check_result_fail() -> None:
@@ -47,13 +48,21 @@ def test_build_gate_decision_from_check_result_fail() -> None:
         case_thresholds=[
             ThresholdResult("case:QA001", 95.0, 80.0, False, "Critical case"),
         ],
+        failure_categories={"retrieval_miss": 2, "unknown": 1},
     )
 
-    decision = build_gate_decision(result)
+    decision = build_gate_decision(
+        result,
+        failure_actions={"retrieval_miss": "Review retrieval settings"},
+    )
 
     assert decision.status == "fail"
     assert len(decision.reasons) == 2
     assert "case:QA001" in decision.reasons[1]
+    actions = {item.failure_category: item for item in decision.next_actions}
+    assert actions["retrieval_miss"].count == 2
+    assert actions["retrieval_miss"].action == "Review retrieval settings"
+    assert actions["unknown"].action == "Define next action in weekly review issue"
 
 
 def test_check_command_writes_gate_decision_json() -> None:
@@ -77,5 +86,7 @@ def test_check_command_writes_gate_decision_json() -> None:
 
     assert exit_code == 1
     assert output.exists()
-    assert '"run_id": "run-003"' in output.read_text(encoding="utf-8")
-    assert '"status": "fail"' in output.read_text(encoding="utf-8")
+    payload = output.read_text(encoding="utf-8")
+    assert '"run_id": "run-003"' in payload
+    assert '"status": "fail"' in payload
+    assert '"next_actions": []' in payload

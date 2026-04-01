@@ -485,7 +485,7 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     md = render_gate_markdown(result, failure_actions=failure_actions)
     print(md)
-    decision = build_gate_decision(result)
+    decision = build_gate_decision(result, failure_actions=failure_actions)
 
     if args.output_file:
         Path(args.output_file).write_text(md, encoding="utf-8")

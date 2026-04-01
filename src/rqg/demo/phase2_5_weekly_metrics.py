@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
@@ -30,7 +30,20 @@ class WeeklyMetricsSummary:
     gate_exception_count: int
     overdue_exceptions_count: int
     decision: str
-    notes: list[str]
+    notes: list[str] = field(default_factory=list)
+    next_actions: list[WeeklyNextAction] = field(default_factory=list)
+    non_technical_summary: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WeeklyNextAction:
+    failure_category: str
+    run_or_pr: str
+    incident_summary: str
+    owner: str
+    due_date: str
+    status: str
+    recommended_action: str
 
 
 def render_register_row(summary: WeeklyMetricsSummary, reviewer: str) -> str:
@@ -131,22 +144,140 @@ def _collect_ws1_times() -> tuple[float | None, float | None, str]:
     return onboarding, weekly_ops, f"WS1 baseline measured_date={measured_date}"
 
 
-def _collect_ws2_coverage() -> tuple[float, str]:
+def _is_in_summary_week(row: list[str], week_start: str) -> bool:
+    row_week_start = row[0].strip() if len(row) > 0 else ""
+    row_week_start_date = _parse_date(row_week_start)
+    summary_week_start = _parse_date(week_start)
+
+    if summary_week_start is not None and row_week_start_date is not None:
+        days_offset = (row_week_start_date - summary_week_start).days
+        return 0 <= days_offset <= 6
+
+    return row_week_start == week_start
+
+
+def _collect_ws2_coverage(week_start: str) -> tuple[float, str]:
     rows = _extract_table_rows(WS2_PATH, "| week_start |")
     real_rows = [row for row in rows if not _is_placeholder(row)]
-    fail_total = len(real_rows)
+    week_rows = [row for row in real_rows if _is_in_summary_week(row, week_start)]
+    fail_total = len(week_rows)
     if fail_total == 0:
-        return 1.0, "WS2 no failure rows this week"
+        return 1.0, f"WS2 no failure rows for week_start={week_start}"
 
     covered = 0
-    for row in real_rows:
+    for row in week_rows:
         action_owner = row[5].strip() if len(row) > 5 else ""
         due_date = row[6].strip() if len(row) > 6 else ""
         if action_owner and due_date and due_date != "YYYY-MM-DD":
             covered += 1
 
     rate = covered / fail_total
-    return rate, f"WS2 covered={covered}/{fail_total}"
+    return rate, f"WS2 covered={covered}/{fail_total} (week_start={week_start})"
+
+
+def _load_ws2_recommended_actions() -> dict[str, str]:
+    rows = _extract_table_rows(WS2_PATH, "| failure_category |")
+    recommended_actions: dict[str, str] = {}
+
+    for row in rows:
+        category = row[0].strip() if len(row) > 0 else ""
+        first_action = row[1].strip() if len(row) > 1 else ""
+        if not category or not first_action:
+            continue
+        if category == "failure_category":
+            continue
+        recommended_actions[category] = first_action
+
+    return recommended_actions
+
+
+def _collect_ws2_next_actions(week_start: str) -> tuple[list[WeeklyNextAction], str]:
+    rows = _extract_table_rows(WS2_PATH, "| week_start |")
+    real_rows = [row for row in rows if not _is_placeholder(row)]
+    recommended_actions = _load_ws2_recommended_actions()
+
+    next_actions: list[WeeklyNextAction] = []
+    for row in real_rows:
+        if not _is_in_summary_week(row, week_start):
+            continue
+
+        category = row[2].strip() if len(row) > 2 else "other"
+        if not category:
+            category = "other"
+
+        run_or_pr = row[1].strip() if len(row) > 1 else "n/a"
+        incident_summary = row[3].strip() if len(row) > 3 else ""
+        owner = row[5].strip() if len(row) > 5 else ""
+        due_date = row[6].strip() if len(row) > 6 else ""
+        status = row[7].strip() if len(row) > 7 else ""
+
+        owner = owner or "T.B.D."
+        due_date = due_date or "T.B.D."
+        status = status or "open"
+
+        recommended_action = recommended_actions.get(
+            category,
+            "Define next action in weekly review issue",
+        )
+
+        next_actions.append(
+            WeeklyNextAction(
+                failure_category=category,
+                run_or_pr=run_or_pr,
+                incident_summary=incident_summary,
+                owner=owner,
+                due_date=due_date,
+                status=status,
+                recommended_action=recommended_action,
+            )
+        )
+
+    if not next_actions:
+        return [], f"WS2 next_actions for week_start={week_start}: none"
+
+    return next_actions, f"WS2 next_actions for week_start={week_start}: {len(next_actions)}"
+
+
+def _build_non_technical_summary(
+    *,
+    decision: str,
+    coverage_rate: float,
+    gate_exception_count: int,
+    overdue_exceptions_count: int,
+    next_actions: list[WeeklyNextAction],
+) -> list[str]:
+    decision_message = "Quality gate stayed within agreed limits."
+    if decision == "investigate":
+        decision_message = "Quality gate needs follow-up actions before next release decision."
+
+    summary = [
+        f"Weekly decision: {decision}. {decision_message}",
+        f"Failure-to-action coverage: {coverage_rate * 100:.1f}% (target 100.0%).",
+        f"Active exceptions: {gate_exception_count}; overdue exceptions: {overdue_exceptions_count}.",
+    ]
+
+    if not next_actions:
+        summary.append("No WS2 failure rows were recorded for this week.")
+        return summary
+
+    open_actions = [
+        action
+        for action in next_actions
+        if action.status.strip().lower() in {"open", "in-progress"}
+    ]
+    if not open_actions:
+        summary.append("All recorded WS2 actions are marked done.")
+        return summary
+
+    summary.append(f"Open follow-up actions this week: {len(open_actions)}.")
+    for action in open_actions[:3]:
+        summary.append(
+            "Priority action: "
+            f"{action.failure_category} -> {action.recommended_action} "
+            f"(owner: {action.owner}, due: {action.due_date})."
+        )
+
+    return summary
 
 
 def _collect_ws3_exception_counts(today: date) -> tuple[int, int, str]:
@@ -197,8 +328,11 @@ def collect_summary(
     onboarding, weekly_ops, ws1_note = _collect_ws1_times()
     notes.append(ws1_note)
 
-    coverage_rate, ws2_note = _collect_ws2_coverage()
+    coverage_rate, ws2_note = _collect_ws2_coverage(week_start)
     notes.append(ws2_note)
+
+    next_actions, ws2_actions_note = _collect_ws2_next_actions(week_start)
+    notes.append(ws2_actions_note)
 
     gate_exception_count, overdue_exceptions_count, ws3_note = _collect_ws3_exception_counts(today)
     notes.append(ws3_note)
@@ -221,6 +355,14 @@ def collect_summary(
         decision = "investigate"
         notes.append("M5 overdue_exceptions_count is greater than 0")
 
+    non_technical_summary = _build_non_technical_summary(
+        decision=decision,
+        coverage_rate=coverage_rate,
+        gate_exception_count=gate_exception_count,
+        overdue_exceptions_count=overdue_exceptions_count,
+        next_actions=next_actions,
+    )
+
     return WeeklyMetricsSummary(
         week_start=week_start,
         run_id=run_id,
@@ -231,6 +373,8 @@ def collect_summary(
         gate_exception_count=gate_exception_count,
         overdue_exceptions_count=overdue_exceptions_count,
         decision=decision,
+        next_actions=next_actions,
+        non_technical_summary=non_technical_summary,
         notes=notes,
     )
 
