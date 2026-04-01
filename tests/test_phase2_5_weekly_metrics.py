@@ -156,6 +156,30 @@ def test_collect_summary_investigate(metrics_docs: tuple[Path, Path, Path]) -> N
     assert any("M5 overdue_exceptions_count is greater than 0" in note for note in summary.notes)
 
 
+def test_collect_summary_ignores_out_of_week_ws2_rows_for_m3(
+    metrics_docs: tuple[Path, Path, Path],
+) -> None:
+    ws1, ws2, ws3 = metrics_docs
+    _write(ws1, _ws1_markdown(with_real_row=True))
+    _write(
+        ws2,
+        _ws2_markdown(
+            real_rows=[
+                "| 2026-03-24 | PR-18 | retrieval_miss | miss | root |  |  | open | no | uncovered old week |"
+            ]
+        ),
+    )
+    _write(ws3, _ws3_markdown(real_rows=[]))
+
+    summary = metrics.collect_summary(today=date(2026, 3, 31))
+
+    assert summary.week_start == "2026-03-30"
+    assert summary.failure_action_coverage_rate == 1.0
+    assert summary.next_actions == []
+    assert summary.decision == "keep-going"
+    assert any("WS2 no failure rows for week_start=2026-03-30" in note for note in summary.notes)
+
+
 def test_main_writes_output_and_returns_exit_codes(
     metrics_docs: tuple[Path, Path, Path],
     tmp_path: Path,

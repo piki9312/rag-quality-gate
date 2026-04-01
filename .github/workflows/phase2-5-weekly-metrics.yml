@@ -214,12 +214,24 @@ jobs:
             const query = `repo:${owner}/${repo} is:issue is:open in:title "${weeklyTitle}"`;
             const existing = await github.rest.search.issuesAndPullRequests({ q: query });
 
-            if (existing.data.total_count === 0) {
+            const matchingIssues = existing.data.items
+              .filter((item) => !item.pull_request)
+              .sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+              );
+
+            if (matchingIssues.length === 0) {
               core.warning(`Weekly review issue not found for ${weekStart}. Skipping link comment.`);
               return '';
             }
 
-            const issue = existing.data.items[0];
+            const issue = matchingIssues[0];
+            if (matchingIssues.length > 1) {
+              core.info(
+                `Multiple weekly review issues found (${matchingIssues.length}); ` +
+                `selected latest created_at: ${issue.html_url}`
+              );
+            }
             const body = [
               'Phase2.5 weekly metrics run linked from automation.',
               '',

@@ -144,22 +144,35 @@ def _collect_ws1_times() -> tuple[float | None, float | None, str]:
     return onboarding, weekly_ops, f"WS1 baseline measured_date={measured_date}"
 
 
-def _collect_ws2_coverage() -> tuple[float, str]:
+def _is_in_summary_week(row: list[str], week_start: str) -> bool:
+    row_week_start = row[0].strip() if len(row) > 0 else ""
+    row_week_start_date = _parse_date(row_week_start)
+    summary_week_start = _parse_date(week_start)
+
+    if summary_week_start is not None and row_week_start_date is not None:
+        days_offset = (row_week_start_date - summary_week_start).days
+        return 0 <= days_offset <= 6
+
+    return row_week_start == week_start
+
+
+def _collect_ws2_coverage(week_start: str) -> tuple[float, str]:
     rows = _extract_table_rows(WS2_PATH, "| week_start |")
     real_rows = [row for row in rows if not _is_placeholder(row)]
-    fail_total = len(real_rows)
+    week_rows = [row for row in real_rows if _is_in_summary_week(row, week_start)]
+    fail_total = len(week_rows)
     if fail_total == 0:
-        return 1.0, "WS2 no failure rows this week"
+        return 1.0, f"WS2 no failure rows for week_start={week_start}"
 
     covered = 0
-    for row in real_rows:
+    for row in week_rows:
         action_owner = row[5].strip() if len(row) > 5 else ""
         due_date = row[6].strip() if len(row) > 6 else ""
         if action_owner and due_date and due_date != "YYYY-MM-DD":
             covered += 1
 
     rate = covered / fail_total
-    return rate, f"WS2 covered={covered}/{fail_total}"
+    return rate, f"WS2 covered={covered}/{fail_total} (week_start={week_start})"
 
 
 def _load_ws2_recommended_actions() -> dict[str, str]:
@@ -182,17 +195,10 @@ def _collect_ws2_next_actions(week_start: str) -> tuple[list[WeeklyNextAction], 
     rows = _extract_table_rows(WS2_PATH, "| week_start |")
     real_rows = [row for row in rows if not _is_placeholder(row)]
     recommended_actions = _load_ws2_recommended_actions()
-    summary_week_start = _parse_date(week_start)
 
     next_actions: list[WeeklyNextAction] = []
     for row in real_rows:
-        row_week_start = row[0].strip() if len(row) > 0 else ""
-        row_week_start_date = _parse_date(row_week_start)
-        if summary_week_start is not None and row_week_start_date is not None:
-            days_offset = (row_week_start_date - summary_week_start).days
-            if days_offset < 0 or days_offset > 6:
-                continue
-        elif row_week_start != week_start:
+        if not _is_in_summary_week(row, week_start):
             continue
 
         category = row[2].strip() if len(row) > 2 else "other"
@@ -322,7 +328,7 @@ def collect_summary(
     onboarding, weekly_ops, ws1_note = _collect_ws1_times()
     notes.append(ws1_note)
 
-    coverage_rate, ws2_note = _collect_ws2_coverage()
+    coverage_rate, ws2_note = _collect_ws2_coverage(week_start)
     notes.append(ws2_note)
 
     next_actions, ws2_actions_note = _collect_ws2_next_actions(week_start)
