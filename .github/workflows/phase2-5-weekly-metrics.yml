@@ -170,6 +170,28 @@ jobs:
               core.info(`Enabled auto-merge for register PR #${prNumber}`);
             } catch (error) {
               core.warning(`Failed to enable auto-merge for #${prNumber}: ${error.message}`);
+
+              const cleanStatusError = String(error.message || '').includes('in clean status');
+              if (cleanStatusError) {
+                try {
+                  const mergeResult = await github.rest.pulls.merge({
+                    owner,
+                    repo,
+                    pull_number: prNumber,
+                    merge_method: 'squash',
+                  });
+
+                  if (mergeResult.data.merged) {
+                    core.info(`Merged register PR #${prNumber} immediately (clean status fallback).`);
+                  } else {
+                    core.warning(`Immediate merge fallback did not merge #${prNumber}.`);
+                  }
+                } catch (mergeError) {
+                  core.warning(
+                    `Immediate merge fallback failed for #${prNumber}: ${mergeError.message}`
+                  );
+                }
+              }
             }
 
       - name: Close stale weekly register PRs
