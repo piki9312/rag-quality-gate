@@ -132,6 +132,106 @@ jobs:
           echo "register_pr_url=${{ github.server_url }}/${{ github.repository }}/pull/new/automation/phase2-5-weekly-metrics-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
           echo "register_pr_note=manual creation required (actions PR creation disabled)" >> "$GITHUB_OUTPUT"
 
+      - name: Enable auto-merge for register PR
+        if: always() && steps.register_pr.outcome == 'success' && steps.register_pr.outputs.pull-request-number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumberRaw = `${{ steps.register_pr.outputs.pull-request-number }}`.trim();
+            const prNumber = Number(prNumberRaw);
+            const { owner, repo } = context.repo;
+
+            if (!Number.isFinite(prNumber) || prNumber <= 0) {
+              core.warning(`Invalid pull-request-number: ${prNumberRaw}`);
+              return;
+            }
+
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            try {
+              await github.graphql(
+                `
+                  mutation($pullRequestId: ID!) {
+                    enablePullRequestAutoMerge(
+                      input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }
+                    ) {
+                      pullRequest {
+                        number
+                      }
+                    }
+                  }
+                `,
+                { pullRequestId: pr.data.node_id }
+              );
+              core.info(`Enabled auto-merge for register PR #${prNumber}`);
+            } catch (error) {
+              core.warning(`Failed to enable auto-merge for #${prNumber}: ${error.message}`);
+            }
+
+      - name: Close stale weekly register PRs
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const staleDays = 14;
+            const now = Date.now();
+            const keepPrRaw = `${{ steps.register_pr.outputs.pull-request-number }}`.trim();
+            const keepPrNumber = keepPrRaw ? Number(keepPrRaw) : null;
+
+            const openPulls = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            let closedCount = 0;
+            for (const pr of openPulls) {
+              if (!pr.head?.ref?.startsWith('automation/phase2-5-weekly-metrics-')) {
+                continue;
+              }
+              if (Number.isFinite(keepPrNumber) && pr.number === keepPrNumber) {
+                continue;
+              }
+
+              const ageDays = (now - new Date(pr.created_at).getTime()) / (1000 * 60 * 60 * 24);
+              if (ageDays < staleDays) {
+                continue;
+              }
+
+              const commentBody = [
+                'Auto-closing stale weekly register update PR.',
+                '',
+                `- stale_days_threshold: ${staleDays}`,
+                `- created_at: ${pr.created_at}`,
+                `- closed_by_run: ${process.env.GITHUB_RUN_ID}`,
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pr.number,
+                body: commentBody,
+              });
+
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                state: 'closed',
+              });
+
+              closedCount += 1;
+              core.info(`Closed stale register PR #${pr.number} (${Math.floor(ageDays)} days old)`);
+            }
+
+            core.info(`Stale register PRs closed: ${closedCount}`);
+
       - name: Warn manual register PR creation required
         if: always() && steps.register_diff.outputs.changed == 'true' && steps.register_pr.outcome != 'success'
         run: |
@@ -232,7 +332,11 @@ jobs:
                 `selected latest created_at: ${issue.html_url}`
               );
             }
+            const weekMarker = `phase2-5-weekly-metrics:week_start=${summary.week_start ?? weekStart}`;
+            const markerLine = `<!-- ${weekMarker} -->`;
             const body = [
+              markerLine,
+              '',
               'Phase2.5 weekly metrics run linked from automation.',
               '',
               `- week_start: ${summary.week_start ?? weekStart}`,
@@ -268,14 +372,33 @@ jobs:
               `- residual_risk_notes: ${riskClosureNotes}`,
             ].join('\n');
 
-            await github.rest.issues.createComment({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner,
               repo,
               issue_number: issue.number,
-              body,
+              per_page: 100,
             });
+            const updatableComment = comments
+              .filter((comment) => (comment.body || '').includes(markerLine))
+              .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0];
 
-            core.info(`Posted weekly metrics link comment to ${issue.html_url}`);
+            if (updatableComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: updatableComment.id,
+                body,
+              });
+              core.info(`Updated weekly metrics comment ${updatableComment.id} on ${issue.html_url}`);
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body,
+              });
+              core.info(`Posted weekly metrics link comment to ${issue.html_url}`);
+            }
             return issue.html_url;
 
       - name: Print weekly review issue URL
