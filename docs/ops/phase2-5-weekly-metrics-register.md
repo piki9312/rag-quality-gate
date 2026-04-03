@@ -49,7 +49,6 @@ week_start ごとに「証跡あり」と判定する最小条件:
 | 2026-03-09 | 23699721101 | https://github.com/piki9312/rag-quality-gate/actions/runs/23699721101 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | WS1 baseline measured_date=2026-03-28, WS2 covered=1/1, WS3 active=0, overdue=0, week_start_override=2026-03-09 |
 | 2026-03-23 | 23701914227 | https://github.com/piki9312/rag-quality-gate/actions/runs/23701914227 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | WS1 baseline measured_date=2026-03-28, WS2 covered=1/1, WS3 active=0, overdue=0 |
 | 2026-03-30 | 23731344346 | https://github.com/piki9312/rag-quality-gate/actions/runs/23731344346 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | WS1 baseline measured_date=2026-03-28, WS2 covered=1/1, WS3 active=0, overdue=0 |
-| 2026-03-30 | 23890835414 | https://github.com/piki9312/rag-quality-gate/actions/runs/23890835414 | 0.25 | 1.57 | 1.00 | 0 | 0 | keep-going | piki9312 | WS1 baseline measured_date=2026-03-28, WS2 no failure rows for week_start=2026-03-30, WS2 next_actions for week_start=2026-03-30: none, WS3 active=0, overdue=0, week_start_override=2026-03-30 |
 
 ## Update procedure
 
