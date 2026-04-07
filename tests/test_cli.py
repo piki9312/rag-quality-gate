@@ -23,6 +23,7 @@ class TestCLIHelp:
         assert result.returncode == 0
         assert "ingest" in result.stdout
         assert "eval" in result.stdout
+        assert "gate" in result.stdout
         assert "check" in result.stdout
         assert "init-snapshot" in result.stdout
         assert "create-sample-case" in result.stdout
@@ -61,6 +62,20 @@ class TestCLIParsing:
         args = parser.parse_args(["check"])
         assert args.command == "check"
         assert args.quality_pack is None
+        assert args.max_overall_drop_pct is None
+        assert args.max_s1_drop_pct is None
+
+    def test_gate_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["gate", "packs/hr/cases.csv"])
+        assert args.command == "gate"
+        assert args.cases == "packs/hr/cases.csv"
+        assert args.log_dir == "runs/quality"
+        assert args.cases_file is None
+        assert args.max_overall_drop_pct is None
+        assert args.max_s1_drop_pct is None
 
     def test_check_quality_pack_arg(self):
         from rqg.cli import build_parser
@@ -208,6 +223,34 @@ class TestCLIParsing:
 
 
 class TestPhase1CLI:
+    def test_gate_runs_check_even_if_eval_has_failures(self):
+        with patch("rqg.cli.cmd_eval", return_value=1) as eval_mock:
+            with patch("rqg.cli.cmd_check", return_value=0) as check_mock:
+                exit_code = main(["gate", "packs/hr/cases.csv", "--mock"])
+
+        assert exit_code == 0
+        eval_mock.assert_called_once()
+        check_mock.assert_called_once()
+        check_args = check_mock.call_args.args[0]
+        assert check_args.log_dir == "runs/quality"
+        assert check_args.cases_file == "packs/hr/cases.csv"
+
+    def test_gate_allows_cases_file_override(self):
+        with patch("rqg.cli.cmd_eval", return_value=0):
+            with patch("rqg.cli.cmd_check", return_value=1) as check_mock:
+                exit_code = main(
+                    [
+                        "gate",
+                        "packs/hr/cases.csv",
+                        "--cases-file",
+                        "packs/wiki/cases.csv",
+                    ]
+                )
+
+        assert exit_code == 1
+        check_args = check_mock.call_args.args[0]
+        assert check_args.cases_file == "packs/wiki/cases.csv"
+
     def test_init_pack_list_profiles(self, capsys):
         exit_code = main(["init-pack", "--list-profiles"])
 
