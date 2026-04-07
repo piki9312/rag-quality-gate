@@ -502,12 +502,18 @@ def cmd_check(args: argparse.Namespace) -> int:
     print(md)
     decision = build_gate_decision(result, failure_actions=failure_actions)
 
-    report_path = Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
+    report_path = (
+        Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
+    )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(md, encoding="utf-8")
     print(f"Saved report to {report_path}")
 
-    decision_output = Path(args.decision_file) if args.decision_file else Path(args.log_dir) / "gate-decision.json"
+    decision_output = (
+        Path(args.decision_file)
+        if args.decision_file
+        else Path(args.log_dir) / "gate-decision.json"
+    )
     decision_path = _write_json_output(decision_output, decision)
     print(f"Saved gate decision JSON to {decision_path}")
 

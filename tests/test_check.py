@@ -213,13 +213,9 @@ class TestRunCheck:
         assert result.baseline_overall_rate == 100.0
         assert result.overall_drop == 100.0
         assert any(
-            t.name == "Overall pass rate drop" and t.passed is False
-            for t in result.thresholds
+            t.name == "Overall pass rate drop" and t.passed is False for t in result.thresholds
         )
-        assert any(
-            t.name == "S1 pass rate drop" and t.passed is False
-            for t in result.thresholds
-        )
+        assert any(t.name == "S1 pass rate drop" and t.passed is False for t in result.thresholds)
 
     def test_regression_drop_fails_without_baseline_data(self, tmp_path):
         log_dir = tmp_path / "logs"
