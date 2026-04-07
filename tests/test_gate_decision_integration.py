@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -67,6 +68,7 @@ def test_build_gate_decision_from_check_result_fail() -> None:
 
 def test_check_command_writes_gate_decision_json() -> None:
     output = Path("tests/.tmp") / f"{uuid.uuid4()}-decision.json"
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-logs"
     fake_result = CheckResult(
         run_id="run-003",
         current_runs=3,
@@ -82,11 +84,96 @@ def test_check_command_writes_gate_decision_json() -> None:
 
     with patch("rqg.quality.check.run_check", return_value=fake_result):
         with patch("rqg.quality.check.render_gate_markdown", return_value="md"):
-            exit_code = main(["check", "--decision-file", str(output)])
+            exit_code = main(
+                [
+                    "check",
+                    "--log-dir",
+                    str(log_dir),
+                    "--decision-file",
+                    str(output),
+                ]
+            )
 
     assert exit_code == 1
     assert output.exists()
+    assert (log_dir / "gate-report.md").exists()
+    assert (log_dir / "gate-decisions.jsonl").exists()
     payload = output.read_text(encoding="utf-8")
     assert '"run_id": "run-003"' in payload
     assert '"status": "fail"' in payload
     assert '"next_actions": []' in payload
+
+
+def test_check_command_writes_default_artifacts_to_log_dir() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-default-logs"
+    fake_result = CheckResult(
+        run_id="run-004",
+        current_runs=4,
+        baseline_runs=2,
+        overall_rate=50.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1"),
+        ],
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        with patch("rqg.quality.check.render_gate_markdown", return_value="md-default"):
+            exit_code = main(["check", "--log-dir", str(log_dir)])
+
+    assert exit_code == 1
+    report_path = log_dir / "gate-report.md"
+    decision_path = log_dir / "gate-decision.json"
+    assert report_path.exists()
+    assert decision_path.exists()
+    history_path = log_dir / "gate-decisions.jsonl"
+    assert history_path.exists()
+    assert report_path.read_text(encoding="utf-8") == "md-default"
+    payload = decision_path.read_text(encoding="utf-8")
+    assert '"run_id": "run-004"' in payload
+    assert '"status": "fail"' in payload
+    history_lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line]
+    assert len(history_lines) == 1
+    assert json.loads(history_lines[0])["run_id"] == "run-004"
+
+
+def test_check_command_appends_gate_decision_history_jsonl() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-history-logs"
+    first_result = CheckResult(
+        run_id="run-101",
+        current_runs=4,
+        baseline_runs=2,
+        overall_rate=50.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1"),
+        ],
+    )
+    second_result = CheckResult(
+        run_id="run-102",
+        current_runs=5,
+        baseline_runs=2,
+        overall_rate=40.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 40.0, False, "2/5"),
+        ],
+    )
+
+    with patch("rqg.quality.check.run_check", side_effect=[first_result, second_result]):
+        with patch("rqg.quality.check.render_gate_markdown", return_value="md-history"):
+            first_exit = main(["check", "--log-dir", str(log_dir)])
+            second_exit = main(["check", "--log-dir", str(log_dir)])
+
+    assert first_exit == 1
+    assert second_exit == 1
+    history_path = log_dir / "gate-decisions.jsonl"
+    lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line]
+    assert len(lines) == 2
+    assert [json.loads(line)["run_id"] for line in lines] == ["run-101", "run-102"]

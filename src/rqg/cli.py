@@ -45,6 +45,14 @@ def _write_json_list_output(path: str | Path, models: list[object]) -> Path:
     return output_path
 
 
+def _append_jsonl_output(path: str | Path, model: object) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "a", encoding="utf-8") as f:
+        f.write(model.model_dump_json() + "\n")
+    return output_path
+
+
 def _load_snapshot_from_file(path: str | Path) -> DocumentSnapshot:
     snapshot_path = Path(path)
     return DocumentSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
@@ -462,7 +470,14 @@ def cmd_check(args: argparse.Namespace) -> int:
         config = GateConfig(
             s1_pass_rate=args.s1_threshold,
             overall_pass_rate=args.overall_threshold,
+            max_overall_drop_pct=args.max_overall_drop_pct or 0.0,
+            max_s1_drop_pct=args.max_s1_drop_pct or 0.0,
         )
+
+    if args.max_overall_drop_pct is not None:
+        config.max_overall_drop_pct = args.max_overall_drop_pct
+    if args.max_s1_drop_pct is not None:
+        config.max_s1_drop_pct = args.max_s1_drop_pct
 
     result = run_check(
         log_dir=args.log_dir,
@@ -487,17 +502,61 @@ def cmd_check(args: argparse.Namespace) -> int:
     print(md)
     decision = build_gate_decision(result, failure_actions=failure_actions)
 
-    if args.output_file:
-        Path(args.output_file).write_text(md, encoding="utf-8")
-        print(f"Saved report to {args.output_file}")
+    report_path = Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(md, encoding="utf-8")
+    print(f"Saved report to {report_path}")
 
-    if args.decision_file:
-        decision_path = _write_json_output(args.decision_file, decision)
-        print(f"Saved gate decision JSON to {decision_path}")
+    decision_output = Path(args.decision_file) if args.decision_file else Path(args.log_dir) / "gate-decision.json"
+    decision_path = _write_json_output(decision_output, decision)
+    print(f"Saved gate decision JSON to {decision_path}")
+
+    decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
+    appended_history = _append_jsonl_output(decision_history_path, decision)
+    print(f"Appended gate decision JSONL to {appended_history}")
 
     status = "PASS" if result.gate_passed else "FAIL"
     print(f"Gate: {status}")
     return 0 if result.gate_passed else 1
+
+
+def cmd_gate(args: argparse.Namespace) -> int:
+    """Run eval and check in one command."""
+    print("=== Step 1/2: eval ===")
+    eval_exit = cmd_eval(
+        argparse.Namespace(
+            cases=args.cases,
+            docs=args.docs,
+            index_dir=args.index_dir,
+            log_dir=args.log_dir,
+            context_k=args.context_k,
+            mock=args.mock,
+            verbose=args.verbose,
+        )
+    )
+
+    if eval_exit not in (0, 1):
+        return eval_exit
+
+    print("\n=== Step 2/2: check ===")
+    check_exit = cmd_check(
+        argparse.Namespace(
+            log_dir=args.log_dir,
+            config=args.config,
+            days=args.days,
+            baseline_dir=args.baseline_dir,
+            baseline_days=args.baseline_days,
+            cases_file=args.cases_file or args.cases,
+            quality_pack=args.quality_pack,
+            s1_threshold=args.s1_threshold,
+            overall_threshold=args.overall_threshold,
+            max_overall_drop_pct=args.max_overall_drop_pct,
+            max_s1_drop_pct=args.max_s1_drop_pct,
+            output_file=args.output_file,
+            decision_file=args.decision_file,
+        )
+    )
+    return check_exit
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -523,6 +582,49 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--context-k", type=int, default=3)
     p_eval.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
 
+    # --- gate ---
+    p_gate = sub.add_parser("gate", help="Run eval + check in one command")
+    p_gate.add_argument("cases", help="Path to test cases CSV")
+    p_gate.add_argument("--docs", help="Documents directory (auto-ingest if store empty)")
+    p_gate.add_argument("--index-dir", default="index")
+    p_gate.add_argument("--log-dir", default="runs/quality")
+    p_gate.add_argument("--context-k", type=int, default=3)
+    p_gate.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
+    p_gate.add_argument("--config", help="Path to .rqg.yml config")
+    p_gate.add_argument("--days", type=int, default=1)
+    p_gate.add_argument("--baseline-dir", default=None)
+    p_gate.add_argument("--baseline-days", type=int, default=7)
+    p_gate.add_argument("--cases-file", default=None)
+    p_gate.add_argument(
+        "--quality-pack",
+        default=None,
+        help="Optional path to quality-pack.yml for failure next-action hints",
+    )
+    p_gate.add_argument("--s1-threshold", type=float, default=100.0)
+    p_gate.add_argument("--overall-threshold", type=float, default=80.0)
+    p_gate.add_argument(
+        "--max-overall-drop-pct",
+        type=float,
+        default=None,
+        help="Optional max allowed overall pass-rate drop vs baseline (percentage points)",
+    )
+    p_gate.add_argument(
+        "--max-s1-drop-pct",
+        type=float,
+        default=None,
+        help="Optional max allowed S1 pass-rate drop vs baseline (percentage points)",
+    )
+    p_gate.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional markdown report path (default: <log-dir>/gate-report.md)",
+    )
+    p_gate.add_argument(
+        "--decision-file",
+        default=None,
+        help="Optional gate decision JSON path (default: <log-dir>/gate-decision.json)",
+    )
+
     # --- check ---
     p_check = sub.add_parser("check", help="Run quality gate check")
     p_check.add_argument("--log-dir", default="runs/quality")
@@ -538,8 +640,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_check.add_argument("--s1-threshold", type=float, default=100.0)
     p_check.add_argument("--overall-threshold", type=float, default=80.0)
-    p_check.add_argument("--output-file", default=None)
-    p_check.add_argument("--decision-file", default=None)
+    p_check.add_argument(
+        "--max-overall-drop-pct",
+        type=float,
+        default=None,
+        help="Optional max allowed overall pass-rate drop vs baseline (percentage points)",
+    )
+    p_check.add_argument(
+        "--max-s1-drop-pct",
+        type=float,
+        default=None,
+        help="Optional max allowed S1 pass-rate drop vs baseline (percentage points)",
+    )
+    p_check.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional markdown report path (default: <log-dir>/gate-report.md)",
+    )
+    p_check.add_argument(
+        "--decision-file",
+        default=None,
+        help="Optional gate decision JSON path (default: <log-dir>/gate-decision.json)",
+    )
 
     # --- gen-cases ---
     p_gen_cases = sub.add_parser("gen-cases", help="Generate EvalCase candidates from a snapshot")
@@ -657,6 +779,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_ingest(args)
     elif args.command == "eval":
         return cmd_eval(args)
+    elif args.command == "gate":
+        return cmd_gate(args)
     elif args.command == "check":
         return cmd_check(args)
     elif args.command == "init-snapshot":

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -85,12 +85,20 @@ class TestGateConfig:
     def test_from_yaml(self, tmp_path):
         yaml_path = tmp_path / "gate.yml"
         yaml_path.write_text(
-            "thresholds:\n  s1_pass_rate: 95.0\n  overall_pass_rate: 75.0\n",
+            (
+                "thresholds:\n"
+                "  s1_pass_rate: 95.0\n"
+                "  overall_pass_rate: 75.0\n"
+                "  max_overall_drop_pct: 10.0\n"
+                "  max_s1_drop_pct: 5.0\n"
+            ),
             encoding="utf-8",
         )
         cfg = GateConfig.from_yaml(str(yaml_path))
         assert cfg.s1_pass_rate == 95.0
         assert cfg.overall_pass_rate == 75.0
+        assert cfg.max_overall_drop_pct == 10.0
+        assert cfg.max_s1_drop_pct == 5.0
 
     def test_load_failure_actions_from_quality_pack(self, tmp_path):
         quality_pack = tmp_path / "quality-pack.yml"
@@ -118,6 +126,28 @@ class TestLoadRecords:
     def test_empty_dir(self, tmp_path):
         assert load_records(str(tmp_path / "nonexistent")) == []
 
+    def test_ignores_non_eval_jsonl_files(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+
+        # Non-eval JSONL artifact should be ignored.
+        (log_dir / "gate-decisions.jsonl").write_text('{"run_id":"gate-only"}\n', encoding="utf-8")
+
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        eval_jsonl = log_dir / f"{today}.jsonl"
+        record = QARunRecord(
+            timestamp=datetime.now(timezone.utc),
+            run_id="r-test",
+            case_id="QA001",
+            severity="S1",
+            passed=True,
+        )
+        eval_jsonl.write_text(record.model_dump_json() + "\n", encoding="utf-8")
+
+        records = load_records(str(log_dir))
+        assert len(records) == 1
+        assert records[0].run_id == "r-test"
+
 
 class TestRunCheck:
     def test_gate_pass(self, log_dir_with_records, gate_config):
@@ -138,6 +168,91 @@ class TestRunCheck:
         result = run_check(str(tmp_path / "empty"), gate_config, days=1)
         assert result.current_runs == 0
         assert result.gate_passed is False
+
+    def test_regression_drop_fails_when_drop_exceeds_threshold(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+
+        now = datetime.now(timezone.utc)
+        baseline_day = (now - timedelta(days=2)).strftime("%Y%m%d")
+        current_day = now.strftime("%Y%m%d")
+
+        baseline_record = QARunRecord(
+            timestamp=now - timedelta(days=2, hours=1),
+            run_id="baseline-1",
+            case_id="QA001",
+            severity="S1",
+            passed=True,
+        )
+        current_record = QARunRecord(
+            timestamp=now - timedelta(hours=1),
+            run_id="current-1",
+            case_id="QA001",
+            severity="S1",
+            passed=False,
+        )
+
+        (log_dir / f"{baseline_day}.jsonl").write_text(
+            baseline_record.model_dump_json() + "\n",
+            encoding="utf-8",
+        )
+        (log_dir / f"{current_day}.jsonl").write_text(
+            current_record.model_dump_json() + "\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=0.0,
+            max_overall_drop_pct=10.0,
+            max_s1_drop_pct=10.0,
+        )
+        result = run_check(str(log_dir), cfg, days=1, baseline_days=7)
+
+        assert result.gate_passed is False
+        assert result.baseline_overall_rate == 100.0
+        assert result.overall_drop == 100.0
+        assert any(
+            t.name == "Overall pass rate drop" and t.passed is False
+            for t in result.thresholds
+        )
+        assert any(
+            t.name == "S1 pass rate drop" and t.passed is False
+            for t in result.thresholds
+        )
+
+    def test_regression_drop_fails_without_baseline_data(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+
+        now = datetime.now(timezone.utc)
+        current_day = now.strftime("%Y%m%d")
+        current_record = QARunRecord(
+            timestamp=now - timedelta(hours=1),
+            run_id="current-only",
+            case_id="QA001",
+            severity="S1",
+            passed=True,
+        )
+        (log_dir / f"{current_day}.jsonl").write_text(
+            current_record.model_dump_json() + "\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=0.0,
+            max_overall_drop_pct=5.0,
+        )
+        result = run_check(str(log_dir), cfg, days=1, baseline_days=7)
+
+        assert result.gate_passed is False
+        assert any(
+            t.name == "Overall pass rate drop"
+            and t.passed is False
+            and "No baseline run data found" in t.detail
+            for t in result.thresholds
+        )
 
 
 class TestCheckResult:
