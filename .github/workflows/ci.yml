@@ -68,6 +68,7 @@ jobs:
           rqg eval packs/hr/cases.csv \
             --docs packs/hr/documents/ \
             --log-dir runs/quality \
+            --reset-log-dir \
             --mock || true
 
       - name: Run quality gate

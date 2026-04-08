@@ -6,6 +6,7 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -54,6 +55,15 @@ class TestCLIParsing:
         args = parser.parse_args(["eval", "cases.csv", "--mock"])
         assert args.mock is True
         assert args.command == "eval"
+        assert args.reset_log_dir is False
+
+    def test_eval_reset_log_dir_flag(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["eval", "cases.csv", "--reset-log-dir"])
+        assert args.command == "eval"
+        assert args.reset_log_dir is True
 
     def test_check_defaults(self):
         from rqg.cli import build_parser
@@ -76,6 +86,7 @@ class TestCLIParsing:
         assert args.cases_file is None
         assert args.max_overall_drop_pct is None
         assert args.max_s1_drop_pct is None
+        assert args.reset_log_dir is False
 
     def test_check_quality_pack_arg(self):
         from rqg.cli import build_parser
@@ -250,6 +261,58 @@ class TestPhase1CLI:
         assert exit_code == 1
         check_args = check_mock.call_args.args[0]
         assert check_args.cases_file == "packs/wiki/cases.csv"
+
+    def test_gate_passes_reset_log_dir_to_eval(self):
+        with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
+            with patch("rqg.cli.cmd_check", return_value=0):
+                exit_code = main(["gate", "packs/hr/cases.csv", "--reset-log-dir"])
+
+        assert exit_code == 0
+        eval_args = eval_mock.call_args.args[0]
+        assert eval_args.reset_log_dir is True
+
+    def test_eval_with_reset_log_dir_cleans_previous_artifacts(self):
+        log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-reset-logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / "20260101.jsonl").write_text("{}\n", encoding="utf-8")
+        (log_dir / "gate-report.md").write_text("old", encoding="utf-8")
+        (log_dir / "gate-decision.json").write_text("{}", encoding="utf-8")
+        (log_dir / "gate-decisions.jsonl").write_text("{}\n", encoding="utf-8")
+        (log_dir / "keep.txt").write_text("keep", encoding="utf-8")
+
+        fake_run = SimpleNamespace(
+            run_id="run-reset",
+            total=0,
+            passed=0,
+            failed=0,
+            pass_rate=100.0,
+            results=[],
+        )
+
+        with patch("rqg.quality.loader.load_cases", return_value=[]):
+            with patch("rqg.serving.rag.RAGStore") as store_cls:
+                store_cls.return_value.index = object()
+                with patch("rqg.quality.runner.RAGQualityRunner") as runner_cls:
+                    runner_cls.return_value.run_all.return_value = fake_run
+                    runner_cls.save_jsonl.return_value = log_dir / "20260407.jsonl"
+
+                    exit_code = main(
+                        [
+                            "eval",
+                            "packs/hr/cases.csv",
+                            "--log-dir",
+                            str(log_dir),
+                            "--reset-log-dir",
+                            "--mock",
+                        ]
+                    )
+
+        assert exit_code == 0
+        assert not (log_dir / "20260101.jsonl").exists()
+        assert not (log_dir / "gate-report.md").exists()
+        assert not (log_dir / "gate-decision.json").exists()
+        assert not (log_dir / "gate-decisions.jsonl").exists()
+        assert (log_dir / "keep.txt").exists()
 
     def test_init_pack_list_profiles(self, capsys):
         exit_code = main(["init-pack", "--list-profiles"])

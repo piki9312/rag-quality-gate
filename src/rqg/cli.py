@@ -53,6 +53,29 @@ def _append_jsonl_output(path: str | Path, model: object) -> Path:
     return output_path
 
 
+def _reset_eval_log_dir(log_dir: str | Path) -> list[Path]:
+    """Remove eval/check artifacts from a log_dir to make runs reproducible."""
+    path = Path(log_dir)
+    if not path.exists():
+        return []
+
+    removed: list[Path] = []
+
+    for jsonl_path in sorted(path.glob("*.jsonl")):
+        # Eval logs are date-based (YYYYMMDD.jsonl).
+        if len(jsonl_path.stem) == 8 and jsonl_path.stem.isdigit():
+            jsonl_path.unlink(missing_ok=True)
+            removed.append(jsonl_path)
+
+    for filename in ("gate-report.md", "gate-decision.json", "gate-decisions.jsonl"):
+        artifact_path = path / filename
+        if artifact_path.exists() and artifact_path.is_file():
+            artifact_path.unlink(missing_ok=True)
+            removed.append(artifact_path)
+
+    return removed
+
+
 def _load_snapshot_from_file(path: str | Path) -> DocumentSnapshot:
     snapshot_path = Path(path)
     return DocumentSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
@@ -407,6 +430,10 @@ def cmd_eval(args: argparse.Namespace) -> int:
     from .quality.runner import RAGQualityRunner
     from .serving.rag import RAGStore
 
+    if args.log_dir and args.reset_log_dir:
+        removed = _reset_eval_log_dir(args.log_dir)
+        print(f"Reset log_dir {args.log_dir}: removed {len(removed)} files")
+
     cases = load_cases(args.cases)
     if args.verbose:
         print(f"Loaded {len(cases)} test cases from {args.cases}")
@@ -535,6 +562,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             docs=args.docs,
             index_dir=args.index_dir,
             log_dir=args.log_dir,
+            reset_log_dir=args.reset_log_dir,
             context_k=args.context_k,
             mock=args.mock,
             verbose=args.verbose,
@@ -585,6 +613,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--docs", help="Documents directory (auto-ingest if store empty)")
     p_eval.add_argument("--index-dir", default="index")
     p_eval.add_argument("--log-dir", default="runs/quality")
+    p_eval.add_argument(
+        "--reset-log-dir",
+        action="store_true",
+        help="Remove existing eval/check artifacts in log-dir before running eval",
+    )
     p_eval.add_argument("--context-k", type=int, default=3)
     p_eval.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
 
@@ -594,6 +627,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_gate.add_argument("--docs", help="Documents directory (auto-ingest if store empty)")
     p_gate.add_argument("--index-dir", default="index")
     p_gate.add_argument("--log-dir", default="runs/quality")
+    p_gate.add_argument(
+        "--reset-log-dir",
+        action="store_true",
+        help="Remove existing eval/check artifacts in log-dir before running eval",
+    )
     p_gate.add_argument("--context-k", type=int, default=3)
     p_gate.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
     p_gate.add_argument("--config", help="Path to .rqg.yml config")
