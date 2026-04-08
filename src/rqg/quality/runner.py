@@ -58,6 +58,8 @@ class RAGQualityRunner:
         failure_reason = ""
         answer = ""
         retrieved_ids: list[str] = []
+        answer_match: bool | None = None
+        evidence_match: bool | None = None
         ret_hit: bool | None = None
         cost_usd = 0.0
         input_tokens = 0
@@ -85,6 +87,7 @@ class RAGQualityRunner:
             # 2) Retrieval 評価
             if case.expected_chunks:
                 ret_hit = retrieval_hit(retrieved_ids, case.expected_chunks)
+                evidence_match = ret_hit
 
             # 3) 回答生成
             if not retrieved:
@@ -125,6 +128,7 @@ class RAGQualityRunner:
             if case.expected_keywords:
                 threshold = S1_KEYWORD_THRESHOLD if case.severity == "S1" else S2_KEYWORD_THRESHOLD
                 kw_rate = keyword_match_rate(answer, case.expected_keywords)
+                answer_match = kw_rate >= threshold
                 scores.append(kw_rate)
                 if kw_rate < threshold:
                     passed = False
@@ -172,6 +176,8 @@ class RAGQualityRunner:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             total_tokens=total_tokens,
+            answer_match=answer_match,
+            evidence_match=evidence_match,
             retrieval_hit=ret_hit,
         )
 

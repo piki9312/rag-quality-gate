@@ -34,6 +34,8 @@ class TestQARunRecord:
         assert record.severity == "S1"
         assert record.passed is True
         assert record.category == "就業規則"
+        assert record.answer_match is True
+        assert record.evidence_match is True
 
     def test_round_trip_json(self, passed_result, s1_case):
         record = QARunRecord.from_eval_result(passed_result, "run-001", s1_case)
@@ -48,8 +50,22 @@ class TestQARunRecord:
         assert record.failure_type == "keyword_miss"
         assert record.failure_category == "synthesis"
         assert len(record.reasons) == 1
+        assert record.answer_match is False
+        assert record.evidence_match is None
 
     def test_no_cost_when_zero(self, passed_result, s1_case):
         passed_result.cost_usd = 0.0
         record = QARunRecord.from_eval_result(passed_result, "run-001", s1_case)
         assert record.cost_usd is None
+
+    def test_answer_match_is_unknown_on_error(self, s1_case):
+        errored = EvalResult(
+            case_id="QA001",
+            severity="S1",
+            passed=False,
+            failure_type="error",
+            failure_reason="connection error",
+        )
+        record = QARunRecord.from_eval_result(errored, "run-003", s1_case)
+        assert record.answer_match is None
+        assert record.evidence_match is None
