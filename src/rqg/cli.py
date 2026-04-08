@@ -76,6 +76,34 @@ def _reset_eval_log_dir(log_dir: str | Path) -> list[Path]:
     return removed
 
 
+def _index_dir_is_under_runs(index_dir: str | Path) -> bool:
+    """Return True if index_dir resolves to workspace runs/ (or relative runs/*)."""
+    path = Path(index_dir)
+
+    if path.is_absolute():
+        runs_root = (Path.cwd() / "runs").resolve()
+        try:
+            path.resolve().relative_to(runs_root)
+            return True
+        except ValueError:
+            return False
+
+    if not path.parts:
+        return False
+    return path.parts[0].lower() == "runs"
+
+
+def _validate_index_dir(index_dir: str | Path) -> bool:
+    """Reject index dirs under runs/ to keep eval artifacts and index artifacts separated."""
+    if _index_dir_is_under_runs(index_dir):
+        print(
+            "[ERROR] --index-dir must be outside runs/ (e.g. 'index' or '.cache/rqg-index').",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
 def _load_snapshot_from_file(path: str | Path) -> DocumentSnapshot:
     snapshot_path = Path(path)
     return DocumentSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
@@ -392,6 +420,9 @@ def cmd_ingest(args: argparse.Namespace) -> int:
     """文書をRAGに投入する。"""
     from .serving.rag import RAGStore
 
+    if not _validate_index_dir(args.index_dir):
+        return 1
+
     store = RAGStore(index_dir=args.index_dir)
     doc_dir = Path(args.docs_dir)
     if not doc_dir.exists():
@@ -429,6 +460,9 @@ def cmd_eval(args: argparse.Namespace) -> int:
     from .quality.loader import load_cases
     from .quality.runner import RAGQualityRunner
     from .serving.rag import RAGStore
+
+    if not _validate_index_dir(args.index_dir):
+        return 1
 
     if args.log_dir and args.reset_log_dir:
         removed = _reset_eval_log_dir(args.log_dir)
