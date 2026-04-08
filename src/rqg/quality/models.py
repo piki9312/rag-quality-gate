@@ -56,6 +56,8 @@ class EvalResult:
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Retrieval quality
+    answer_match: bool | None = None  # expected_keywords の閾値判定を満たしたか
+    evidence_match: bool | None = None  # 互換キー: expected_chunks が検索結果に含まれたか
     retrieval_hit: bool | None = None  # expected chunk が top-k に含まれたか
     faithfulness_score: float | None = None  # 0.0〜1.0
 
@@ -109,12 +111,22 @@ class QARunRecord(BaseModel):
     cost_usd: float | None = Field(None)
     token_usage: dict[str, int] | None = Field(None)
     retrieval_hit: bool | None = Field(None)
+    answer_match: bool | None = Field(None)
+    evidence_match: bool | None = Field(None)
 
     model_config = ConfigDict(ser_json_timedelta="float")
 
     @classmethod
     def from_eval_result(cls, result: EvalResult, run_id: str, case: QATestCase) -> QARunRecord:
         reasons = [result.failure_reason] if result.failure_reason else []
+        answer_match = result.answer_match
+        if answer_match is None and case.expected_keywords and result.failure_type != "error":
+            answer_match = result.failure_type != "keyword_miss"
+
+        evidence_match = result.evidence_match
+        if evidence_match is None and case.expected_chunks:
+            evidence_match = result.retrieval_hit
+
         return cls(
             timestamp=result.timestamp,
             run_id=run_id,
@@ -139,4 +151,6 @@ class QARunRecord(BaseModel):
                 else None
             ),
             retrieval_hit=result.retrieval_hit,
+            answer_match=answer_match,
+            evidence_match=evidence_match,
         )

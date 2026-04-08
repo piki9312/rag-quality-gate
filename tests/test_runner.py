@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -41,6 +42,8 @@ class TestRunCase:
         # Mock LLM は chunk テキストを結合 → "5営業日前" が含まれる
         assert result.case_id == "QA001"
         assert result.latency_ms > 0
+        assert result.answer_match is True
+        assert result.evidence_match is True
 
     def test_s2_pass_mock_llm(self, s2_case):
         runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
@@ -48,6 +51,8 @@ class TestRunCase:
         assert result.case_id == "QA002"
         # "25日" と "レシート" が結合テキストに含まれるはず
         assert "25日" in result.answer
+        assert result.answer_match is True
+        assert result.evidence_match is None
 
     def test_retrieval_hit_detected(self, s1_case):
         runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
@@ -59,6 +64,8 @@ class TestRunCase:
         runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
         result = runner.run_case(s1_case)
         assert result.retrieval_hit is False
+        assert result.answer_match is True
+        assert result.evidence_match is False
         # S1 + retrieval miss → passed=False
         assert result.passed is False
         assert result.failure_category == "retrieval_miss"
@@ -75,6 +82,8 @@ class TestRunCase:
         assert result.passed is False
         assert result.failure_type == "error"
         assert result.failure_category == "tool_failure"
+        assert result.answer_match is None
+        assert result.evidence_match is None
 
     def test_empty_search_results(self, s1_case):
         class EmptyStore:
@@ -128,6 +137,11 @@ class TestSaveJsonl:
         assert jsonl_path.exists()
         lines = jsonl_path.read_text(encoding="utf-8").strip().split("\n")
         assert len(lines) == 2
+        rows = [json.loads(line) for line in lines]
+        assert rows[0]["answer_match"] is True
+        assert rows[0]["evidence_match"] is True
+        assert rows[1]["answer_match"] is True
+        assert rows[1]["evidence_match"] is None
 
     def test_save_creates_dir(self, tmp_path, s1_case):
         runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
