@@ -16,14 +16,22 @@
 
 ## Quick Start
 
+運用固定ルール:
+
+- Gate 判定用ログ: `runs/quality/`
+- ケース監査用ログ: `runs/quality-audit/`
+- 監査時は `--reset-log-dir` を付けて毎回同じ条件で比較する
+
 1. ingest
    - rqg ingest packs/hr/documents --index-dir index
-2. eval
-   - rqg eval packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality
-3. check
+2. eval (gate)
+   - rqg eval packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --reset-log-dir
+3. eval (case audit)
+   - rqg eval packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality-audit --reset-log-dir
+4. check
    - rqg check --log-dir runs/quality --config packs/hr/gate.yml
    - rqg check --log-dir runs/quality --config packs/hr/gate.yml --quality-pack packs/hr/quality-pack.yml
-4. impact (optional)
+5. impact (optional)
    - rqg impact --old-snapshot <old_snapshot.json> --new-snapshot <new_snapshot.json> --cases packs/hr/cases.csv --output runs/quality/impact-report.json
 
 ## What This Pack Protects

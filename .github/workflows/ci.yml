@@ -71,6 +71,14 @@ jobs:
             --reset-log-dir \
             --mock || true
 
+      - name: Run case audit eval (isolated logs)
+        run: |
+          rqg eval packs/hr/cases.csv \
+            --docs packs/hr/documents/ \
+            --log-dir runs/quality-audit \
+            --reset-log-dir \
+            --mock || true
+
       - name: Run quality gate
         run: |
           rqg check \
@@ -210,6 +218,7 @@ jobs:
           name: quality-gate-artifacts
           path: |
             runs/quality/
+            runs/quality-audit/
             index/snapshots/
 
   phase2-5-exit-gate:

@@ -10,6 +10,7 @@
 
 ## 2. Weekly Checklist
 
+- [ ] ケース監査ログが `runs/quality-audit/` に分離されている（`runs/quality/` と混在させない）
 - [ ] 重複ケースの確認（同一意図・同一根拠）
 - [ ] expected_evidence の有効性確認
 - [ ] expected_keywords の過不足確認
@@ -39,11 +40,14 @@
   - valid_failure: keyword_miss は妥当（正しく fail）
   - false_negative: 意味的には妥当回答だが語形ゆれ等で誤って fail
 - 週次運用手順（例）:
+  - 0) 監査ログを分離ディレクトリで更新
+    - `rqg eval packs/hr/cases.csv --docs packs/hr/documents --mock --log-dir runs/quality-audit --reset-log-dir`
+    - fail を含む週は終了コード 1 になるが JSONL は出力されるため、レビュー工程は継続する
   - 1) テンプレート作成
-    - `python -m rqg.demo.phase2_5_keyword_miss_kpi --results-jsonl runs/quality/20260330.jsonl --cases-csv packs/hr/cases.csv --export-review-csv runs/phase2-5-keyword-miss/review-20260330.csv --output runs/phase2-5-keyword-miss/summary-20260330.json`
+    - `python -m rqg.demo.phase2_5_keyword_miss_kpi --results-jsonl runs/quality-audit/20260330.jsonl --cases-csv packs/hr/cases.csv --export-review-csv runs/phase2-5-keyword-miss/review-20260330.csv --output runs/phase2-5-keyword-miss/summary-20260330.json`
   - 2) `review-*.csv` の `review_verdict` を記入
   - 3) KPI 集計
-    - `python -m rqg.demo.phase2_5_keyword_miss_kpi --results-jsonl runs/quality/20260330.jsonl --review-csv runs/phase2-5-keyword-miss/review-20260330.csv --output runs/phase2-5-keyword-miss/summary-20260330-reviewed.json --max-false-negative-rate 0.2`
+    - `python -m rqg.demo.phase2_5_keyword_miss_kpi --results-jsonl runs/quality-audit/20260330.jsonl --review-csv runs/phase2-5-keyword-miss/review-20260330.csv --output runs/phase2-5-keyword-miss/summary-20260330-reviewed.json --max-false-negative-rate 0.2`
 
 ## 4. Standard Actions
 
