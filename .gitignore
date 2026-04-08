@@ -19,3 +19,5 @@ tests/.tmp/
 *.faiss
 *.index
 .mypy_cache/
+docs/ops/phase1-5-code-reading-checklist.md
+docs/ops/phase2-code-reading-checklist.md
