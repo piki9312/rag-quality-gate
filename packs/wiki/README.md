@@ -17,12 +17,18 @@ Principles:
 ## Quick Start
 
 1. ingest
-   - rqg ingest packs/wiki/documents --index-dir index
+   - rqg ingest packs/wiki/documents --index-dir index/wiki/current
 2. eval
-   - rqg eval packs/wiki/cases.csv --docs packs/wiki/documents --mock --index-dir index --log-dir runs/quality
+   - rqg eval packs/wiki/cases.csv --docs packs/wiki/documents --mock --index-dir index/wiki/current --log-dir runs/quality
 3. check
    - rqg check --log-dir runs/quality --config packs/wiki/gate.yml
    - rqg check --log-dir runs/quality --config packs/wiki/gate.yml --quality-pack packs/wiki/quality-pack.yml
+
+## Index Policy
+
+- Use one canonical wiki index path: index/wiki/current
+- Do not place index artifacts under runs/
+- Move old trial indexes to index/archive/ or delete them
 
 ## What This Pack Protects
 

@@ -589,6 +589,9 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
+    if not _validate_index_dir(args.index_dir):
+        return 1
+
     print("=== Step 1/2: eval ===")
     eval_exit = cmd_eval(
         argparse.Namespace(

@@ -128,6 +128,12 @@ rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-d
 rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
 ```
 
+インデックス運用ルール:
+
+- `--index-dir` に `runs/` 配下は使えません
+- プロファイルごとに正本を1つに固定します（例: `index/hr/current`, `index/wiki/current`）
+- 古い検証用インデックスは `index/archive/` へ退避するか削除します
+
 3. Gate 出力を確認
 
 - runs/quality/gate-report.md
@@ -293,6 +299,12 @@ rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-d
 # optional: include failure next-action hints from quality-pack.yml
 rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
 ```
+
+Index operation rules:
+
+- Do not place `--index-dir` under `runs/`
+- Keep a single canonical index per profile (for example, `index/hr/current`, `index/wiki/current`)
+- Move or delete old experiment indexes under `index/archive/`
 
 3. Review gate outputs
 

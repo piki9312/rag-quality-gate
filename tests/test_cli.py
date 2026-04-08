@@ -262,6 +262,25 @@ class TestPhase1CLI:
         assert "must be outside runs/" in captured.err
         load_cases_mock.assert_not_called()
 
+    def test_gate_rejects_index_dir_under_runs_before_eval_and_check(self, capsys):
+        with patch("rqg.cli.cmd_eval") as eval_mock:
+            with patch("rqg.cli.cmd_check") as check_mock:
+                exit_code = main(
+                    [
+                        "gate",
+                        "packs/hr/cases.csv",
+                        "--index-dir",
+                        "runs/test-index",
+                        "--mock",
+                    ]
+                )
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "must be outside runs/" in captured.err
+        eval_mock.assert_not_called()
+        check_mock.assert_not_called()
+
     def test_gate_runs_check_even_if_eval_has_failures(self):
         with patch("rqg.cli.cmd_eval", return_value=1) as eval_mock:
             with patch("rqg.cli.cmd_check", return_value=0) as check_mock:
