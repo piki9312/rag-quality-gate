@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from openai import APIError
+
 from ..serving.llm_client import generate_answer
 from ..serving.rag import RAGStore
 from .evaluators.keyword import keyword_match_rate
@@ -106,7 +108,7 @@ class RAGQualityRunner:
                 output_tokens = usage.get("output_tokens", 0)
                 total_tokens = usage.get("total_tokens", 0)
 
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, KeyError, APIError) as e:
             failure_type = "error"
             failure_reason = str(e)
             logger.error("Case %s failed: %s", case.case_id, e)

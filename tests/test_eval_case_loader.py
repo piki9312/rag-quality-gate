@@ -112,7 +112,7 @@ def test_eval_case_to_qa_test_case_maps_fields():
 
     assert qa_case.case_id == "EC001"
     assert qa_case.severity == "S1"
-    assert qa_case.expected_chunks == ["chunk_A"]
+    assert qa_case.expected_evidence == ["chunk_A"]
 
 
 def test_qa_test_case_to_eval_case_maps_fields():
@@ -122,7 +122,7 @@ def test_qa_test_case_to_eval_case_maps_fields():
         question="What is the leave policy?",
         severity="S2",
         expected_keywords=["leave"],
-        expected_chunks=["chunk_A"],
+        expected_evidence=["chunk_A"],
     )
 
     eval_case = qa_test_case_to_eval_case(qa_case, doc_snapshot_id="snapshot-002")

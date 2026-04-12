@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+from pydantic import ValidationError
 
 from rqg.domain import GateDecision, GateNextAction
 
 from .aggregate import case_pass_rates, failure_category_breakdown
 from .models import QARunRecord
+
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------
 # Config
@@ -57,7 +62,8 @@ def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
-    except Exception:
+    except (OSError, yaml.YAMLError) as exc:
+        logger.warning("failed to load quality-pack %s: %s", file_path, exc)
         return {}
 
     patterns = data.get("common_failure_patterns", [])
@@ -160,7 +166,8 @@ def load_records(
                     if until and rec.timestamp >= until:
                         continue
                     records.append(rec)
-                except Exception:
+                except (ValueError, ValidationError) as exc:
+                    logger.debug("skipping malformed JSONL line in %s: %s", f.name, exc)
                     continue
     return records
 

@@ -126,6 +126,9 @@ rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-d
 rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml --max-overall-drop-pct 10 --max-s1-drop-pct 5
 # next action ヒントを出す場合（任意）
 rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
+# snapshot からケース草案を作り、既存 cases.csv へ安全にマージする場合（任意）
+rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/eval_cases.json --review-output runs/casegen/eval_cases_review.csv
+rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/eval_cases_review.csv --in-place --report runs/casegen/merge_report.json
 ```
 
 インデックス運用ルール:
@@ -298,6 +301,9 @@ rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-d
 rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml --max-overall-drop-pct 10 --max-s1-drop-pct 5
 # optional: include failure next-action hints from quality-pack.yml
 rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
+# optional: generate draft cases and merge into existing cases.csv
+rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/eval_cases.json --review-output runs/casegen/eval_cases_review.csv
+rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/eval_cases_review.csv --in-place --report runs/casegen/merge_report.json
 ```
 
 Index operation rules:

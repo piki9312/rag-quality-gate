@@ -33,7 +33,7 @@ def eval_case_to_qa_test_case(
     name: str | None = None,
     category: str = "general",
     owner: str = "",
-    min_pass_rate: float = 0.0,
+    min_case_score: float = 0.0,
     last_reviewed_at: str = "",
 ) -> QATestCase:
     """Adapt an EvalCase into the legacy runner input model."""
@@ -43,11 +43,11 @@ def eval_case_to_qa_test_case(
         question=eval_case.question,
         severity=eval_case.risk_level,
         expected_keywords=list(eval_case.expected_keywords),
-        expected_chunks=list(eval_case.expected_evidence),
-        golden_answer="",
+        expected_evidence=list(eval_case.expected_evidence),
+        expected_answer="",
         category=category,
         owner=owner,
-        min_pass_rate=min_pass_rate,
+        min_case_score=min_case_score,
         last_reviewed_at=last_reviewed_at,
     )
 
@@ -62,11 +62,11 @@ def qa_test_case_to_eval_case(
     return EvalCase(
         case_id=case.case_id,
         question=case.question,
-        expected_evidence=list(case.expected_chunks),
+        expected_evidence=list(case.expected_evidence),
         expected_keywords=list(case.expected_keywords),
         risk_level=case.severity if case.severity in {"S1", "S2"} else "S2",
         doc_snapshot_id=doc_snapshot_id,
-        notes=notes,
+        notes=notes or case.notes or None,
     )
 
 
@@ -93,11 +93,11 @@ def _load_cases_from_json(path: Path) -> list[QATestCase]:
                 raise ValueError(f"Invalid JSON case entry at index {idx}")
 
             severity = str(item.get("severity") or item.get("risk_level") or "S2").strip().upper()
-            raw_min_pass_rate = item.get("min_pass_rate", 0.0)
+            raw_min_case_score = item.get("min_case_score") or item.get("min_pass_rate") or 0.0
             try:
-                min_pass_rate = float(raw_min_pass_rate) if raw_min_pass_rate else 0.0
+                min_case_score = float(raw_min_case_score) if raw_min_case_score else 0.0
             except (TypeError, ValueError):
-                min_pass_rate = 0.0
+                min_case_score = 0.0
 
             qa_case = QATestCase(
                 case_id=case_id,
@@ -105,15 +105,17 @@ def _load_cases_from_json(path: Path) -> list[QATestCase]:
                 question=question,
                 severity=severity,
                 expected_keywords=_as_list(item.get("expected_keywords")),
-                expected_chunks=_as_list(
-                    item.get("expected_chunks")
-                    if "expected_chunks" in item
-                    else item.get("expected_evidence")
+                expected_evidence=_as_list(
+                    item.get("expected_evidence")
+                    if "expected_evidence" in item
+                    else item.get("expected_chunks")
                 ),
-                golden_answer=str(item.get("golden_answer", "")),
+                expected_answer=str(
+                    item.get("expected_answer") or item.get("golden_answer") or ""
+                ),
                 category=str(item.get("category", "general")),
                 owner=str(item.get("owner", "")),
-                min_pass_rate=min_pass_rate,
+                min_case_score=min_case_score,
                 last_reviewed_at=str(item.get("last_reviewed_at", "")).strip(),
             )
             cases.append(qa_case)
@@ -139,11 +141,16 @@ def load_eval_cases(
         reader = csv.DictReader(f)
         for row in reader:
             expected_evidence = _split_semicolon_list(
-                row.get("expected_evidence", "") or row.get("expected_chunks", "")
+                row.get("expected_evidence", "")
+                or row.get("expected_chunks", "")
             )
             expected_keywords = _split_semicolon_list(row.get("expected_keywords", ""))
             risk_level = (row.get("risk_level") or row.get("severity") or "S2").strip().upper()
-            doc_snapshot_id = (row.get("doc_snapshot_id") or default_doc_snapshot_id).strip()
+            doc_snapshot_id = (
+                row.get("doc_snapshot_id")
+                or row.get("source_doc")
+                or default_doc_snapshot_id
+            ).strip()
 
             cases.append(
                 EvalCase(
@@ -178,13 +185,17 @@ def load_cases(file_path: str) -> list[QATestCase]:
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            # セミコロン区切りのリスト
+            # セミコロン区切りのリスト (new + legacy field names)
             expected_kw = _split_semicolon_list(row.get("expected_keywords", ""))
-            expected_ch = _split_semicolon_list(row.get("expected_chunks", ""))
-            min_pr = 0.0
-            if row.get("min_pass_rate"):
+            expected_ev = _split_semicolon_list(
+                row.get("expected_evidence", "")
+                or row.get("expected_chunks", "")
+            )
+            min_cs = 0.0
+            raw_score = row.get("min_case_score") or row.get("min_pass_rate") or ""
+            if raw_score:
                 try:
-                    min_pr = float(row["min_pass_rate"])
+                    min_cs = float(raw_score)
                 except ValueError:
                     pass
 
@@ -193,13 +204,20 @@ def load_cases(file_path: str) -> list[QATestCase]:
                 name=row.get("name", ""),
                 question=row.get("question", ""),
                 severity=row.get("severity", "S2").strip().upper(),
+                status=row.get("status", "active").strip() or "active",
                 expected_keywords=expected_kw,
-                expected_chunks=expected_ch,
-                golden_answer=row.get("golden_answer", ""),
+                expected_evidence=expected_ev,
+                expected_answer=(
+                    row.get("expected_answer", "")
+                    or row.get("golden_answer", "")
+                ),
                 category=row.get("category", "general"),
+                source_doc=row.get("source_doc", ""),
                 owner=row.get("owner", ""),
-                min_pass_rate=min_pr,
+                min_case_score=min_cs,
+                updated_at=row.get("updated_at", "").strip(),
                 last_reviewed_at=row.get("last_reviewed_at", "").strip(),
+                notes=row.get("notes", "").strip(),
             )
             cases.append(case)
     return cases

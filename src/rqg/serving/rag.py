@@ -92,7 +92,7 @@ class RAGStore:
     def _load_embedding_model(self):
         try:
             return SentenceTransformer(self.emb_model_name)
-        except Exception as exc:
+        except (OSError, RuntimeError, ValueError) as exc:
             logger.warning(
                 "failed to load embedding model '%s'; using local fallback embeddings: %s",
                 self.emb_model_name,
@@ -247,7 +247,7 @@ class RAGStore:
                     self.index = None
                     self.metas = []
                     self.next_id = 0
-            except Exception:
+            except (OSError, RuntimeError, json.JSONDecodeError, ValueError):
                 logger.exception("failed to load index — starting fresh")
                 self.index = None
                 self.metas = []

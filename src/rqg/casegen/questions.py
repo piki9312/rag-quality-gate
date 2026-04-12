@@ -6,6 +6,8 @@ import json
 import logging
 import re
 
+from openai import APIError
+
 from rqg.casegen.sections import DocumentSection
 from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
 
@@ -122,6 +124,6 @@ def generate_llm_questions(section: DocumentSection, max_questions: int = 2) -> 
         cleaned = [str(question) for question in questions]
         filtered = filter_reviewable_questions(cleaned)
         return filtered[:max_questions]
-    except Exception as exc:
+    except (json.JSONDecodeError, KeyError, TypeError, APIError, RuntimeError, OSError) as exc:
         logger.warning("llm question generation failed for %s: %s", section.section_id, exc)
         return []

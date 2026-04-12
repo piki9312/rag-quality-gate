@@ -15,19 +15,47 @@ from pydantic import BaseModel, ConfigDict, Field
 
 @dataclass
 class QATestCase:
-    """1件の品質テストケース。CSV から読み込む。"""
+    """1件の品質テストケース。CSV から読み込む。
+
+    正式スキーマ (cases.csv):
+        case_id, name, status, severity, question, expected_answer,
+        expected_evidence, category, source_doc, owner, min_case_score,
+        updated_at, last_reviewed_at, notes
+
+    旧項目との対応:
+        golden_answer   -> expected_answer
+        expected_chunks -> expected_evidence
+        min_pass_rate   -> min_case_score
+    """
 
     case_id: str
     name: str
     question: str
     severity: str = "S2"  # S1 | S2
+    status: str = "active"  # draft | active | needs_review | deprecated
+    expected_answer: str = ""
+    expected_evidence: list[str] = field(default_factory=list)
     expected_keywords: list[str] = field(default_factory=list)
-    expected_chunks: list[str] = field(default_factory=list)
-    golden_answer: str = ""
     category: str = "general"
+    source_doc: str = ""
     owner: str = ""
-    min_pass_rate: float = 0.0
+    min_case_score: float = 0.0
+    updated_at: str = ""
     last_reviewed_at: str = ""
+    notes: str = ""
+
+    # ------ backward-compat aliases (read-only) ------
+    @property
+    def golden_answer(self) -> str:
+        return self.expected_answer
+
+    @property
+    def expected_chunks(self) -> list[str]:
+        return self.expected_evidence
+
+    @property
+    def min_pass_rate(self) -> float:
+        return self.min_case_score
 
 
 # ------------------------------------------------------------------

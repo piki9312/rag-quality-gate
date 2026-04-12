@@ -20,12 +20,12 @@ def cases_csv(tmp_path):
             "name": "有給",
             "severity": "S1",
             "question": "有給の期限は？",
-            "expected_chunks": "chunk_A;chunk_B",
+            "expected_evidence": "chunk_A;chunk_B",
             "expected_keywords": "5営業日;申請",
-            "golden_answer": "",
+            "expected_answer": "",
             "category": "就業規則",
             "owner": "hr-team",
-            "min_pass_rate": "100",
+            "min_case_score": "100",
             "last_reviewed_at": "2026-03-29",
         },
         {
@@ -33,12 +33,12 @@ def cases_csv(tmp_path):
             "name": "経費",
             "severity": "s2",
             "question": "締め日は？",
-            "expected_chunks": "",
+            "expected_evidence": "",
             "expected_keywords": "25日",
-            "golden_answer": "",
+            "expected_answer": "",
             "category": "経費",
             "owner": "",
-            "min_pass_rate": "",
+            "min_case_score": "",
             "last_reviewed_at": "",
         },
     ]
@@ -76,11 +76,11 @@ def cases_json_qa_shape(tmp_path):
             "name": "json qa case",
             "question": "How should employees submit paid leave requests?",
             "severity": "s2",
-            "expected_chunks": ["chunk-1"],
+            "expected_evidence": ["chunk-1"],
             "expected_keywords": ["submit", "HR system"],
             "category": "procedure",
             "owner": "hr-team",
-            "min_pass_rate": 85,
+            "min_case_score": 85,
         }
     ]
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -99,17 +99,17 @@ class TestLoadCases:
 
     def test_semicolon_split(self, cases_csv):
         cases = load_cases(cases_csv)
-        assert cases[0].expected_chunks == ["chunk_A", "chunk_B"]
+        assert cases[0].expected_evidence == ["chunk_A", "chunk_B"]
         assert cases[0].expected_keywords == ["5営業日", "申請"]
 
     def test_empty_list(self, cases_csv):
         cases = load_cases(cases_csv)
-        assert cases[1].expected_chunks == []
+        assert cases[1].expected_evidence == []
 
-    def test_min_pass_rate_parsed(self, cases_csv):
+    def test_min_case_score_parsed(self, cases_csv):
         cases = load_cases(cases_csv)
-        assert cases[0].min_pass_rate == 100.0
-        assert cases[1].min_pass_rate == 0.0
+        assert cases[0].min_case_score == 100.0
+        assert cases[1].min_case_score == 0.0
 
     def test_last_reviewed_at_parsed(self, cases_csv):
         cases = load_cases(cases_csv)
@@ -133,7 +133,7 @@ class TestLoadCases:
         assert len(cases) == 1
         assert cases[0].case_id == "J002"
         assert cases[0].severity == "S2"
-        assert cases[0].expected_chunks == ["chunk-1"]
+        assert cases[0].expected_evidence == ["chunk-1"]
 
     def test_invalid_json_raises_value_error(self, tmp_path):
         path = tmp_path / "broken.json"
