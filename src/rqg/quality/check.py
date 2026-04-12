@@ -28,6 +28,7 @@ class GateConfig:
     s1_pass_rate: float = 100.0
     overall_pass_rate: float = 80.0
     retrieval_precision_threshold: float = 0.0  # 0 = チェックしない
+    min_faithfulness: float = 0.0  # 0 = チェックしない (例: 70.0 = 70%以上)
     max_latency_p95_ms: float = 0.0  # 0 = チェックしない
     max_cost_per_query_usd: float = 0.0
     max_overall_drop_pct: float = 0.0
@@ -44,6 +45,7 @@ class GateConfig:
             s1_pass_rate=th.get("s1_pass_rate", 100.0),
             overall_pass_rate=th.get("overall_pass_rate", 80.0),
             retrieval_precision_threshold=th.get("retrieval_precision", 0.0),
+            min_faithfulness=th.get("min_faithfulness", 0.0),
             max_latency_p95_ms=th.get("max_latency_p95_ms", 0.0),
             max_cost_per_query_usd=th.get("max_cost_per_query_usd", 0.0),
             max_overall_drop_pct=th.get("max_overall_drop_pct", 0.0),
@@ -287,6 +289,22 @@ def run_check(
                 actual=ret_prec,
                 passed=ret_prec >= config.retrieval_precision_threshold,
                 detail=f"{hits}/{ret_cases}",
+            )
+        )
+
+    # Faithfulness (optional)
+    if config.min_faithfulness > 0:
+        faith_scores = [
+            r.faithfulness_score for r in current if r.faithfulness_score is not None
+        ]
+        avg_faith = (sum(faith_scores) / len(faith_scores) * 100) if faith_scores else 0.0
+        checks.append(
+            ThresholdResult(
+                name="Avg faithfulness",
+                threshold=config.min_faithfulness,
+                actual=avg_faith,
+                passed=avg_faith >= config.min_faithfulness,
+                detail=f"{len(faith_scores)} scored",
             )
         )
 
