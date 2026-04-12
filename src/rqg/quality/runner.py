@@ -18,6 +18,7 @@ from openai import APIError
 from ..serving.llm_client import generate_answer
 from ..serving.rag import RAGStore
 from .evaluators.keyword import keyword_match_rate
+from .evaluators.llm_judge import judge as llm_judge
 from .evaluators.reference import reference_accuracy
 from .evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
 from .failure_reason import classify_failure_category
@@ -63,6 +64,7 @@ class RAGQualityRunner:
         answer_match: bool | None = None
         evidence_match: bool | None = None
         ret_hit: bool | None = None
+        faithfulness: float | None = None
         cost_usd = 0.0
         input_tokens = 0
         output_tokens = 0
@@ -107,6 +109,25 @@ class RAGQualityRunner:
                 input_tokens = usage.get("input_tokens", 0)
                 output_tokens = usage.get("output_tokens", 0)
                 total_tokens = usage.get("total_tokens", 0)
+
+            # 4) LLM-as-Judge — faithfulness / relevance
+            if answer and retrieved:
+                context_text = " ".join(
+                    str(r.get("text", "")) for r in retrieved if str(r.get("text", "")).strip()
+                )
+                judge_result = llm_judge(
+                    question=case.question,
+                    answer=answer,
+                    context=context_text,
+                    mock=self.mock_llm,
+                )
+                faithfulness = judge_result.faithfulness
+                if judge_result.usage and not self.mock_llm:
+                    judge_cost = judge_result.usage.get("estimated_cost_usd", 0.0) or 0.0
+                    cost_usd += judge_cost
+                    input_tokens += judge_result.usage.get("input_tokens", 0)
+                    output_tokens += judge_result.usage.get("output_tokens", 0)
+                    total_tokens += judge_result.usage.get("total_tokens", 0)
 
         except (RuntimeError, ValueError, OSError, KeyError, APIError) as e:
             failure_type = "error"
@@ -153,6 +174,10 @@ class RAGQualityRunner:
                 failure_type = failure_type or "bad_reference"
                 failure_reason = failure_reason or (f"Reference accuracy {ref_acc:.0%}")
 
+            # Faithfulness (LLM judge)
+            if faithfulness is not None:
+                scores.append(faithfulness)
+
             score = sum(scores) / len(scores) if scores else 1.0
 
         if not passed:
@@ -181,6 +206,7 @@ class RAGQualityRunner:
             answer_match=answer_match,
             evidence_match=evidence_match,
             retrieval_hit=ret_hit,
+            faithfulness_score=faithfulness,
         )
 
     def run_all(self, cases: list[QATestCase], run_id: str | None = None) -> EvalRun:

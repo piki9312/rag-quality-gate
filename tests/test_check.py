@@ -355,3 +355,93 @@ class TestRenderMarkdown:
         assert "Review retrieval settings" in md
         assert "Define next action in weekly review issue" in md
         assert "T.B.D." in md
+
+
+# ==================================================================
+# Faithfulness gate threshold
+# ==================================================================
+
+
+class TestFaithfulnessGate:
+    def test_faithfulness_gate_pass(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now, run_id="r1", case_id="QA001",
+                severity="S1", passed=True, faithfulness_score=0.9,
+            ),
+            QARunRecord(
+                timestamp=now, run_id="r1", case_id="QA002",
+                severity="S2", passed=True, faithfulness_score=0.8,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(r.model_dump_json() for r in records) + "\n", encoding="utf-8",
+        )
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=70.0)
+        result = run_check(str(log_dir), cfg, days=1)
+        assert result.gate_passed is True
+        faith = [t for t in result.thresholds if t.name == "Avg faithfulness"]
+        assert len(faith) == 1
+        assert faith[0].actual == pytest.approx(85.0)  # (0.9+0.8)/2 * 100
+
+    def test_faithfulness_gate_fail(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now, run_id="r1", case_id="QA001",
+                severity="S1", passed=True, faithfulness_score=0.5,
+            ),
+            QARunRecord(
+                timestamp=now, run_id="r1", case_id="QA002",
+                severity="S2", passed=True, faithfulness_score=0.4,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(r.model_dump_json() for r in records) + "\n", encoding="utf-8",
+        )
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=70.0)
+        result = run_check(str(log_dir), cfg, days=1)
+        assert result.gate_passed is False
+        faith = [t for t in result.thresholds if t.name == "Avg faithfulness"]
+        assert faith[0].actual == pytest.approx(45.0)
+
+    def test_faithfulness_zero_disables_check(self, log_dir_with_records):
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=0.0)
+        result = run_check(log_dir_with_records, cfg, days=1)
+        assert not any(t.name == "Avg faithfulness" for t in result.thresholds)
+
+    def test_no_scored_records_yields_zero(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now, run_id="r1", case_id="QA001",
+                severity="S1", passed=True,  # faithfulness_score=None
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(r.model_dump_json() for r in records) + "\n", encoding="utf-8",
+        )
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=50.0)
+        result = run_check(str(log_dir), cfg, days=1)
+        faith = [t for t in result.thresholds if t.name == "Avg faithfulness"]
+        assert len(faith) == 1
+        assert faith[0].actual == 0.0
+        assert faith[0].passed is False
+
+    def test_from_yaml_reads_min_faithfulness(self, tmp_path):
+        yaml_path = tmp_path / "gate.yml"
+        yaml_path.write_text(
+            "thresholds:\n  min_faithfulness: 75.0\n", encoding="utf-8",
+        )
+        cfg = GateConfig.from_yaml(str(yaml_path))
+        assert cfg.min_faithfulness == 75.0

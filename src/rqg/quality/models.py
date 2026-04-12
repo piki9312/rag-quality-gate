@@ -141,6 +141,7 @@ class QARunRecord(BaseModel):
     retrieval_hit: bool | None = Field(None)
     answer_match: bool | None = Field(None)
     evidence_match: bool | None = Field(None)
+    faithfulness_score: float | None = Field(None)
 
     model_config = ConfigDict(ser_json_timedelta="float")
 
@@ -181,4 +182,5 @@ class QARunRecord(BaseModel):
             retrieval_hit=result.retrieval_hit,
             answer_match=answer_match,
             evidence_match=evidence_match,
+            faithfulness_score=result.faithfulness_score,
         )

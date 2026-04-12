@@ -2,3 +2,4 @@ thresholds:
   s1_pass_rate: 100.0
   overall_pass_rate: 100.0
   retrieval_precision: 0.0
+  min_faithfulness: 0.0  # 0=disabled, e.g. 70.0=require ≥70% avg
