@@ -11,19 +11,74 @@ RAG/Agent の品質を、毎回同じやり方で検証してリリース判定�
 最初の市場導線として、社内文書（規程・FAQ・手順書・ナレッジ記事・社内 Wiki）向け縦パックを同梱しています。
 現在は HR プロファイルと Wiki/FAQ プロファイルの 2 つを見本として提供します。
 
+## アーキテクチャ
+
+```mermaid
+flowchart LR
+    subgraph Input
+        D[documents/]
+        C[cases.csv]
+        Y[.rqg.yml]
+    end
+    subgraph "rqg gate （ワンコマンド）"
+        I[ingest] -->|FAISS index| E[eval]
+        C --> E
+        E -->|JSONL logs| CH[check]
+        Y --> CH
+    end
+    CH --> R[gate-report.md]
+    CH --> J[gate-decision.json]
+    J -->|exit 0/1| CI[CI / CD pipeline]
+
+    style I fill:#e8f5e9
+    style E fill:#e3f2fd
+    style CH fill:#fff3e0
+```
+
+**データフロー**: documents → FAISS ingest → eval（キーワード + retrieval + reference 評価）→ check（閾値判定）→ pass/fail 出力
+
 ## この製品が解決すること
 
-- 変更のたびに品質確認が属人化する
-- 重大ケースの取りこぼしが発生する
-- 問題が出ても、どこから直すべきか分かりにくい
-- PR の品質判定基準が曖昧で意思決定が遅くなる
+| 課題 | RQG の解決策 |
+|------|-------------|
+| 変更のたびに品質確認が属人化する | `rqg gate` で定型化。毎回同じ基準 |
+| 重大ケースの取りこぼし | S1/S2 の severity 分離。S1 は 100% pass 必須 |
+| fail 時にどこから直すべきか不明 | gate-report.md に failure category + next action |
+| PR の品質判定が曖昧 | CI exit code 0/1 で機械的に判定 |
 
-## 提供価値
+## なぜ RQG?（競合との位置づけ）
 
-- 回帰チェックを定型化し、判断コストを下げる
-- 重要ケースを先に守る運用を定着させる
-- fail 時の見直し対象を明確化する
-- CI と連携して release gate を自動化する
+| | RQG | Ragas / DeepEval | LangSmith | Braintrust |
+|---|---|---|---|---|
+| **主目的** | 運用チーム向け回帰ゲート | LLM 評価フレームワーク | LLM observability | LLM eval + logging |
+| **誰が使う** | QA・運用・ドメインオーナー | ML エンジニア | 開発者 | 開発者 |
+| **CI gate** | ネイティブ対応 (exit 0/1) | 自分で組む | webhook/API | 自分で組む |
+| **ケース資産管理** | cases.csv + merge/validate | なし | なし | Datasets |
+| **severity 運用** | S1/S2 分離・閾値別 | なし | なし | なし |
+| **API キー不要** | `--mock` で即体験 | 必要 | 必要 | 必要 |
+| **導入コスト** | `pip install` + 1 コマンド | SDK 統合 | SaaS 登録 | SaaS 登録 |
+
+**RQG は「評価の精度を極める」ツールではなく、「品質チェックを運用に定着させる」ためのゲート基盤です。**
+
+## CLI コマンドマップ
+
+```
+rqg gate     ← 最初はこれだけ（eval + check のワンコマンド）
+ ├── eval        回帰テスト実行
+ ├── check       閾値判定 + レポート出力
+ └── ingest      文書の FAISS インデックス作成
+
+rqg gen-cases    ケース草案を文書から自動生成
+rqg merge-cases  生成ケースを cases.csv に安全マージ
+rqg validate-cases  cases.csv のバリデーション
+rqg impact       文書変更の影響ケース特定
+
+rqg init-pack    テンプレートから pack を初期化
+rqg init-snapshot / create-sample-case / create-sample-gate  scaffold 用
+rqg migrate-cases  レガシー参照の移行
+```
+
+**日常で使うのは `gate` (+ `gen-cases` / `merge-cases`) の 2-3 コマンドです。**
 
 ## 縦パック（社内文書向けプロファイル）
 
@@ -39,108 +94,46 @@ RAG/Agent の品質を、毎回同じやり方で検証してリリース判定�
 
 中身は水平な品質ゲート基盤のまま維持し、縦パックは導入しやすく価値を伝えるための入口として提供します。
 
-## 5-10分で体験する
+## 使い方（3パターン）
 
-前提:
-
-- Python 3.11+
-- pip
-
-1. 依存関係をインストール
-
-Bash / PowerShell 共通:
+### パターン A: ワンコマンド体験（30秒）
 
 ```bash
 pip install -e ".[dev]"
+rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
+cat runs/quality/gate-report.md
 ```
 
-2. オンボーディングデモを実行
+### パターン B: デモで全機能を体験（5-10分）
 
 ```bash
 python -m rqg.demo.onboarding_quickstart
-
-# Wiki/FAQ profile example:
+# Wiki/FAQ profile:
 python -m rqg.demo.onboarding_quickstart --profile wiki
 ```
 
-3. 実行結果を確認
+出力: `demo_runs/onboarding_quickstart/<run-id>/` 配下に summary.json, review.md, impact_review.md
 
-- demo_runs/onboarding_quickstart/<run-id>/summary.json
-- demo_runs/onboarding_quickstart/<run-id>/artifacts/eval_cases_review.md
-- demo_runs/onboarding_quickstart/<run-id>/artifacts/impact_review.md
-
-## 最短導入（3ステップ）
-
-1. テンプレートを配置
-
-最短コマンド:
+### パターン C: 段階的に導入
 
 ```bash
+# 1. テンプレート配置
 rqg init-pack packs/my_pack
-# Demo cycle profile example (default):
-rqg init-pack packs/my_pack --profile demo_cycle
-# Legacy alias example (same as demo_cycle):
-rqg init-pack packs/my_pack --profile sample
-# Show available profile names:
-rqg init-pack --list-profiles
-# Wiki/FAQ profile example:
-rqg init-pack packs/my_pack --profile wiki
+
+# 2. eval + check をワンコマンドで
+rqg gate packs/my_pack/cases.csv \
+  --docs packs/my_pack/documents \
+  --mock --index-dir index --log-dir runs/quality \
+  --config .rqg.yml
+
+# 3. 出力を確認
+cat runs/quality/gate-report.md
+cat runs/quality/gate-decision.json
+
+# 4. ケースを育てる（任意）
+rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.json --review-output runs/casegen/review.csv
+rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
 ```
-
-手動で配置する場合:
-
-Bash (macOS/Linux):
-
-```bash
-cp templates/policy.yaml .rqg.yml
-mkdir -p .github/workflows
-cp templates/github/workflows/rqg-onboarding.yml .github/workflows/
-cp -r templates/sample_pack packs/my_pack
-```
-
-PowerShell (Windows):
-
-```powershell
-Copy-Item templates/policy.yaml .rqg.yml
-New-Item -ItemType Directory -Path .github/workflows -Force | Out-Null
-Copy-Item templates/github/workflows/rqg-onboarding.yml .github/workflows/
-Copy-Item templates/sample_pack packs/my_pack -Recurse
-```
-
-GitHub Actions の `RQG Onboarding Smoke` を `Run workflow` で実行する場合は、
-`profile` 入力で `demo_cycle` / `hr` / `wiki` を選択できます（未指定時は `demo_cycle`）。
-
-2. サンプル pack で評価と判定を実行
-
-```bash
-rqg ingest packs/my_pack/documents --index-dir index
-rqg eval packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality
-# 共同作業で比較対象をそろえる場合（既存ログを初期化）
-rqg eval packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --reset-log-dir
-rqg check --log-dir runs/quality --config .rqg.yml
-# 1コマンドで eval -> check を実行する場合
-rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
-# gate でも同様に log-dir 初期化が可能
-rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --reset-log-dir --config .rqg.yml
-# baseline 比較の許容ドロップを指定する場合（percentage points）
-rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml --max-overall-drop-pct 10 --max-s1-drop-pct 5
-# next action ヒントを出す場合（任意）
-rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
-# snapshot からケース草案を作り、既存 cases.csv へ安全にマージする場合（任意）
-rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/eval_cases.json --review-output runs/casegen/eval_cases_review.csv
-rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/eval_cases_review.csv --in-place --report runs/casegen/merge_report.json
-```
-
-インデックス運用ルール:
-
-- `--index-dir` に `runs/` 配下は使えません
-- プロファイルごとに正本を1つに固定します（例: `index/hr/current`, `index/wiki/current`）
-- 古い検証用インデックスは `index/archive/` へ退避するか削除します
-
-3. Gate 出力を確認
-
-- runs/quality/gate-report.md
-- runs/quality/gate-decision.json
 
 ## ドキュメント案内
 
@@ -186,19 +179,74 @@ This product does not make models smarter. It provides a quality-management laye
 As the first market-facing entry point, this repository includes internal-documents vertical packs (policy docs, FAQs, SOPs, knowledge pages, internal wiki style content).
 There are two bundled profiles: HR and Wiki/FAQ.
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Input
+        D[documents/]
+        C[cases.csv]
+        Y[.rqg.yml]
+    end
+    subgraph "rqg gate (one command)"
+        I[ingest] -->|FAISS index| E[eval]
+        C --> E
+        E -->|JSONL logs| CH[check]
+        Y --> CH
+    end
+    CH --> R[gate-report.md]
+    CH --> J[gate-decision.json]
+    J -->|exit 0/1| CI[CI / CD pipeline]
+
+    style I fill:#e8f5e9
+    style E fill:#e3f2fd
+    style CH fill:#fff3e0
+```
+
+**Data flow**: documents → FAISS ingest → eval (keyword + retrieval + reference scoring) → check (threshold decision) → pass/fail output
+
 ## Problems It Solves
 
-- Quality checks become inconsistent across changes and owners
-- Critical cases are missed during regressions
-- When failures happen, the next fix target is unclear
-- PR-level quality criteria are ambiguous, slowing release decisions
+| Problem | RQG Solution |
+|---------|-------------|
+| Quality checks become inconsistent | `rqg gate` standardizes them — same criteria every time |
+| Critical cases are missed | S1/S2 severity separation; S1 requires 100% pass |
+| Unclear what to fix on failure | gate-report.md shows failure category + next action |
+| Ambiguous PR quality criteria | CI exit code 0/1 for machine-readable decisions |
 
-## Value
+## Why RQG? (Competitive Positioning)
 
-- Standardizes regression checks and reduces decision overhead
-- Keeps focus on high-priority cases first
-- Clarifies what to review when a run fails
-- Automates release gating through CI integration
+| | RQG | Ragas / DeepEval | LangSmith | Braintrust |
+|---|---|---|---|---|
+| **Primary purpose** | Regression gate for ops teams | LLM evaluation framework | LLM observability | LLM eval + logging |
+| **Target user** | QA, ops, domain owners | ML engineers | Developers | Developers |
+| **CI gate** | Native (exit 0/1) | DIY | Webhook/API | DIY |
+| **Case asset management** | cases.csv + merge/validate | None | None | Datasets |
+| **Severity-based ops** | S1/S2 split with separate thresholds | None | None | None |
+| **No API key needed** | `--mock` mode for instant demo | Required | Required | Required |
+| **Setup cost** | `pip install` + 1 command | SDK integration | SaaS signup | SaaS signup |
+
+**RQG is not about maximizing evaluation accuracy — it's about making quality checks stick in daily operations.**
+
+## CLI Command Map
+
+```
+rqg gate     ← start here (eval + check in one command)
+ ├── eval        run regression tests
+ ├── check       threshold decision + report
+ └── ingest      build FAISS index from documents
+
+rqg gen-cases    auto-generate draft cases from documents
+rqg merge-cases  safely merge generated cases into cases.csv
+rqg validate-cases  validate cases.csv rows
+rqg impact       identify impacted cases from document changes
+
+rqg init-pack    scaffold a pack from bundled templates
+rqg init-snapshot / create-sample-case / create-sample-gate  scaffolding
+rqg migrate-cases  migrate legacy evidence references
+```
+
+**Day-to-day you only need `gate` (+ `gen-cases` / `merge-cases`) — 2-3 commands.**
 
 ## Vertical Pack Profiles (Internal Documents)
 
@@ -214,108 +262,46 @@ This repository includes two internal-documents profiles for assistant AI.
 
 The product core remains horizontal. The vertical pack is an adoption and value-communication entry point.
 
-## Try It In 5-10 Minutes
+## Usage (3 Patterns)
 
-Prerequisites:
-
-- Python 3.11+
-- pip
-
-1. Install dependencies
-
-Common for Bash and PowerShell:
+### Pattern A: One-Command Experience (30 seconds)
 
 ```bash
 pip install -e ".[dev]"
+rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
+cat runs/quality/gate-report.md
 ```
 
-2. Run the onboarding demo
+### Pattern B: Full Demo (5-10 minutes)
 
 ```bash
 python -m rqg.demo.onboarding_quickstart
-
-# Wiki/FAQ profile example:
+# Wiki/FAQ profile:
 python -m rqg.demo.onboarding_quickstart --profile wiki
 ```
 
-3. Check outputs
+Outputs: `demo_runs/onboarding_quickstart/<run-id>/` with summary.json, review.md, impact_review.md
 
-- demo_runs/onboarding_quickstart/<run-id>/summary.json
-- demo_runs/onboarding_quickstart/<run-id>/artifacts/eval_cases_review.md
-- demo_runs/onboarding_quickstart/<run-id>/artifacts/impact_review.md
-
-## Fast Setup (3 Steps)
-
-1. Place templates
-
-Fastest command:
+### Pattern C: Gradual Adoption
 
 ```bash
+# 1. Scaffold a pack
 rqg init-pack packs/my_pack
-# Demo cycle profile example (default):
-rqg init-pack packs/my_pack --profile demo_cycle
-# Legacy alias example (same as demo_cycle):
-rqg init-pack packs/my_pack --profile sample
-# Show available profile names:
-rqg init-pack --list-profiles
-# Wiki/FAQ profile example:
-rqg init-pack packs/my_pack --profile wiki
+
+# 2. Run eval + check in one command
+rqg gate packs/my_pack/cases.csv \
+  --docs packs/my_pack/documents \
+  --mock --index-dir index --log-dir runs/quality \
+  --config .rqg.yml
+
+# 3. Review outputs
+cat runs/quality/gate-report.md
+cat runs/quality/gate-decision.json
+
+# 4. Grow your cases (optional)
+rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.json --review-output runs/casegen/review.csv
+rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
 ```
-
-If you prefer manual placement:
-
-Bash (macOS/Linux):
-
-```bash
-cp templates/policy.yaml .rqg.yml
-mkdir -p .github/workflows
-cp templates/github/workflows/rqg-onboarding.yml .github/workflows/
-cp -r templates/sample_pack packs/my_pack
-```
-
-PowerShell (Windows):
-
-```powershell
-Copy-Item templates/policy.yaml .rqg.yml
-New-Item -ItemType Directory -Path .github/workflows -Force | Out-Null
-Copy-Item templates/github/workflows/rqg-onboarding.yml .github/workflows/
-Copy-Item templates/sample_pack packs/my_pack -Recurse
-```
-
-When running `RQG Onboarding Smoke` via `Run workflow`, you can choose
-the `profile` input (`demo_cycle`, `hr`, `wiki`). The default is `demo_cycle`.
-
-2. Run evaluation and gate decision with the sample pack
-
-```bash
-rqg ingest packs/my_pack/documents --index-dir index
-rqg eval packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality
-# for collaboration: reset existing artifacts before eval
-rqg eval packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --reset-log-dir
-rqg check --log-dir runs/quality --config .rqg.yml
-# one-command flow for eval -> check
-rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
-# gate also supports log-dir reset
-rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --reset-log-dir --config .rqg.yml
-# optional baseline drop guard (percentage points)
-rqg gate packs/my_pack/cases.csv --docs packs/my_pack/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml --max-overall-drop-pct 10 --max-s1-drop-pct 5
-# optional: include failure next-action hints from quality-pack.yml
-rqg check --log-dir runs/quality --config packs/my_pack/gate.yml --quality-pack packs/my_pack/quality-pack.yml
-# optional: generate draft cases and merge into existing cases.csv
-rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/eval_cases.json --review-output runs/casegen/eval_cases_review.csv
-rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/eval_cases_review.csv --in-place --report runs/casegen/merge_report.json
-```
-
-Index operation rules:
-
-- Do not place `--index-dir` under `runs/`
-- Keep a single canonical index per profile (for example, `index/hr/current`, `index/wiki/current`)
-- Move or delete old experiment indexes under `index/archive/`
-
-3. Review gate outputs
-
-- runs/quality/gate-report.md
-- runs/quality/gate-decision.json
 
 ## Documentation
 
