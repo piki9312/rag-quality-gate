@@ -7,6 +7,7 @@ from pathlib import Path
 
 from rqg.domain import EvalCase
 from rqg.presentation.markdown import render_eval_case_review_markdown
+from rqg.quality.case_schema import REVIEW_OUTPUT_FIELDS
 
 
 def render_cases_markdown(cases: list[EvalCase]) -> str:
@@ -24,28 +25,17 @@ def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
 
     if suffix == ".csv":
         with open(output_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(
-                f,
-                fieldnames=[
-                    "case_id",
-                    "question",
-                    "expected_evidence",
-                    "expected_keywords",
-                    "risk_level",
-                    "doc_snapshot_id",
-                    "notes",
-                ],
-            )
+            writer = csv.DictWriter(f, fieldnames=REVIEW_OUTPUT_FIELDS)
             writer.writeheader()
             for case in cases:
                 writer.writerow(
                     {
-                        "case_id": case.case_id,
+                        "title": case.case_id,
                         "question": case.question,
+                        "expected_answer": "",
                         "expected_evidence": ";".join(case.expected_evidence),
-                        "expected_keywords": ";".join(case.expected_keywords),
-                        "risk_level": case.risk_level,
-                        "doc_snapshot_id": case.doc_snapshot_id,
+                        "severity": case.risk_level,
+                        "category": "general",
                         "notes": case.notes or "",
                     }
                 )

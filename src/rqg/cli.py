@@ -416,6 +416,139 @@ def cmd_migrate_cases(args: argparse.Namespace) -> int:
     return 0
 
 
+def _format_validation_errors(
+    errors: list,
+) -> tuple[list[str], list[str]]:
+    """Split validation errors into error/warn message lists."""
+    err_msgs: list[str] = []
+    warn_msgs: list[str] = []
+    for e in errors:
+        tag = "ERROR" if e.level == "error" else "WARN"
+        msg = f"[{tag}] {e.case_id} / {e.field}: {e.message}"
+        if e.level == "error":
+            err_msgs.append(msg)
+        else:
+            warn_msgs.append(msg)
+    return err_msgs, warn_msgs
+
+
+def cmd_validate_cases(args: argparse.Namespace) -> int:
+    from .quality.case_merge import load_csv_rows
+    from .quality.case_schema import validate_case_rows
+
+    try:
+        rows = load_csv_rows(args.cases)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] Failed to load cases CSV: {exc}", file=sys.stderr)
+        return 1
+
+    errors = validate_case_rows(rows)
+    if not errors:
+        print(f"OK: {len(rows)} cases validated with no issues.")
+        return 0
+
+    err_msgs, warn_msgs = _format_validation_errors(errors)
+    for msg in warn_msgs:
+        print(msg, file=sys.stderr)
+    for msg in err_msgs:
+        print(msg, file=sys.stderr)
+
+    print(
+        f"\nValidation finished: {len(err_msgs)} error(s), {len(warn_msgs)} warning(s) "
+        f"in {len(rows)} cases.",
+        file=sys.stderr,
+    )
+    return 1 if err_msgs else 0
+
+
+def cmd_merge_cases(args: argparse.Namespace) -> int:
+    from .quality.case_merge import (
+        load_csv_rows,
+        merge_cases_rows,
+        write_cases_csv,
+        write_merge_report,
+    )
+    from .quality.case_schema import validate_case_rows
+
+    if args.in_place and args.output:
+        print(
+            "[ERROR] --in-place and --output cannot be used together",
+            file=sys.stderr,
+        )
+        return 1
+
+    if not args.in_place and not args.output and not args.dry_run:
+        print(
+            "[ERROR] Provide --output, or use --in-place, or run with --dry-run",
+            file=sys.stderr,
+        )
+        return 1
+
+    try:
+        base_rows = load_csv_rows(args.cases)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] Failed to load base cases CSV: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        review_rows = load_csv_rows(args.review)
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] Failed to load review CSV: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        merged_rows, summary = merge_cases_rows(base_rows, review_rows)
+    except ValueError as exc:
+        print(f"[ERROR] Merge failed: {exc}", file=sys.stderr)
+        return 1
+
+    if args.validate:
+        v_errors = validate_case_rows(merged_rows)
+        if v_errors:
+            err_msgs, warn_msgs = _format_validation_errors(v_errors)
+            for msg in warn_msgs:
+                print(msg, file=sys.stderr)
+            for msg in err_msgs:
+                print(msg, file=sys.stderr)
+            if err_msgs:
+                print(
+                    f"\n[ERROR] Validation failed: {len(err_msgs)} error(s). "
+                    "Merged CSV was NOT written. Use --no-validate to skip.",
+                    file=sys.stderr,
+                )
+                return 1
+
+    output_path: Path | None = None
+    if not args.dry_run:
+        output_target = Path(args.cases) if args.in_place else Path(args.output)
+        output_path = write_cases_csv(output_target, merged_rows)
+        print(f"Saved merged cases CSV to {output_path}")
+
+    print(f"Base cases: {summary.base_cases}")
+    print(f"Review cases: {summary.review_cases}")
+    print(f"Merged cases: {summary.merged_cases}")
+    print(f"Added cases: {len(summary.added_case_ids)}")
+    print(f"Updated cases: {len(summary.updated_case_ids)}")
+    print(f"Unchanged cases: {len(summary.unchanged_case_ids)}")
+    print(
+        "Matched by content (not added): "
+        f"{len(summary.matched_by_content_review_case_ids)}"
+    )
+
+    if summary.duplicate_review_case_ids:
+        duplicate_ids = ", ".join(summary.duplicate_review_case_ids)
+        print(f"[WARN] Duplicate case_id in review CSV (last row wins): {duplicate_ids}")
+
+    if args.report:
+        report_path = write_merge_report(args.report, summary)
+        print(f"Saved merge report to {report_path}")
+
+    if args.dry_run and output_path is None:
+        print("Dry run completed. No CSV file written.")
+
+    return 0
+
+
 def cmd_ingest(args: argparse.Namespace) -> int:
     """文書をRAGに投入する。"""
     from .serving.rag import RAGStore
@@ -748,7 +881,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen_cases = sub.add_parser("gen-cases", help="Generate EvalCase candidates from a snapshot")
     p_gen_cases.add_argument("--snapshot", required=True, help="Path to DocumentSnapshot JSON")
     p_gen_cases.add_argument("--output", required=True, help="Path to generated EvalCase JSON")
-    p_gen_cases.add_argument("--review-output", default=None, help="Optional .md review output")
+    p_gen_cases.add_argument(
+        "--review-output",
+        default=None,
+        help="Optional .md/.csv review output (.csv is ops-ready for cases.csv curation)",
+    )
     p_gen_cases.add_argument("--mode", choices=["rule", "hybrid"], default="rule")
     p_gen_cases.add_argument("--max-cases", type=int, default=50)
     p_gen_cases.add_argument(
@@ -793,6 +930,59 @@ def build_parser() -> argparse.ArgumentParser:
         "--report",
         default=None,
         help="Optional JSON summary report path",
+    )
+
+    # --- merge-cases ---
+    p_merge_cases = sub.add_parser(
+        "merge-cases",
+        help="Merge generated review CSV into operations cases.csv",
+    )
+    p_merge_cases.add_argument(
+        "--cases",
+        required=True,
+        help="Path to existing operations cases.csv",
+    )
+    p_merge_cases.add_argument(
+        "--review",
+        required=True,
+        help="Path to generated review CSV",
+    )
+    p_merge_cases.add_argument(
+        "--output",
+        default=None,
+        help="Path to merged cases CSV (required unless --in-place or --dry-run)",
+    )
+    p_merge_cases.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Overwrite --cases with merged result",
+    )
+    p_merge_cases.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute merge and print summary without writing CSV",
+    )
+    p_merge_cases.add_argument(
+        "--report",
+        default=None,
+        help="Optional JSON merge summary report path",
+    )
+    p_merge_cases.add_argument(
+        "--validate",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Validate merged rows before writing (default: on; --no-validate to skip)",
+    )
+
+    # --- validate-cases ---
+    p_validate_cases = sub.add_parser(
+        "validate-cases",
+        help="Validate a cases.csv and report errors/warnings",
+    )
+    p_validate_cases.add_argument(
+        "--cases",
+        required=True,
+        help="Path to cases.csv to validate",
     )
 
     # --- init-snapshot ---
@@ -878,6 +1068,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_impact(args)
     elif args.command == "migrate-cases":
         return cmd_migrate_cases(args)
+    elif args.command == "merge-cases":
+        return cmd_merge_cases(args)
+    elif args.command == "validate-cases":
+        return cmd_validate_cases(args)
     else:
         parser.print_help()
         return 0

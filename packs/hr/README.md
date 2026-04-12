@@ -33,6 +33,9 @@
    - rqg check --log-dir runs/quality --config packs/hr/gate.yml --quality-pack packs/hr/quality-pack.yml
 5. impact (optional)
    - rqg impact --old-snapshot <old_snapshot.json> --new-snapshot <new_snapshot.json> --cases packs/hr/cases.csv --output runs/quality/impact-report.json
+6. case merge (optional)
+   - rqg gen-cases --snapshot <snapshot.json> --output runs/casegen/eval_cases.json --review-output runs/casegen/eval_cases_review.csv
+   - rqg merge-cases --cases packs/hr/cases.csv --review runs/casegen/eval_cases_review.csv --in-place --report runs/casegen/merge_report.json
 
 ## What This Pack Protects
 

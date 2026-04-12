@@ -31,7 +31,7 @@ def _extract_section_hashes(
 ) -> dict[str, str]:
     try:
         sections = extract_sections_from_snapshot(snapshot, snapshot_path=snapshot_path)
-    except Exception as exc:  # pragma: no cover - branch covered by error tests
+    except (ValueError, TypeError, OSError, KeyError) as exc:  # pragma: no cover
         raise ValueError(
             f"Failed to extract sections from snapshot '{snapshot.snapshot_id}': {exc}"
         ) from exc

@@ -22,8 +22,8 @@ def s1_case() -> QATestCase:
         question="有給休暇の申請期限は？",
         severity="S1",
         expected_keywords=["5営業日前", "申請"],
-        expected_chunks=["chunk_A"],
-        golden_answer="有給休暇は5営業日前までに申請してください。",
+        expected_evidence=["chunk_A"],
+        expected_answer="有給休暇は5営業日前までに申請してください。",
         category="就業規則",
     )
 
@@ -36,7 +36,7 @@ def s2_case() -> QATestCase:
         question="経費精算の締め日はいつですか？",
         severity="S2",
         expected_keywords=["25日", "レシート"],
-        expected_chunks=[],
+        expected_evidence=[],
         category="経費精算",
     )
 

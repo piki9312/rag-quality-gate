@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import subprocess
 import sys
 import uuid
@@ -33,6 +34,8 @@ class TestCLIHelp:
         assert "gen-cases" in result.stdout
         assert "impact" in result.stdout
         assert "migrate-cases" in result.stdout
+        assert "merge-cases" in result.stdout
+        assert "validate-cases" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -194,6 +197,31 @@ class TestCLIParsing:
         assert args.command == "impact"
         assert args.old_snapshot == "old.json"
         assert args.new_snapshot == "new.json"
+
+    def test_merge_cases_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "merge-cases",
+                "--cases",
+                "packs/hr/cases.csv",
+                "--review",
+                "runs/review.csv",
+                "--output",
+                "packs/hr/cases.merged.csv",
+                "--report",
+                "runs/merge_report.json",
+            ]
+        )
+        assert args.command == "merge-cases"
+        assert args.cases == "packs/hr/cases.csv"
+        assert args.review == "runs/review.csv"
+        assert args.output == "packs/hr/cases.merged.csv"
+        assert args.in_place is False
+        assert args.dry_run is False
+        assert args.report == "runs/merge_report.json"
 
     def test_init_pack_args(self):
         from rqg.cli import build_parser
@@ -572,3 +600,305 @@ class TestPhase1CLI:
         assert exit_code == 0
         assert output_file.exists()
         assert not review_file.exists()
+
+    def test_gen_cases_writes_ops_ready_review_csv(self):
+        source_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-rules-review-csv.md"
+        snapshot_file = Path("tests/.tmp") / f"{uuid.uuid4()}-snapshot-review-csv.json"
+        output_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-review-csv.json"
+        review_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-review.csv"
+
+        source_doc.write_text(
+            "# Leave Policy\n\nPaid leave requests must be submitted 5 business days in advance.\n",
+            encoding="utf-8",
+        )
+        snapshot = {
+            "snapshot_id": "snapshot-001",
+            "doc_id": "doc-001",
+            "title": "Leave Policy",
+            "source_path": source_doc.as_posix(),
+            "content_hash": "abc123",
+            "created_at": "2026-03-23T00:00:00Z",
+            "version": None,
+            "metadata": {},
+        }
+        import json
+
+        snapshot_file.write_text(json.dumps(snapshot), encoding="utf-8")
+
+        exit_code = main(
+            [
+                "gen-cases",
+                "--snapshot",
+                str(snapshot_file),
+                "--output",
+                str(output_file),
+                "--review-output",
+                str(review_file),
+            ]
+        )
+
+        assert exit_code == 0
+        assert output_file.exists()
+        assert review_file.exists()
+
+        with open(review_file, "r", encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["severity"] == "S2"
+        assert row["expected_evidence"].endswith("#sec-1")
+
+    def test_merge_cases_writes_merged_csv_and_report(self):
+        base_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-base.csv"
+        review_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-review.csv"
+        output_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-merged.csv"
+        report_file = Path("tests/.tmp") / f"{uuid.uuid4()}-merge-report.json"
+
+        base_rows = [
+            {
+                "case_id": "leave_001",
+                "name": "leave baseline",
+                "severity": "S1",
+                "question": "old question",
+                "expected_evidence": "docs/hr.md#sec-1",
+                "expected_keywords": "old",
+                "expected_answer": "base answer",
+                "category": "policy",
+                "owner": "hr-team",
+                "min_case_score": "100",
+                "last_reviewed_at": "2026-04-01",
+            }
+        ]
+        with open(base_file, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=base_rows[0].keys())
+            writer.writeheader()
+            writer.writerows(base_rows)
+
+        review_rows = [
+            {
+                "case_id": "leave_001",
+                "name": "generated leave",
+                "severity": "S2",
+                "question": "new question",
+                "expected_evidence": "docs/hr.md#sec-2",
+                "expected_keywords": "new;keyword",
+                "expected_answer": "generated answer",
+                "category": "generated",
+                "owner": "qa-team",
+                "min_case_score": "85",
+                "last_reviewed_at": "2026-04-05",
+            },
+            {
+                "case_id": "leave_002",
+                "question": "added question",
+                "expected_evidence": "docs/hr.md#sec-3",
+                "risk_level": "S2",
+            },
+        ]
+        with open(review_file, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "case_id",
+                    "name",
+                    "severity",
+                    "question",
+                    "expected_evidence",
+                    "expected_keywords",
+                    "expected_answer",
+                    "category",
+                    "owner",
+                    "min_case_score",
+                    "last_reviewed_at",
+                    "risk_level",
+                ],
+            )
+            writer.writeheader()
+            writer.writerows(review_rows)
+
+        exit_code = main(
+            [
+                "merge-cases",
+                "--cases",
+                str(base_file),
+                "--review",
+                str(review_file),
+                "--output",
+                str(output_file),
+                "--report",
+                str(report_file),
+            ]
+        )
+
+        assert exit_code == 0
+        assert output_file.exists()
+        assert report_file.exists()
+
+        with open(output_file, "r", encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+
+        by_id = {row["case_id"]: row for row in rows}
+        assert len(rows) == 2
+        assert by_id["leave_001"]["question"] == "new question"
+        assert by_id["leave_001"]["expected_evidence"] == "docs/hr.md#sec-2"
+        assert by_id["leave_001"]["owner"] == "hr-team"
+        assert by_id["leave_001"]["category"] == "policy"
+        assert by_id["leave_002"]["question"] == "added question"
+        assert by_id["leave_002"]["expected_evidence"] == "docs/hr.md#sec-3"
+        assert by_id["leave_002"]["severity"] == "S2"
+
+        import json
+
+        report = json.loads(report_file.read_text(encoding="utf-8"))
+        assert report["base_cases"] == 1
+        assert report["review_cases"] == 2
+        assert report["merged_cases"] == 2
+        assert report["updated_case_ids"] == ["leave_001"]
+        assert report["added_case_ids"] == ["leave_002"]
+        assert report["matched_by_content_review_case_ids"] == []
+
+
+class TestValidateCasesCLI:
+    """validate-cases サブコマンドのテスト。"""
+
+    def _write_csv(self, path: Path, rows: list[dict]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+
+    def test_validate_cases_parse_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["validate-cases", "--cases", "packs/hr/cases.csv"])
+        assert args.command == "validate-cases"
+        assert args.cases == "packs/hr/cases.csv"
+
+    def test_validate_cases_valid_csv_returns_0(self):
+        csv_path = Path("tests/.tmp") / f"{uuid.uuid4()}-valid.csv"
+        self._write_csv(
+            csv_path,
+            [
+                {
+                    "case_id": "c001",
+                    "question": "What is X?",
+                    "expected_answer": "X is Y.",
+                    "status": "active",
+                    "severity": "S1",
+                }
+            ],
+        )
+        assert main(["validate-cases", "--cases", str(csv_path)]) == 0
+
+    def test_validate_cases_invalid_csv_returns_1(self):
+        csv_path = Path("tests/.tmp") / f"{uuid.uuid4()}-invalid.csv"
+        self._write_csv(
+            csv_path,
+            [
+                {
+                    "case_id": "",
+                    "question": "",
+                    "expected_answer": "",
+                    "status": "active",
+                }
+            ],
+        )
+        assert main(["validate-cases", "--cases", str(csv_path)]) == 1
+
+    def test_validate_cases_warn_only_returns_0(self):
+        csv_path = Path("tests/.tmp") / f"{uuid.uuid4()}-warn.csv"
+        self._write_csv(
+            csv_path,
+            [
+                {
+                    "case_id": "c001",
+                    "question": "What is X?",
+                    "expected_answer": "",
+                    "status": "draft",
+                }
+            ],
+        )
+        assert main(["validate-cases", "--cases", str(csv_path)]) == 0
+
+    def test_validate_cases_missing_file_returns_1(self):
+        assert main(["validate-cases", "--cases", "nonexistent.csv"]) == 1
+
+
+class TestMergeCasesValidation:
+    """merge-cases --validate / --no-validate のテスト。"""
+
+    def _write_csv(self, path: Path, rows: list[dict], fieldnames: list[str] | None = None) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        fnames = fieldnames or list(rows[0].keys())
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+    def test_merge_cases_validate_default_on(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["merge-cases", "--cases", "a.csv", "--review", "b.csv", "--output", "c.csv"]
+        )
+        assert args.validate is True
+
+    def test_merge_cases_no_validate_flag(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["merge-cases", "--cases", "a.csv", "--review", "b.csv", "--output", "c.csv", "--no-validate"]
+        )
+        assert args.validate is False
+
+    def test_merge_cases_validation_blocks_invalid(self):
+        base_path = Path("tests/.tmp") / f"{uuid.uuid4()}-base.csv"
+        review_path = Path("tests/.tmp") / f"{uuid.uuid4()}-review.csv"
+        output_path = Path("tests/.tmp") / f"{uuid.uuid4()}-out.csv"
+
+        self._write_csv(
+            base_path,
+            [{"case_id": "c001", "question": "Q?", "expected_answer": "A", "status": "active"}],
+        )
+        # Review adds a row that merges OK but fails validation (empty question + bad status)
+        self._write_csv(
+            review_path,
+            [{"case_id": "c_bad", "question": "", "expected_answer": "", "status": "INVALID_STATUS"}],
+        )
+
+        rc = main(
+            ["merge-cases", "--cases", str(base_path), "--review", str(review_path), "--output", str(output_path)]
+        )
+        assert rc == 1
+        assert not output_path.exists()
+
+    def test_merge_cases_no_validate_allows_invalid(self):
+        base_path = Path("tests/.tmp") / f"{uuid.uuid4()}-base.csv"
+        review_path = Path("tests/.tmp") / f"{uuid.uuid4()}-review.csv"
+        output_path = Path("tests/.tmp") / f"{uuid.uuid4()}-out.csv"
+
+        self._write_csv(
+            base_path,
+            [{"case_id": "c001", "question": "Q?", "expected_answer": "A", "status": "active"}],
+        )
+        self._write_csv(
+            review_path,
+            [{"case_id": "c_bad", "question": "", "expected_answer": "", "status": "INVALID_STATUS"}],
+        )
+
+        rc = main(
+            [
+                "merge-cases",
+                "--cases", str(base_path),
+                "--review", str(review_path),
+                "--output", str(output_path),
+                "--no-validate",
+            ]
+        )
+        assert rc == 0
+        assert output_path.exists()

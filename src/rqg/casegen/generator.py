@@ -90,7 +90,7 @@ def generate_eval_cases_from_snapshot(
             if use_llm:
                 try:
                     llm_questions = generate_llm_questions(section, max_questions=2)
-                except Exception as exc:
+                except (ValueError, TypeError, RuntimeError, OSError) as exc:
                     logger.warning(
                         "llm question generation crashed for %s: %s", section.section_id, exc
                     )

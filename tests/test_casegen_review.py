@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import uuid
 from pathlib import Path
 
@@ -67,3 +68,41 @@ def test_write_review_output_markdown_file():
     content = output.read_text(encoding="utf-8")
     assert "# Eval Case Review" in content
     assert "## Case: doc_001" in content
+
+
+def test_write_review_output_csv_file_includes_lightweight_columns():
+    output = Path("tests/.tmp") / f"{uuid.uuid4()}-review.csv"
+    write_review_output(output, [_sample_case()])
+
+    with open(output, "r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        rows = list(reader)
+
+    assert reader.fieldnames is not None
+    assert "title" in reader.fieldnames
+    assert "question" in reader.fieldnames
+    assert "expected_evidence" in reader.fieldnames
+    assert "severity" in reader.fieldnames
+    assert "notes" in reader.fieldnames
+    # Lightweight schema should NOT include formal-only fields
+    assert "case_id" not in reader.fieldnames
+    assert "expected_chunks" not in reader.fieldnames
+    assert "min_pass_rate" not in reader.fieldnames
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["title"] == "doc_001"
+    assert row["severity"] == "S2"
+    assert row["expected_evidence"] == "docs/hr.md#sec-1"
+    assert row["notes"] == "auto-generated from section 1"
+
+
+def test_write_review_output_csv_preserves_s1_severity():
+    output = Path("tests/.tmp") / f"{uuid.uuid4()}-review-s1.csv"
+    s1_case = _sample_case().model_copy(update={"risk_level": "S1"})
+    write_review_output(output, [s1_case])
+
+    with open(output, "r", encoding="utf-8", newline="") as f:
+        row = next(csv.DictReader(f))
+
+    assert row["severity"] == "S1"
