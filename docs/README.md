@@ -13,39 +13,40 @@
 - [impact-cycle](demo/impact-cycle.md)
 - [packs/hr guide](../packs/hr/README.md)
 
-Phase2 を運用する:
+コードを理解する:
 
-- [phase2-migration-playbook](ops/phase2-migration-playbook.md)
-- [phase2-kickoff-board](ops/phase2-kickoff-board.md)
-- [phase2-weekly-metrics-register](ops/phase2-weekly-metrics-register.md)
+- [Phase1.5 code-reading checklist](ops/getting-started/phase1-5-code-reading-checklist.md)
+- [Phase2 code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
 
-Phase2.5 を運用する:
+週次運用する:
 
-- [phase2-5-hardening-plan](ops/phase2-5-hardening-plan.md)
-- [phase2-5-ws1-baseline-sheet](ops/phase2-5-ws1-baseline-sheet.md)
-- [phase2-5-ws2-failure-review-template](ops/phase2-5-ws2-failure-review-template.md)
-- [phase2-5-ws3-gate-exception-approval-template](ops/phase2-5-ws3-gate-exception-approval-template.md)
-- [phase2-5-weekly-metrics-register](ops/phase2-5-weekly-metrics-register.md)
-- [phase2-5-investigate-response-flow](ops/phase2-5-investigate-response-flow.md)
-- [phase2-5-case-quality-weekly-review](ops/phase2-5-case-quality-weekly-review.md)
+- [週次メトリクス登録](ops/operations/phase2-5-weekly-metrics-register.md)
+- [ケース品質レビュー](ops/operations/phase2-5-case-quality-weekly-review.md)
+- [失敗レビューテンプレート](ops/operations/phase2-5-ws2-failure-review-template.md)
+- [ゲート例外申請テンプレート](ops/operations/phase2-5-ws3-gate-exception-approval-template.md)
+- [investigate 対応フロー](ops/operations/phase2-5-investigate-response-flow.md)
+- [ベースラインシート](ops/operations/phase2-5-ws1-baseline-sheet.md)
+- [KPI 週次テンプレート](ops/operations/execution-template-charter-kpi-weekly.md)
+- [社内文書向けパックガイド](ops/operations/phase3-internal-docs-vertical-pack.md)
 
-Phase3 で社内文書向け縦パックを整備する:
+過去の計画・リリース記録を確認する:
 
-- [phase3-internal-docs-vertical-pack](ops/phase3-internal-docs-vertical-pack.md)
-- [phase2-5-vs-phase3-diff-onepager](ops/phase2-5-vs-phase3-diff-onepager.md)
-- [packs/hr guide](../packs/hr/README.md)
-- [packs/wiki guide](../packs/wiki/README.md)
+- [archive/](ops/archive/) — Phase2/2.5 のキックオフ、計画、リリースノート、完了記録
 
 設計意図を確認する:
 
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
 - [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
 
+## 用語集
+
+→ [glossary.md](glossary.md)
+
 ## まず確認する順番
 
 1. [onboarding-quickstart](demo/onboarding-quickstart.md) で 1 回通し実行
-2. [phase2-migration-playbook](ops/phase2-migration-playbook.md) で運用前提を固定
-3. [phase2-5-hardening-plan](ops/phase2-5-hardening-plan.md) で運用強化へ展開
+2. [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) で実装理解
+3. [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) で運用開始
 
 ## 補足
 
@@ -70,39 +71,40 @@ Getting started:
 - [impact-cycle](demo/impact-cycle.md)
 - [packs/hr guide](../packs/hr/README.md)
 
-Operating Phase2:
+Understanding the code:
 
-- [phase2-migration-playbook](ops/phase2-migration-playbook.md)
-- [phase2-kickoff-board](ops/phase2-kickoff-board.md)
-- [phase2-weekly-metrics-register](ops/phase2-weekly-metrics-register.md)
+- [Phase1.5 code-reading checklist](ops/getting-started/phase1-5-code-reading-checklist.md)
+- [Phase2 code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
 
-Operating Phase2.5:
+Weekly operations:
 
-- [phase2-5-hardening-plan](ops/phase2-5-hardening-plan.md)
-- [phase2-5-ws1-baseline-sheet](ops/phase2-5-ws1-baseline-sheet.md)
-- [phase2-5-ws2-failure-review-template](ops/phase2-5-ws2-failure-review-template.md)
-- [phase2-5-ws3-gate-exception-approval-template](ops/phase2-5-ws3-gate-exception-approval-template.md)
-- [phase2-5-weekly-metrics-register](ops/phase2-5-weekly-metrics-register.md)
-- [phase2-5-investigate-response-flow](ops/phase2-5-investigate-response-flow.md)
-- [phase2-5-case-quality-weekly-review](ops/phase2-5-case-quality-weekly-review.md)
+- [Weekly metrics register](ops/operations/phase2-5-weekly-metrics-register.md)
+- [Case quality review](ops/operations/phase2-5-case-quality-weekly-review.md)
+- [Failure review template](ops/operations/phase2-5-ws2-failure-review-template.md)
+- [Gate exception template](ops/operations/phase2-5-ws3-gate-exception-approval-template.md)
+- [Investigate response flow](ops/operations/phase2-5-investigate-response-flow.md)
+- [Baseline sheet](ops/operations/phase2-5-ws1-baseline-sheet.md)
+- [KPI weekly template](ops/operations/execution-template-charter-kpi-weekly.md)
+- [Internal docs pack guide](ops/operations/phase3-internal-docs-vertical-pack.md)
 
-Preparing an internal-documents vertical pack in Phase3:
+Past plans & release records:
 
-- [phase3-internal-docs-vertical-pack](ops/phase3-internal-docs-vertical-pack.md)
-- [phase2-5-vs-phase3-diff-onepager](ops/phase2-5-vs-phase3-diff-onepager.md)
-- [packs/hr guide](../packs/hr/README.md)
-- [packs/wiki guide](../packs/wiki/README.md)
+- [archive/](ops/archive/) — Phase2/2.5 kickoff, plans, release notes, completion records
 
 Architecture rationale:
 
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
 - [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
 
+### Glossary
+
+→ [glossary.md](glossary.md)
+
 ### Suggested Reading Order
 
 1. Run [onboarding-quickstart](demo/onboarding-quickstart.md) once end-to-end
-2. Fix operational assumptions with [phase2-migration-playbook](ops/phase2-migration-playbook.md)
-3. Expand hardening with [phase2-5-hardening-plan](ops/phase2-5-hardening-plan.md)
+2. Read [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
+3. Start [weekly metrics](ops/operations/phase2-5-weekly-metrics-register.md)
 
 ### Notes
 
