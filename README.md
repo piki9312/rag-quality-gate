@@ -25,6 +25,24 @@ RAG/Agent の品質を、毎回同じやり方で検証してリリース判定�
 - fail 時の見直し対象を明確化する
 - CI と連携して release gate を自動化する
 
+## 評価ツールとの違い
+
+Ragas・DeepEval・LangSmith・Braintrust などの LLM 評価ツールは「スコアを出す」ところで完結します。
+RQG は評価の先にある **運用サイクル全体** をカバーします。
+
+| 能力 | 一般的な評価ツール | RQG |
+|---|---|---|
+| 回答品質スコアリング | ✅ | ✅ |
+| 文書変更 → 影響ケース特定 (impact analysis) | — | ✅ |
+| pass/warn/fail リリース判定 (release gate) | — | ✅ CI 統合済み |
+| fail → 原因分類 → 改善アクション (next actions) | — | ✅ |
+| 週次レビューと指標蓄積 (weekly review) | — | ✅ |
+| severity 別運用 S1/S2 | — | ✅ |
+| ドメイン縦パック (pack 運用) | — | ✅ |
+| ケース自動追従 (migrate-cases) | — | ✅ |
+
+一言で言えば、**eval で終わらず、gate → review → fix → re-eval のループを回す基盤** です。
+
 ## 縦パック（社内文書向けプロファイル）
 
 このリポジトリでは、社内文書を知識源とする業務支援 AI 向けに次の 2 プロファイルを同梱しています。
@@ -196,6 +214,24 @@ There are two bundled profiles: HR and Wiki/FAQ.
 - Keeps focus on high-priority cases first
 - Clarifies what to review when a run fails
 - Automates release gating through CI integration
+
+## How RQG Differs From Eval Tools
+
+Tools like Ragas, DeepEval, LangSmith, and Braintrust stop at scoring.
+RQG covers the **full operational cycle** beyond evaluation.
+
+| Capability | Typical eval tools | RQG |
+|---|---|---|
+| Answer quality scoring | ✅ | ✅ |
+| Document change → impacted case detection (impact analysis) | — | ✅ |
+| pass/warn/fail release decision (release gate) | — | ✅ CI-integrated |
+| fail → root cause → corrective action (next actions) | — | ✅ |
+| Weekly review and metrics accumulation (weekly review) | — | ✅ |
+| Severity-based operations S1/S2 | — | ✅ |
+| Domain vertical packs (pack operations) | — | ✅ |
+| Automatic case migration (migrate-cases) | — | ✅ |
+
+In short: **RQG does not stop at eval — it drives the gate → review → fix → re-eval loop.**
 
 ## Vertical Pack Profiles (Internal Documents)
 
