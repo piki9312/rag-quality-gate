@@ -8,13 +8,10 @@ authors = [{name = "piki9312"}]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3.12",
-    "Framework :: FastAPI",
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Software Development :: Testing",
 ]
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
     "openai>=1.0.0",
@@ -41,7 +38,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --cov=src/rqg --cov-fail-under=80"
 
 [tool.black]
 line-length = 100
