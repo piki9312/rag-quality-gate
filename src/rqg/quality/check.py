@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from rqg.domain import GateDecision, GateNextAction
 
-from .aggregate import case_pass_rates, failure_category_breakdown
+from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
 from .models import QARunRecord
 
 logger = logging.getLogger(__name__)
@@ -122,6 +122,7 @@ class CheckResult:
     thresholds: list[ThresholdResult] = field(default_factory=list)
     case_thresholds: list[ThresholdResult] = field(default_factory=list)
     failure_categories: dict[str, int] = field(default_factory=dict)
+    failure_case_ids: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def gate_passed(self) -> bool:
@@ -390,12 +391,14 @@ def run_check(
         thresholds=checks,
         case_thresholds=case_checks,
         failure_categories=failure_category_breakdown(current),
+        failure_case_ids=failure_category_case_ids(current),
     )
 
 
 def _build_structured_next_actions(
     failure_categories: dict[str, int],
     failure_actions: dict[str, str] | None = None,
+    failure_case_ids: dict[str, list[str]] | None = None,
 ) -> list[GateNextAction]:
     if not failure_categories:
         return []
@@ -412,11 +415,14 @@ def _build_structured_next_actions(
             if hinted:
                 action = hinted
 
+        case_ids = (failure_case_ids or {}).get(category, [])
+
         next_actions.append(
             GateNextAction(
                 failure_category=category,
                 count=count,
                 action=action,
+                affected_case_ids=case_ids,
             )
         )
 
@@ -455,7 +461,9 @@ def build_gate_decision(
         metrics["overall_pass_rate_drop"] = result.overall_drop
     if result.s1_drop is not None:
         metrics["s1_pass_rate_drop"] = result.s1_drop
-    next_actions = _build_structured_next_actions(result.failure_categories, failure_actions)
+    next_actions = _build_structured_next_actions(
+        result.failure_categories, failure_actions, result.failure_case_ids
+    )
 
     return GateDecision(
         run_id=result.run_id,
@@ -504,13 +512,15 @@ def render_gate_markdown(
 
     if result.failure_categories:
         lines.append("\n### Next Actions")
-        lines.append("| Failure Category | Next Action | Owner | Due |")
-        lines.append("|------------------|-------------|-------|-----|")
+        lines.append("| Failure Category | Affected Cases | Next Action | Owner | Due |")
+        lines.append("|------------------|----------------|-------------|-------|-----|")
         for category in result.failure_categories:
             action = DEFAULT_NEXT_ACTION_HINT
             if failure_actions and category in failure_actions:
                 action = failure_actions[category]
             safe_action = action.replace("|", "\\|")
-            lines.append(f"| {category} | {safe_action} | T.B.D. | T.B.D. |")
+            case_ids = result.failure_case_ids.get(category, [])
+            cases_str = ", ".join(case_ids) if case_ids else "-"
+            lines.append(f"| {category} | {cases_str} | {safe_action} | T.B.D. | T.B.D. |")
 
     return "\n".join(lines) + "\n"
