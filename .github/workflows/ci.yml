@@ -307,7 +307,7 @@ jobs:
           from pathlib import Path
 
           required_files = [
-            Path("docs/ops/phase3-internal-docs-vertical-pack.md"),
+            Path("docs/ops/operations/phase3-internal-docs-vertical-pack.md"),
             Path("templates/sample_pack/cases.csv"),
             Path("templates/sample_pack/gate.yml"),
             Path("templates/sample_pack/quality-pack.yml"),

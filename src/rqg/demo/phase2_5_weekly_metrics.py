@@ -11,10 +11,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-WS1_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws1-baseline-sheet.md"
-WS2_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws2-failure-review-template.md"
-WS3_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-ws3-gate-exception-approval-template.md"
-REGISTER_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-weekly-metrics-register.md"
+WS1_PATH = REPO_ROOT / "docs" / "ops" / "operations" / "phase2-5-ws1-baseline-sheet.md"
+WS2_PATH = REPO_ROOT / "docs" / "ops" / "operations" / "phase2-5-ws2-failure-review-template.md"
+WS3_PATH = (
+    REPO_ROOT / "docs" / "ops" / "operations" / "phase2-5-ws3-gate-exception-approval-template.md"
+)
+REGISTER_PATH = REPO_ROOT / "docs" / "ops" / "operations" / "phase2-5-weekly-metrics-register.md"
 
 DEFAULT_OUTPUT = REPO_ROOT / "runs" / "phase2-5-weekly" / "summary.json"
 
