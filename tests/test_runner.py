@@ -317,12 +317,15 @@ class TestJudgeFallbackRecording:
         mock_llm_response = {"text": "NOT JSON", "usage": {}}
         mock_answer_meta = {"usage": {}}
 
-        with patch(
-            "rqg.quality.runner.generate_answer",
-            return_value=("5営業日前 申請 回答テスト", mock_answer_meta),
-        ), patch(
-            "rqg.serving.llm_client.call_openai_chat",
-            return_value=mock_llm_response,
+        with (
+            patch(
+                "rqg.quality.runner.generate_answer",
+                return_value=("5営業日前 申請 回答テスト", mock_answer_meta),
+            ),
+            patch(
+                "rqg.serving.llm_client.call_openai_chat",
+                return_value=mock_llm_response,
+            ),
         ):
             runner = RAGQualityRunner(store=FakeStore(), mock_llm=False)
             result = runner.run_case(s1_case)
