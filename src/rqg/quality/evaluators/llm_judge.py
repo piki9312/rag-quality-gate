@@ -42,11 +42,7 @@ _JUDGE_SYSTEM = (
     "No markdown, no extra text."
 )
 
-_JUDGE_USER_TEMPLATE = (
-    "CONTEXT:\n{context}\n\n"
-    "QUESTION:\n{question}\n\n"
-    "ANSWER:\n{answer}"
-)
+_JUDGE_USER_TEMPLATE = "CONTEXT:\n{context}\n\n" "QUESTION:\n{question}\n\n" "ANSWER:\n{answer}"
 
 
 # ---------------------------------------------------------------------------

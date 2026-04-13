@@ -294,9 +294,7 @@ def run_check(
 
     # Faithfulness (optional)
     if config.min_faithfulness > 0:
-        faith_scores = [
-            r.faithfulness_score for r in current if r.faithfulness_score is not None
-        ]
+        faith_scores = [r.faithfulness_score for r in current if r.faithfulness_score is not None]
         avg_faith = (sum(faith_scores) / len(faith_scores) * 100) if faith_scores else 0.0
         checks.append(
             ThresholdResult(

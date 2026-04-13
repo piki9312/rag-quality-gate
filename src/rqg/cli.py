@@ -530,10 +530,7 @@ def cmd_merge_cases(args: argparse.Namespace) -> int:
     print(f"Added cases: {len(summary.added_case_ids)}")
     print(f"Updated cases: {len(summary.updated_case_ids)}")
     print(f"Unchanged cases: {len(summary.unchanged_case_ids)}")
-    print(
-        "Matched by content (not added): "
-        f"{len(summary.matched_by_content_review_case_ids)}"
-    )
+    print("Matched by content (not added): " f"{len(summary.matched_by_content_review_case_ids)}")
 
     if summary.duplicate_review_case_ids:
         duplicate_ids = ", ".join(summary.duplicate_review_case_ids)

@@ -165,9 +165,7 @@ def _review_to_ops_row(row: dict[str, str]) -> dict[str, str]:
         "status": _clean(row.get("status")) or "draft",
         "severity": severity,
         "question": _clean(row.get("question")),
-        "expected_answer": _clean(
-            row.get("expected_answer") or row.get("golden_answer")
-        ),
+        "expected_answer": _clean(row.get("expected_answer") or row.get("golden_answer")),
         "expected_evidence": expected_evidence,
         "expected_keywords": _normalize_semicolon_list(row.get("expected_keywords")),
         "category": _clean(row.get("category")) or "general",

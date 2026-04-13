@@ -14,7 +14,6 @@ from rqg.quality.evaluators.llm_judge import (
     judge,
 )
 
-
 # ==================================================================
 # _parse_judge_response
 # ==================================================================
@@ -210,7 +209,6 @@ class TestJudgeInRunner:
 
     def test_faithfulness_in_jsonl_record(self, s1_case):
         from rqg.quality.models import QARunRecord
-
         from rqg.quality.runner import RAGQualityRunner
 
         class FakeStore:
