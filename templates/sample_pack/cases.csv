@@ -1,4 +1,4 @@
-case_id,name,severity,question,expected_chunks,expected_keywords,golden_answer,category,owner,min_pass_rate,last_reviewed_at
-DOC001,Leave request deadline,S1,When should paid leave be requested?,,paid leave;5 business days;advance,,policy,hr-team,100,2026-03-30
-DOC002,Leave request method,S2,How should employees submit paid leave requests?,,submit;HR system;requests,,procedure,hr-team,85,2026-03-30
-DOC003,Escalation owner,S2,Who should be contacted if the HR system is unavailable for leave requests?,,HR;contact;fallback,,escalation,hr-team,80,2026-03-30
+case_id,name,status,severity,question,expected_answer,expected_evidence,category,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes
+DOC001,Leave request deadline,active,S1,When should paid leave be requested?,,,policy,,hr-team,100,2026-04-13,2026-03-30,
+DOC002,Leave request method,active,S2,How should employees submit paid leave requests?,,,procedure,,hr-team,85,2026-04-13,2026-03-30,
+DOC003,Escalation owner,active,S2,Who should be contacted if the HR system is unavailable for leave requests?,,,escalation,,hr-team,80,2026-04-13,2026-03-30,

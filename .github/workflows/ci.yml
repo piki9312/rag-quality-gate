@@ -327,11 +327,13 @@ jobs:
 
           required_case_columns = {
             "case_id",
+            "name",
+            "status",
             "severity",
             "question",
-            "expected_keywords",
+            "category",
             "owner",
-            "min_pass_rate",
+            "min_case_score",
             "last_reviewed_at",
           }
 
