@@ -10,6 +10,7 @@ from rqg.quality.aggregate import (
     case_pass_rates,
     failure_breakdown,
     failure_category_breakdown,
+    failure_category_case_ids,
     percentile,
     severity_pass_rate,
 )
@@ -113,3 +114,34 @@ class TestFailureCategoryBreakdown:
         results = [_FakeResult("QA001", "S1", False, "keyword_miss", None)]
         bd = failure_category_breakdown(results)
         assert bd["unknown"] == 1
+
+
+class TestFailureCategoryCaseIds:
+    def test_case_ids_grouped_by_category(self):
+        results = [
+            _FakeResult("QA001", "S1", False, "keyword_miss", "synthesis"),
+            _FakeResult("QA003", "S1", False, "keyword_miss", "synthesis"),
+            _FakeResult("QA005", "S2", False, "error", "tool_failure"),
+            _FakeResult("QA006", "S2", True, None, None),
+        ]
+        ids = failure_category_case_ids(results)
+        assert ids["synthesis"] == ["QA001", "QA003"]
+        assert ids["tool_failure"] == ["QA005"]
+        assert "QA006" not in str(ids)
+
+    def test_deduplicates_case_ids(self):
+        results = [
+            _FakeResult("QA001", "S1", False, "keyword_miss", "synthesis"),
+            _FakeResult("QA001", "S1", False, "bad_reference", "synthesis"),
+        ]
+        ids = failure_category_case_ids(results)
+        assert ids["synthesis"] == ["QA001"]
+
+    def test_empty_when_all_pass(self):
+        results = [_FakeResult("QA001", "S1", True)]
+        assert failure_category_case_ids(results) == {}
+
+    def test_unknown_category(self):
+        results = [_FakeResult("QA001", "S1", False, "keyword_miss", None)]
+        ids = failure_category_case_ids(results)
+        assert ids["unknown"] == ["QA001"]

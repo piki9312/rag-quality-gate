@@ -16,6 +16,7 @@ class GateNextAction(BaseModel):
     action: str = Field(min_length=1)
     owner: str = "T.B.D."
     due: str = "T.B.D."
+    affected_case_ids: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 

@@ -68,6 +68,15 @@ common_failure_patterns:
   - name: escalation_gap
     symptom: "fail 後の担当と期限が未設定"
     first_action: "weekly review issue で owner/due を必須入力"
+  - name: synthesis
+    symptom: "検索は成功したがキーワード一致率や参照精度が低い"
+    first_action: "JSONL で対象ケースの answer を確認し expected_keywords を見直す"
+  - name: tool_failure
+    symptom: "API タイムアウト・rate limit 等でエラー終了"
+    first_action: "API ステータスとリトライ設定を確認し再実行する"
+  - name: unknown
+    symptom: "既知パターンに分類できない失敗"
+    first_action: "JSONL の failure_type と failure_reason を確認し分類ルールの追加を検討"
 
 # ROI メモ
 roi:
