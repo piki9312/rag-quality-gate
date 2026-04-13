@@ -179,12 +179,8 @@ def review_row_to_review_case(row: dict[str, str]) -> ReviewCase:
     return ReviewCase(
         title=_clean(row.get("title") or row.get("name") or ""),
         question=_clean(row.get("question") or ""),
-        expected_answer=_clean(
-            row.get("expected_answer") or row.get("golden_answer") or ""
-        ),
-        expected_evidence=_clean(
-            row.get("expected_evidence") or row.get("expected_chunks") or ""
-        ),
+        expected_answer=_clean(row.get("expected_answer") or row.get("golden_answer") or ""),
+        expected_evidence=_clean(row.get("expected_evidence") or row.get("expected_chunks") or ""),
         severity=_clean(row.get("severity") or row.get("risk_level") or "S2"),
         category=_clean(row.get("category") or ""),
         notes=_clean(row.get("notes") or ""),
@@ -267,9 +263,7 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
             )
         else:
             errors.append(
-                ValidationError(
-                    cid, "expected_answer", "expected_answerが空です", "warn"
-                )
+                ValidationError(cid, "expected_answer", "expected_answerが空です", "warn")
             )
 
     # status in valid set
@@ -304,9 +298,7 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
                     ValidationError(cid, "min_case_score", f"範囲外の値: {score} (0-100)")
                 )
         except ValueError:
-            errors.append(
-                ValidationError(cid, "min_case_score", f"数値でない値: '{score_str}'")
-            )
+            errors.append(ValidationError(cid, "min_case_score", f"数値でない値: '{score_str}'"))
 
     # expected_evidence format
     ev = row.get("expected_evidence", "").strip()
@@ -331,9 +323,7 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
         val = row.get(date_field, "").strip()
         if val and not _ISO_DATE_RE.match(val):
             errors.append(
-                ValidationError(
-                    cid, date_field, f"日付形式が不正: '{val}' (YYYY-MM-DD 想定)"
-                )
+                ValidationError(cid, date_field, f"日付形式が不正: '{val}' (YYYY-MM-DD 想定)")
             )
 
     return errors
@@ -349,9 +339,7 @@ def validate_case_rows(rows: list[dict[str, str]]) -> list[ValidationError]:
         cid = row.get("case_id", "").strip()
         if cid:
             if cid in seen_ids:
-                errors.append(
-                    ValidationError(cid, "case_id", f"case_id重複: '{cid}'")
-                )
+                errors.append(ValidationError(cid, "case_id", f"case_id重複: '{cid}'"))
             seen_ids.add(cid)
 
     return errors

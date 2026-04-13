@@ -299,3 +299,43 @@ class TestRunCaseScoreCalculation:
         # reference_accuracy: no refs in mock answer → 100%
         # average: 100%
         assert result.score == pytest.approx(1.0)
+
+
+class TestJudgeFallbackRecording:
+    """Runner が JudgeResult の fallback 情報を EvalResult / QARunRecord に伝搬する。"""
+
+    def test_mock_mode_no_fallback(self, s1_case):
+        runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
+        result = runner.run_case(s1_case)
+        assert result.judge_fallback_used is False
+        assert result.judge_fallback_reason is None
+
+    def test_fallback_propagated_to_jsonl_record(self, s1_case):
+        """parse_error フォールバック時に QARunRecord にも記録される。"""
+        from rqg.quality.models import QARunRecord
+
+        mock_llm_response = {"text": "NOT JSON", "usage": {}}
+        mock_answer_meta = {"usage": {}}
+
+        with (
+            patch(
+                "rqg.quality.runner.generate_answer",
+                return_value=("5営業日前 申請 回答テスト", mock_answer_meta),
+            ),
+            patch(
+                "rqg.serving.llm_client.call_openai_chat",
+                return_value=mock_llm_response,
+            ),
+        ):
+            runner = RAGQualityRunner(store=FakeStore(), mock_llm=False)
+            result = runner.run_case(s1_case)
+
+        assert result.judge_fallback_used is True
+        assert result.judge_fallback_reason == "parse_error"
+
+        record = QARunRecord.from_eval_result(result, "run-fb", s1_case)
+        assert record.judge_fallback_used is True
+        assert record.judge_fallback_reason == "parse_error"
+        data = json.loads(record.model_dump_json())
+        assert data["judge_fallback_used"] is True
+        assert data["judge_fallback_reason"] == "parse_error"

@@ -22,6 +22,8 @@ class JudgeResult:
     relevance: float  # 0.0〜1.0
     reasoning: str = ""
     usage: dict[str, Any] | None = None
+    fallback_used: bool = False
+    fallback_reason: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -42,11 +44,7 @@ _JUDGE_SYSTEM = (
     "No markdown, no extra text."
 )
 
-_JUDGE_USER_TEMPLATE = (
-    "CONTEXT:\n{context}\n\n"
-    "QUESTION:\n{question}\n\n"
-    "ANSWER:\n{answer}"
-)
+_JUDGE_USER_TEMPLATE = "CONTEXT:\n{context}\n\n" "QUESTION:\n{question}\n\n" "ANSWER:\n{answer}"
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +157,13 @@ def judge(
         )
     except (json.JSONDecodeError, KeyError, ValueError) as exc:
         logger.warning("LLM judge parse error: %s — falling back to mock", exc)
-        return _mock_judge(question, answer, context)
+        result = _mock_judge(question, answer, context)
+        result.fallback_used = True
+        result.fallback_reason = "parse_error"
+        return result
     except Exception as exc:
         logger.warning("LLM judge call failed: %s — falling back to mock", exc)
-        return _mock_judge(question, answer, context)
+        result = _mock_judge(question, answer, context)
+        result.fallback_used = True
+        result.fallback_reason = "api_error"
+        return result

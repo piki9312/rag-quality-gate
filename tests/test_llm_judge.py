@@ -14,7 +14,6 @@ from rqg.quality.evaluators.llm_judge import (
     judge,
 )
 
-
 # ==================================================================
 # _parse_judge_response
 # ==================================================================
@@ -162,6 +161,8 @@ class TestJudgeLLM:
             result = judge(question="q", answer="a b c", context="a b c d", mock=False)
             assert isinstance(result, JudgeResult)
             assert "mock" in result.reasoning
+            assert result.fallback_used is True
+            assert result.fallback_reason == "parse_error"
 
     def test_api_error_falls_back_to_mock(self):
         with patch(
@@ -171,6 +172,26 @@ class TestJudgeLLM:
             result = judge(question="q", answer="a b c", context="a b c d", mock=False)
             assert isinstance(result, JudgeResult)
             assert "mock" in result.reasoning
+            assert result.fallback_used is True
+            assert result.fallback_reason == "api_error"
+
+    def test_successful_call_no_fallback(self):
+        mock_response = {
+            "text": '{"faithfulness": 0.9, "relevance": 0.8, "reasoning": "ok"}',
+            "usage": {},
+        }
+        with patch(
+            "rqg.serving.llm_client.call_openai_chat",
+            return_value=mock_response,
+        ):
+            result = judge(question="q", answer="a", context="a", mock=False)
+            assert result.fallback_used is False
+            assert result.fallback_reason is None
+
+    def test_mock_mode_no_fallback(self):
+        result = judge(question="q", answer="a b", context="a b c", mock=True)
+        assert result.fallback_used is False
+        assert result.fallback_reason is None
 
 
 # ==================================================================
@@ -210,7 +231,6 @@ class TestJudgeInRunner:
 
     def test_faithfulness_in_jsonl_record(self, s1_case):
         from rqg.quality.models import QARunRecord
-
         from rqg.quality.runner import RAGQualityRunner
 
         class FakeStore:

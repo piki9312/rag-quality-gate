@@ -54,3 +54,14 @@ def failure_category_breakdown(results: list) -> dict[str, int]:
         category = getattr(r, "failure_category", None) or "unknown"
         breakdown[category] = breakdown.get(category, 0) + 1
     return dict(sorted(breakdown.items(), key=lambda x: -x[1]))
+
+
+def failure_category_case_ids(results: list) -> dict[str, list[str]]:
+    """failure_category ごとの失敗 case_id リスト（重複排除・ソート済み）。"""
+    mapping: dict[str, set[str]] = {}
+    for r in results:
+        if r.passed:
+            continue
+        category = getattr(r, "failure_category", None) or "unknown"
+        mapping.setdefault(category, set()).add(r.case_id)
+    return {k: sorted(v) for k, v in sorted(mapping.items())}

@@ -294,6 +294,53 @@ class TestCheckResult:
         assert actions["other"].count == 1
         assert actions["other"].action == "Define next action in weekly review issue"
 
+    def test_gate_decision_includes_affected_case_ids(self):
+        result = CheckResult(
+            run_id="run-case-ids",
+            current_runs=5,
+            baseline_runs=0,
+            overall_rate=60.0,
+            s1_rate=50.0,
+            s1_passed=1,
+            s1_total=2,
+            thresholds=[
+                ThresholdResult("S1 pass rate", 100.0, 50.0, False, "1/2"),
+            ],
+            failure_categories={"synthesis": 3, "retrieval_miss": 1},
+            failure_case_ids={
+                "synthesis": ["QA001", "QA003", "QA005"],
+                "retrieval_miss": ["QA009"],
+            },
+        )
+
+        decision = build_gate_decision(
+            result,
+            failure_actions={"synthesis": "Check answer keywords"},
+        )
+
+        actions = {item.failure_category: item for item in decision.next_actions}
+        assert actions["synthesis"].affected_case_ids == ["QA001", "QA003", "QA005"]
+        assert actions["synthesis"].action == "Check answer keywords"
+        assert actions["retrieval_miss"].affected_case_ids == ["QA009"]
+
+    def test_gate_decision_empty_case_ids_when_not_provided(self):
+        result = CheckResult(
+            run_id="run-no-case-ids",
+            current_runs=3,
+            baseline_runs=0,
+            overall_rate=66.7,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[
+                ThresholdResult("Overall", 80.0, 66.7, False, "2/3"),
+            ],
+            failure_categories={"unknown": 1},
+        )
+
+        decision = build_gate_decision(result)
+        assert decision.next_actions[0].affected_case_ids == []
+
 
 class TestRenderMarkdown:
     def test_pass_rendering(self):
@@ -344,6 +391,10 @@ class TestRenderMarkdown:
             s1_total=2,
             thresholds=[ThresholdResult("S1", 100.0, 50.0, False, "1/2")],
             failure_categories={"retrieval_miss": 2, "unknown": 1},
+            failure_case_ids={
+                "retrieval_miss": ["QA001", "QA005"],
+                "unknown": ["QA009"],
+            },
         )
 
         md = render_gate_markdown(
@@ -352,6 +403,9 @@ class TestRenderMarkdown:
         )
 
         assert "Next Actions" in md
+        assert "Affected Cases" in md
+        assert "QA001, QA005" in md
+        assert "QA009" in md
         assert "Review retrieval settings" in md
         assert "Define next action in weekly review issue" in md
         assert "T.B.D." in md
@@ -370,16 +424,25 @@ class TestFaithfulnessGate:
         today = now.strftime("%Y%m%d")
         records = [
             QARunRecord(
-                timestamp=now, run_id="r1", case_id="QA001",
-                severity="S1", passed=True, faithfulness_score=0.9,
+                timestamp=now,
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                faithfulness_score=0.9,
             ),
             QARunRecord(
-                timestamp=now, run_id="r1", case_id="QA002",
-                severity="S2", passed=True, faithfulness_score=0.8,
+                timestamp=now,
+                run_id="r1",
+                case_id="QA002",
+                severity="S2",
+                passed=True,
+                faithfulness_score=0.8,
             ),
         ]
         (log_dir / f"{today}.jsonl").write_text(
-            "\n".join(r.model_dump_json() for r in records) + "\n", encoding="utf-8",
+            "\n".join(r.model_dump_json() for r in records) + "\n",
+            encoding="utf-8",
         )
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=70.0)
         result = run_check(str(log_dir), cfg, days=1)
@@ -395,16 +458,25 @@ class TestFaithfulnessGate:
         today = now.strftime("%Y%m%d")
         records = [
             QARunRecord(
-                timestamp=now, run_id="r1", case_id="QA001",
-                severity="S1", passed=True, faithfulness_score=0.5,
+                timestamp=now,
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                faithfulness_score=0.5,
             ),
             QARunRecord(
-                timestamp=now, run_id="r1", case_id="QA002",
-                severity="S2", passed=True, faithfulness_score=0.4,
+                timestamp=now,
+                run_id="r1",
+                case_id="QA002",
+                severity="S2",
+                passed=True,
+                faithfulness_score=0.4,
             ),
         ]
         (log_dir / f"{today}.jsonl").write_text(
-            "\n".join(r.model_dump_json() for r in records) + "\n", encoding="utf-8",
+            "\n".join(r.model_dump_json() for r in records) + "\n",
+            encoding="utf-8",
         )
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=70.0)
         result = run_check(str(log_dir), cfg, days=1)
@@ -424,12 +496,16 @@ class TestFaithfulnessGate:
         today = now.strftime("%Y%m%d")
         records = [
             QARunRecord(
-                timestamp=now, run_id="r1", case_id="QA001",
-                severity="S1", passed=True,  # faithfulness_score=None
+                timestamp=now,
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,  # faithfulness_score=None
             ),
         ]
         (log_dir / f"{today}.jsonl").write_text(
-            "\n".join(r.model_dump_json() for r in records) + "\n", encoding="utf-8",
+            "\n".join(r.model_dump_json() for r in records) + "\n",
+            encoding="utf-8",
         )
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_faithfulness=50.0)
         result = run_check(str(log_dir), cfg, days=1)
@@ -441,7 +517,8 @@ class TestFaithfulnessGate:
     def test_from_yaml_reads_min_faithfulness(self, tmp_path):
         yaml_path = tmp_path / "gate.yml"
         yaml_path.write_text(
-            "thresholds:\n  min_faithfulness: 75.0\n", encoding="utf-8",
+            "thresholds:\n  min_faithfulness: 75.0\n",
+            encoding="utf-8",
         )
         cfg = GateConfig.from_yaml(str(yaml_path))
         assert cfg.min_faithfulness == 75.0

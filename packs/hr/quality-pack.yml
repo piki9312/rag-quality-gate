@@ -68,9 +68,53 @@ common_failure_patterns:
   - name: escalation_gap
     symptom: "fail 後の担当と期限が未設定"
     first_action: "weekly review issue で owner/due を必須入力"
+  - name: synthesis
+    symptom: "検索は成功したがキーワード一致率や参照精度が低い"
+    first_action: "JSONL で対象ケースの answer を確認し expected_keywords を見直す"
+  - name: tool_failure
+    symptom: "API タイムアウト・rate limit 等でエラー終了"
+    first_action: "API ステータスとリトライ設定を確認し再実行する"
+  - name: unknown
+    symptom: "既知パターンに分類できない失敗"
+    first_action: "JSONL の failure_type と failure_reason を確認し分類ルールの追加を検討"
 
-# ROI メモ
+# ROI サマリ
 roi:
-  current_process: "問い合わせごとに担当者が手動回答"
-  expected_improvement: "重大ケースを守りながら回答品質確認を定例化"
-  target_effect: "レビュー起点の修正時間短縮とリリース判断の迅速化"
+  # ── ケースポートフォリオ ──────────────────────────────
+  case_portfolio:
+    total_cases: 17
+    s1_critical: 7          # 法令・重大誤案内リスク
+    s2_standard: 10
+
+  # ── Before（自動ゲート導入前）───────────────────────────
+  before:
+    review_method: "担当者による手動確認"
+    estimated_time_per_case_min: 15   # 回答確認・根拠照合の目安
+    estimated_total_review_min: 255   # 17 cases × 15 min
+    s1_detection: "目視確認のみ。ケース増加・担当者変更で見落としリスクあり"
+    frequency: "随時または文書更新後に任意実施（定例化されていない）"
+
+  # ── After（rqg 導入後）──────────────────────────────────
+  after:
+    review_method: "rqg eval + rqg check の自動ゲート"
+    gate_run_estimate_min: 15         # 17 ケース × LLM judge（目安）
+    time_to_detection: "初回実行で即検出（detect-in-1-run）"
+    s1_enforcement: "100% 強制（SLO: s1_pass_rate=1.00、未達でブロック）"
+    frequency: "文書更新のたびに CI/CD または定例 cron で実行"
+
+  # ── デモ実行から得られた観測値 ───────────────────────────
+  observed_demo_metrics:
+    fail_fix_cycles_tested: 3
+    convergence_success: "3/3 (100%) — 全サイクルで修正後に pass"
+    fail_detected_in_run: 1          # 壊した時点の最初の run で検出
+    s1_fail_blocked: true            # S1 fail は gate が自動ブロック
+    latency_tracked: true            # JSONL に latency_ms を記録済み
+    note: "demo_runs は 1-case サンプル。実業務規模のデータは 4 週間運用後に更新予定。"
+
+  # ── 推定工数削減 ─────────────────────────────────────────
+  estimated_savings:
+    time_saved_per_cycle_min: 240    # 255 (手動) − 15 (自動) ≈ 240 min/回
+    s1_leakage_risk_reduction: "ゲートなしに比べ実質ゼロへ"
+    impact_scope_auto: "文書変更ごとに影響ケースを自動特定（rqg impact）"
+    release_decision_speed: "pass/fail が数値根拠つきで即時出力"
+    assumptions: "手動確認 15 min/case は小規模チーム実績に基づく推定値"

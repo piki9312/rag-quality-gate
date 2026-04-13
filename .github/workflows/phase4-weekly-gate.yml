@@ -1,0 +1,178 @@
+name: Phase4 Weekly Dog-fooding Gate
+
+on:
+  schedule:
+    # 毎週月曜 00:00 UTC (JST 09:00)
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      pack:
+        description: "Pack directory (relative to repo root)"
+        required: false
+        default: "packs/hr"
+      use_real_llm:
+        description: "Use real LLM judge (requires OPENAI_API_KEY secret)"
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  weekly-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Determine pack path
+        id: pack
+        run: |
+          PACK="${{ github.event.inputs.pack || 'packs/hr' }}"
+          echo "pack_dir=${PACK}" >> "$GITHUB_OUTPUT"
+          # cases.csv と documents/ の場所を特定
+          if [ -f "${PACK}/cases.csv" ]; then
+            echo "cases_file=${PACK}/cases.csv" >> "$GITHUB_OUTPUT"
+          elif [ -f "${PACK}/quality-pack.yml" ]; then
+            CASES=$(python -c "import yaml,sys; d=yaml.safe_load(open('${PACK}/quality-pack.yml')); print(d.get('cases_file','cases.csv'))")
+            echo "cases_file=${PACK}/${CASES}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "docs_dir=${PACK}/documents" >> "$GITHUB_OUTPUT"
+
+      - name: Set LLM mode
+        id: llm_mode
+        run: |
+          USE_REAL="${{ github.event.inputs.use_real_llm }}"
+          HAS_KEY="${{ secrets.OPENAI_API_KEY != '' }}"
+          if [ "${USE_REAL}" = "true" ] && [ "${HAS_KEY}" = "true" ]; then
+            echo "mock_flag=" >> "$GITHUB_OUTPUT"
+            echo "mode=real" >> "$GITHUB_OUTPUT"
+          else
+            echo "mock_flag=--mock" >> "$GITHUB_OUTPUT"
+            echo "mode=mock" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run eval
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          rqg eval "${{ steps.pack.outputs.cases_file }}" \
+            --docs "${{ steps.pack.outputs.docs_dir }}" \
+            --log-dir runs/weekly-gate \
+            --reset-log-dir \
+            ${{ steps.llm_mode.outputs.mock_flag }}
+
+      - name: Run gate check
+        id: gate
+        continue-on-error: true
+        run: |
+          rqg check \
+            --log-dir runs/weekly-gate \
+            --config "${{ steps.pack.outputs.pack_dir }}/gate.yml" \
+            --output-file runs/weekly-gate/gate-report.md \
+            --decision-file runs/weekly-gate/gate-decision.json
+          echo "check_exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Read gate decision
+        id: decision
+        run: |
+          if [ -f runs/weekly-gate/gate-decision.json ]; then
+            STATUS=$(python -c "import json; d=json.load(open('runs/weekly-gate/gate-decision.json')); print(d.get('status','unknown'))")
+            OVERALL=$(python -c "import json; d=json.load(open('runs/weekly-gate/gate-decision.json')); print(d.get('metrics',{}).get('overall_pass_rate','N/A'))")
+            S1=$(python -c "import json; d=json.load(open('runs/weekly-gate/gate-decision.json')); print(d.get('metrics',{}).get('s1_pass_rate','N/A'))")
+            RUN_ID=$(python -c "import json; d=json.load(open('runs/weekly-gate/gate-decision.json')); print(d.get('run_id','')[:8])")
+          else
+            STATUS="error"
+            OVERALL="N/A"
+            S1="N/A"
+            RUN_ID="N/A"
+          fi
+          echo "status=${STATUS}" >> "$GITHUB_OUTPUT"
+          echo "overall=${OVERALL}" >> "$GITHUB_OUTPUT"
+          echo "s1=${S1}" >> "$GITHUB_OUTPUT"
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload gate artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-gate-${{ github.run_number }}
+          path: runs/weekly-gate/
+          retention-days: 90
+
+      - name: Post result to GitHub issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const now = new Date();
+            const weekday = now.getUTCDay();
+            const diffToMonday = (weekday + 6) % 7;
+            const weekStart = new Date(
+              Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
+            ).toISOString().slice(0, 10);
+
+            const status = "${{ steps.decision.outputs.status }}";
+            const overall = "${{ steps.decision.outputs.overall }}";
+            const s1 = "${{ steps.decision.outputs.s1 }}";
+            const runId = "${{ steps.decision.outputs.run_id }}";
+            const llmMode = "${{ steps.llm_mode.outputs.mode }}";
+            const pack = "${{ steps.pack.outputs.pack_dir }}";
+            const badge = status === "pass" ? "✅ PASS" : status === "fail" ? "❌ FAIL" : "⚠️ ERROR";
+
+            const issueTitle = `[Phase4][Weekly Gate] ${weekStart}`;
+            const body = [
+              `## Weekly Dog-fooding Gate — ${weekStart}`,
+              '',
+              `| Item | Value |`,
+              `|------|-------|`,
+              `| Gate Status | **${badge}** |`,
+              `| Overall Pass Rate | ${overall}% |`,
+              `| S1 Pass Rate | ${s1}% |`,
+              `| Pack | \`${pack}\` |`,
+              `| LLM Mode | ${llmMode} |`,
+              `| Run ID | \`${runId}\` |`,
+              `| Workflow Run | [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |`,
+              '',
+              '## Checklist',
+              '- [ ] Gate status confirmed',
+              '- [ ] S1 cases all passed (or failure action assigned)',
+              '- [ ] Any new failure patterns noted in `docs/ops/phase4-weekly-gate-log.md`',
+              '- [ ] ROI metrics updated if >4 weeks of data available',
+            ].join('\n');
+
+            // 既存 issue を検索
+            const q = `repo:${owner}/${repo} is:issue in:title "${issueTitle}"`;
+            const search = await github.rest.search.issuesAndPullRequests({ q });
+            const existing = search.data.items.filter(i => !i.pull_request);
+
+            if (existing.length > 0) {
+              await github.rest.issues.createComment({
+                owner, repo,
+                issue_number: existing[0].number,
+                body,
+              });
+              core.info(`Commented on existing issue #${existing[0].number}`);
+            } else {
+              const issue = await github.rest.issues.create({
+                owner, repo,
+                title: issueTitle,
+                body,
+                labels: ['weekly-gate', 'phase4'],
+              });
+              core.info(`Created issue #${issue.data.number}: ${issue.data.html_url}`);
+            }

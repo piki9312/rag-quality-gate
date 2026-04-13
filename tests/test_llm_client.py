@@ -8,7 +8,6 @@ import pytest
 
 from rqg.serving.llm_client import estimate_cost, generate_answer, get_openai_client
 
-
 # ------------------------------------------------------------------
 # estimate_cost
 # ------------------------------------------------------------------
