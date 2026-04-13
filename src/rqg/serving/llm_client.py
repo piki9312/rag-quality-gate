@@ -119,19 +119,35 @@ def call_openai_chat(model: str, system: str, user_msg: str, max_tokens: int) ->
 def generate_answer(
     question: str, retrieved_chunks: list[dict], max_new_tokens: int = 256
 ) -> tuple[str, dict]:
-    """検索済み chunk をコンテキストに OpenAI で回答を生成する。"""
+    """検索済み chunk をコンテキストに OpenAI で回答を生成する。
+
+    LLM には短い連番 [REF1], [REF2], ... を渡し、返答中の連番を
+    実際の chunk_id に置換してから返す。これにより LLM がIDを改変・
+    推測してしまう問題を回避する。
+    """
+    # 短縮ID → 実ID のマッピングを構築
+    ref_map: dict[str, str] = {}
     context_parts = []
-    for ch in retrieved_chunks:
-        context_parts.append(f"[{ch['chunk_id']}] ({ch['source']})\n{ch['text']}")
+    for i, ch in enumerate(retrieved_chunks, 1):
+        short_id = f"REF{i}"
+        ref_map[short_id] = ch["chunk_id"]
+        context_parts.append(f"[{short_id}] ({ch['source']})\n{ch['text']}")
     context_text = "\n\n".join(context_parts)
 
     system_prompt = (
         "あなたは社内文書QAです。必ずCONTEXTの内容だけで回答してください。"
         "CONTEXTに根拠がない場合は『文書内に根拠が見つかりません』とだけ答えてください。"
-        "根拠に使った箇所は [chunk_id] を文中に引用してください。"
+        "根拠に使った箇所は [REF1] のようにCONTEXTの先頭にある角括弧内のIDを"
+        "そのままコピーして引用してください。IDは絶対に改変しないでください。"
     )
     user_msg = f"CONTEXT:\n\n{context_text}\n\nQUESTION:\n{question}\n"
 
     result = call_openai_chat(OPENAI_MODEL, system_prompt, user_msg, max_new_tokens)
+
+    # 短縮IDを実chunk_idに置換（REF10がREF1に部分一致しないよう長い順）
+    answer = result["text"]
+    for short_id in sorted(ref_map, key=len, reverse=True):
+        answer = answer.replace(f"[{short_id}]", f"[{ref_map[short_id]}]")
+
     meta: dict = {"context_chars": len(context_text), "usage": result["usage"]}
-    return result["text"], meta
+    return answer, meta
