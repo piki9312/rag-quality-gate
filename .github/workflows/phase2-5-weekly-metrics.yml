@@ -81,7 +81,7 @@ jobs:
       - name: Detect register changes
         id: register_diff
         run: |
-          if git diff --quiet -- docs/ops/phase2-5-weekly-metrics-register.md; then
+          if git diff --quiet -- docs/ops/operations/phase2-5-weekly-metrics-register.md; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -110,7 +110,7 @@ jobs:
             documentation
             automation
           add-paths: |
-            docs/ops/phase2-5-weekly-metrics-register.md
+            docs/ops/operations/phase2-5-weekly-metrics-register.md
 
       - name: No register update detected
         if: steps.register_diff.outputs.changed != 'true'
@@ -486,7 +486,7 @@ jobs:
               '- [ ] T+3d: permanent_fix applied and rerun evidence attached',
               '- [ ] T+5d: close criteria evaluated',
               '',
-              'Reference: docs/ops/phase2-5-investigate-response-flow.md',
+              'Reference: docs/ops/operations/phase2-5-investigate-response-flow.md',
             ].join('\n');
 
             const created = await github.rest.issues.create({

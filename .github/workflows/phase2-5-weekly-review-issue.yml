@@ -63,11 +63,11 @@ jobs:
               '- Weekly metrics workflow posts next_actions and a non-technical weekly summary as a comment.',
               '',
               '## Related Files',
-              '- docs/ops/phase2-5-weekly-metrics-register.md',
-              '- docs/ops/phase2-5-investigate-response-flow.md',
-              '- docs/ops/phase2-5-ws2-failure-review-template.md',
-              '- docs/ops/phase2-5-ws3-gate-exception-approval-template.md',
-              '- docs/ops/phase2-5-case-quality-weekly-review.md',
+              '- docs/ops/operations/phase2-5-weekly-metrics-register.md',
+              '- docs/ops/operations/phase2-5-investigate-response-flow.md',
+              '- docs/ops/operations/phase2-5-ws2-failure-review-template.md',
+              '- docs/ops/operations/phase2-5-ws3-gate-exception-approval-template.md',
+              '- docs/ops/operations/phase2-5-case-quality-weekly-review.md',
             ].join('\n');
 
             const created = await github.rest.issues.create({

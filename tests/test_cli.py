@@ -852,7 +852,16 @@ class TestMergeCasesValidation:
 
         parser = build_parser()
         args = parser.parse_args(
-            ["merge-cases", "--cases", "a.csv", "--review", "b.csv", "--output", "c.csv", "--no-validate"]
+            [
+                "merge-cases",
+                "--cases",
+                "a.csv",
+                "--review",
+                "b.csv",
+                "--output",
+                "c.csv",
+                "--no-validate",
+            ]
         )
         assert args.validate is False
 
@@ -868,11 +877,26 @@ class TestMergeCasesValidation:
         # Review adds a row that merges OK but fails validation (empty question + bad status)
         self._write_csv(
             review_path,
-            [{"case_id": "c_bad", "question": "", "expected_answer": "", "status": "INVALID_STATUS"}],
+            [
+                {
+                    "case_id": "c_bad",
+                    "question": "",
+                    "expected_answer": "",
+                    "status": "INVALID_STATUS",
+                }
+            ],
         )
 
         rc = main(
-            ["merge-cases", "--cases", str(base_path), "--review", str(review_path), "--output", str(output_path)]
+            [
+                "merge-cases",
+                "--cases",
+                str(base_path),
+                "--review",
+                str(review_path),
+                "--output",
+                str(output_path),
+            ]
         )
         assert rc == 1
         assert not output_path.exists()
@@ -888,15 +912,25 @@ class TestMergeCasesValidation:
         )
         self._write_csv(
             review_path,
-            [{"case_id": "c_bad", "question": "", "expected_answer": "", "status": "INVALID_STATUS"}],
+            [
+                {
+                    "case_id": "c_bad",
+                    "question": "",
+                    "expected_answer": "",
+                    "status": "INVALID_STATUS",
+                }
+            ],
         )
 
         rc = main(
             [
                 "merge-cases",
-                "--cases", str(base_path),
-                "--review", str(review_path),
-                "--output", str(output_path),
+                "--cases",
+                str(base_path),
+                "--review",
+                str(review_path),
+                "--output",
+                str(output_path),
                 "--no-validate",
             ]
         )

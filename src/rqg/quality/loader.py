@@ -110,9 +110,7 @@ def _load_cases_from_json(path: Path) -> list[QATestCase]:
                     if "expected_evidence" in item
                     else item.get("expected_chunks")
                 ),
-                expected_answer=str(
-                    item.get("expected_answer") or item.get("golden_answer") or ""
-                ),
+                expected_answer=str(item.get("expected_answer") or item.get("golden_answer") or ""),
                 category=str(item.get("category", "general")),
                 owner=str(item.get("owner", "")),
                 min_case_score=min_case_score,
@@ -141,15 +139,12 @@ def load_eval_cases(
         reader = csv.DictReader(f)
         for row in reader:
             expected_evidence = _split_semicolon_list(
-                row.get("expected_evidence", "")
-                or row.get("expected_chunks", "")
+                row.get("expected_evidence", "") or row.get("expected_chunks", "")
             )
             expected_keywords = _split_semicolon_list(row.get("expected_keywords", ""))
             risk_level = (row.get("risk_level") or row.get("severity") or "S2").strip().upper()
             doc_snapshot_id = (
-                row.get("doc_snapshot_id")
-                or row.get("source_doc")
-                or default_doc_snapshot_id
+                row.get("doc_snapshot_id") or row.get("source_doc") or default_doc_snapshot_id
             ).strip()
 
             cases.append(
@@ -188,8 +183,7 @@ def load_cases(file_path: str) -> list[QATestCase]:
             # セミコロン区切りのリスト (new + legacy field names)
             expected_kw = _split_semicolon_list(row.get("expected_keywords", ""))
             expected_ev = _split_semicolon_list(
-                row.get("expected_evidence", "")
-                or row.get("expected_chunks", "")
+                row.get("expected_evidence", "") or row.get("expected_chunks", "")
             )
             min_cs = 0.0
             raw_score = row.get("min_case_score") or row.get("min_pass_rate") or ""
@@ -207,10 +201,7 @@ def load_cases(file_path: str) -> list[QATestCase]:
                 status=row.get("status", "active").strip() or "active",
                 expected_keywords=expected_kw,
                 expected_evidence=expected_ev,
-                expected_answer=(
-                    row.get("expected_answer", "")
-                    or row.get("golden_answer", "")
-                ),
+                expected_answer=(row.get("expected_answer", "") or row.get("golden_answer", "")),
                 category=row.get("category", "general"),
                 source_doc=row.get("source_doc", ""),
                 owner=row.get("owner", ""),

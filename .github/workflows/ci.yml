@@ -307,7 +307,7 @@ jobs:
           from pathlib import Path
 
           required_files = [
-            Path("docs/ops/phase3-internal-docs-vertical-pack.md"),
+            Path("docs/ops/operations/phase3-internal-docs-vertical-pack.md"),
             Path("templates/sample_pack/cases.csv"),
             Path("templates/sample_pack/gate.yml"),
             Path("templates/sample_pack/quality-pack.yml"),
@@ -327,11 +327,13 @@ jobs:
 
           required_case_columns = {
             "case_id",
+            "name",
+            "status",
             "severity",
             "question",
-            "expected_keywords",
+            "category",
             "owner",
-            "min_pass_rate",
+            "min_case_score",
             "last_reviewed_at",
           }
 

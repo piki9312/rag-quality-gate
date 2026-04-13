@@ -11,9 +11,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-REGISTER_PATH = REPO_ROOT / "docs" / "ops" / "phase2-5-weekly-metrics-register.md"
+REGISTER_PATH = REPO_ROOT / "docs" / "ops" / "operations" / "phase2-5-weekly-metrics-register.md"
 CASE_QUALITY_WEEKLY_REVIEW_PATH = (
-    REPO_ROOT / "docs" / "ops" / "phase2-5-case-quality-weekly-review.md"
+    REPO_ROOT / "docs" / "ops" / "operations" / "phase2-5-case-quality-weekly-review.md"
 )
 PACK_CASES_GLOB = "packs/*/cases.csv"
 
