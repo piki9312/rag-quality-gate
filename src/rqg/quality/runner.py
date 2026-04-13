@@ -65,6 +65,8 @@ class RAGQualityRunner:
         evidence_match: bool | None = None
         ret_hit: bool | None = None
         faithfulness: float | None = None
+        judge_fallback_used = False
+        judge_fallback_reason: str | None = None
         cost_usd = 0.0
         input_tokens = 0
         output_tokens = 0
@@ -122,6 +124,8 @@ class RAGQualityRunner:
                     mock=self.mock_llm,
                 )
                 faithfulness = judge_result.faithfulness
+                judge_fallback_used = judge_result.fallback_used
+                judge_fallback_reason = judge_result.fallback_reason
                 if judge_result.usage and not self.mock_llm:
                     judge_cost = judge_result.usage.get("estimated_cost_usd", 0.0) or 0.0
                     cost_usd += judge_cost
@@ -207,6 +211,8 @@ class RAGQualityRunner:
             evidence_match=evidence_match,
             retrieval_hit=ret_hit,
             faithfulness_score=faithfulness,
+            judge_fallback_used=judge_fallback_used,
+            judge_fallback_reason=judge_fallback_reason,
         )
 
     def run_all(self, cases: list[QATestCase], run_id: str | None = None) -> EvalRun:

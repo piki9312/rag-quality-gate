@@ -88,6 +88,8 @@ class EvalResult:
     evidence_match: bool | None = None  # 互換キー: expected_chunks が検索結果に含まれたか
     retrieval_hit: bool | None = None  # expected chunk が top-k に含まれたか
     faithfulness_score: float | None = None  # 0.0〜1.0
+    judge_fallback_used: bool = False
+    judge_fallback_reason: str | None = None
 
 
 # ------------------------------------------------------------------
@@ -142,6 +144,8 @@ class QARunRecord(BaseModel):
     answer_match: bool | None = Field(None)
     evidence_match: bool | None = Field(None)
     faithfulness_score: float | None = Field(None)
+    judge_fallback_used: bool | None = Field(None)
+    judge_fallback_reason: str | None = Field(None)
 
     model_config = ConfigDict(ser_json_timedelta="float")
 
@@ -183,4 +187,6 @@ class QARunRecord(BaseModel):
             answer_match=answer_match,
             evidence_match=evidence_match,
             faithfulness_score=result.faithfulness_score,
+            judge_fallback_used=result.judge_fallback_used or None,
+            judge_fallback_reason=result.judge_fallback_reason,
         )
