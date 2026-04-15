@@ -281,6 +281,9 @@ def run_check(
     overall_drop: float | None = None
     s1_drop: float | None = None
 
+    def _should_warn(actual: float, fail_th: float, warn_th: float) -> bool:
+        return warn_th > 0 and actual >= fail_th and actual < warn_th
+
     checks.append(
         ThresholdResult(
             name="S1 pass rate",
@@ -289,11 +292,7 @@ def run_check(
             passed=s1_rate >= config.s1_pass_rate,
             detail=f"{s1_passed}/{s1_total}",
             warn_threshold=config.s1_pass_rate_warn,
-            warned=(
-                config.s1_pass_rate_warn > 0
-                and s1_rate >= config.s1_pass_rate
-                and s1_rate < config.s1_pass_rate_warn
-            ),
+            warned=_should_warn(s1_rate, config.s1_pass_rate, config.s1_pass_rate_warn),
         )
     )
     checks.append(
@@ -304,10 +303,8 @@ def run_check(
             passed=overall_rate >= config.overall_pass_rate,
             detail=f"{passed}/{total}",
             warn_threshold=config.overall_pass_rate_warn,
-            warned=(
-                config.overall_pass_rate_warn > 0
-                and overall_rate >= config.overall_pass_rate
-                and overall_rate < config.overall_pass_rate_warn
+            warned=_should_warn(
+                overall_rate, config.overall_pass_rate, config.overall_pass_rate_warn
             ),
         )
     )
