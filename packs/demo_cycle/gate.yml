@@ -3,3 +3,8 @@ thresholds:
   overall_pass_rate: 100.0
   retrieval_precision: 0.0
   min_faithfulness: 0.0  # 0=disabled, e.g. 70.0=require ≥70% avg
+
+  # Warn thresholds — gate emits "warn" (not "fail") when above fail
+  # threshold but below warn threshold.  Set to 0 to disable.
+  # s1_pass_rate_warn: 100.0
+  # overall_pass_rate_warn: 90.0
