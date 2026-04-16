@@ -522,3 +522,362 @@ class TestFaithfulnessGate:
         )
         cfg = GateConfig.from_yaml(str(yaml_path))
         assert cfg.min_faithfulness == 75.0
+
+
+# ------------------------------------------------------------------
+# Warn status tests
+# ------------------------------------------------------------------
+
+
+class TestWarnStatus:
+    """Tests for the warn gate status feature."""
+
+    def _make_log_dir(self, tmp_path, records):
+        """Helper: write QARunRecord list into a temp JSONL log dir."""
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir(exist_ok=True)
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        jsonl = log_dir / f"{today}.jsonl"
+        with open(jsonl, "w", encoding="utf-8") as f:
+            for rec in records:
+                f.write(rec.model_dump_json() + "\n")
+        return str(log_dir)
+
+    def test_gate_config_warn_defaults_to_disabled(self):
+        cfg = GateConfig()
+        assert cfg.s1_pass_rate_warn == 0.0
+        assert cfg.overall_pass_rate_warn == 0.0
+
+    def test_gate_config_warn_from_yaml(self, tmp_path):
+        yaml_path = tmp_path / "gate.yml"
+        yaml_path.write_text(
+            (
+                "thresholds:\n"
+                "  s1_pass_rate: 100.0\n"
+                "  overall_pass_rate: 80.0\n"
+                "  s1_pass_rate_warn: 100.0\n"
+                "  overall_pass_rate_warn: 90.0\n"
+            ),
+            encoding="utf-8",
+        )
+        cfg = GateConfig.from_yaml(str(yaml_path))
+        assert cfg.s1_pass_rate_warn == 100.0
+        assert cfg.overall_pass_rate_warn == 90.0
+
+    def test_gate_status_pass_when_above_warn(self, tmp_path):
+        """Metrics above both fail and warn thresholds → pass."""
+        records = [
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+            ),
+        ]
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=100.0,
+            overall_pass_rate=80.0,
+            overall_pass_rate_warn=90.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        assert result.gate_passed is True
+        assert result.gate_status == "pass"
+
+    def test_gate_status_warn_when_between_fail_and_warn(self, tmp_path):
+        """Metrics above fail but below warn → warn."""
+        # 8 pass, 2 fail → 80%. fail=70%, warn=90%
+        records = []
+        now = datetime.now(timezone.utc)
+        for i in range(8):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=True,
+                )
+            )
+        for i in range(8, 10):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="synthesis",
+                )
+            )
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=70.0,
+            overall_pass_rate_warn=90.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        assert result.gate_passed is True  # above fail threshold
+        assert result.gate_status == "warn"  # below warn threshold
+
+    def test_gate_status_fail_trumps_warn(self, tmp_path):
+        """When fail threshold is missed, status is fail even if warn is set."""
+        # 6 pass, 4 fail → 60%. fail=70%, warn=90%
+        records = []
+        now = datetime.now(timezone.utc)
+        for i in range(6):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=True,
+                )
+            )
+        for i in range(6, 10):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="synthesis",
+                )
+            )
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=70.0,
+            overall_pass_rate_warn=90.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        assert result.gate_passed is False
+        assert result.gate_status == "fail"
+
+    def test_warn_disabled_when_threshold_zero(self, tmp_path):
+        """When warn threshold is 0, never warn."""
+        # 8 pass, 2 fail → 80%. fail=70%, warn=0 (disabled)
+        records = []
+        now = datetime.now(timezone.utc)
+        for i in range(8):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=True,
+                )
+            )
+        for i in range(8, 10):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="synthesis",
+                )
+            )
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=70.0,
+            overall_pass_rate_warn=0.0,  # disabled
+        )
+        result = run_check(log_dir, cfg, days=1)
+        assert result.gate_status == "pass"
+
+    def test_s1_warn_triggers(self, tmp_path):
+        """S1 warn threshold triggers when S1 passes fail but misses warn."""
+        # 9 S1 pass, 1 S1 fail → 90%. S1 fail=80%, S1 warn=100%
+        records = []
+        now = datetime.now(timezone.utc)
+        for i in range(9):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S1",
+                    passed=True,
+                )
+            )
+        records.append(
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA009",
+                severity="S1",
+                passed=False,
+                failure_type="keyword_miss",
+                failure_category="synthesis",
+            )
+        )
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=80.0,
+            overall_pass_rate=80.0,
+            s1_pass_rate_warn=100.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        assert result.gate_passed is True
+        assert result.gate_status == "warn"
+        # The S1 threshold should be marked as warned
+        s1_check = [t for t in result.thresholds if t.name == "S1 pass rate"][0]
+        assert s1_check.passed is True
+        assert s1_check.warned is True
+
+    def test_threshold_result_warned_flag(self):
+        """ThresholdResult.warned tracks warning state independently."""
+        # Passed but warned
+        t = ThresholdResult(
+            name="test",
+            threshold=80.0,
+            actual=85.0,
+            passed=True,
+            warn_threshold=90.0,
+            warned=True,
+        )
+        assert t.passed is True
+        assert t.warned is True
+
+        # Passed and not warned
+        t2 = ThresholdResult(
+            name="test",
+            threshold=80.0,
+            actual=95.0,
+            passed=True,
+            warn_threshold=90.0,
+            warned=False,
+        )
+        assert t2.passed is True
+        assert t2.warned is False
+
+    def test_build_gate_decision_warn_status(self, tmp_path):
+        """build_gate_decision emits 'warn' status with reasons."""
+        records = []
+        now = datetime.now(timezone.utc)
+        for i in range(8):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=True,
+                )
+            )
+        for i in range(8, 10):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="synthesis",
+                )
+            )
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=70.0,
+            overall_pass_rate_warn=90.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        decision = build_gate_decision(result)
+
+        assert decision.status == "warn"
+        assert any("WARN" in r for r in decision.reasons)
+
+    def test_build_gate_decision_pass_no_warn_reasons(self, tmp_path):
+        """When gate passes cleanly, no warn reasons are emitted."""
+        records = [
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+            ),
+        ]
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=100.0,
+            overall_pass_rate=80.0,
+            overall_pass_rate_warn=90.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        decision = build_gate_decision(result)
+
+        assert decision.status == "pass"
+        assert not any("WARN" in r for r in decision.reasons)
+
+    def test_render_gate_markdown_warn_header(self, tmp_path):
+        """Markdown report shows WARN in title and table."""
+        records = []
+        now = datetime.now(timezone.utc)
+        for i in range(8):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=True,
+                )
+            )
+        for i in range(8, 10):
+            records.append(
+                QARunRecord(
+                    timestamp=now,
+                    run_id="r1",
+                    case_id=f"QA{i:03d}",
+                    severity="S2",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="synthesis",
+                )
+            )
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=70.0,
+            overall_pass_rate_warn=90.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        md = render_gate_markdown(result)
+
+        assert "## RAG Quality Gate: WARN" in md
+        assert "| WARN |" in md
+
+    def test_render_gate_markdown_pass_no_warn_icon(self, tmp_path):
+        """When passing cleanly, no WARN icon appears."""
+        records = [
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+            ),
+        ]
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=100.0,
+            overall_pass_rate=80.0,
+        )
+        result = run_check(log_dir, cfg, days=1)
+        md = render_gate_markdown(result)
+
+        assert "## RAG Quality Gate: PASS" in md
+        assert "WARN" not in md

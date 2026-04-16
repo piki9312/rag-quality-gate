@@ -712,9 +712,15 @@ def cmd_check(args: argparse.Namespace) -> int:
     appended_history = _append_jsonl_output(decision_history_path, decision)
     print(f"Appended gate decision JSONL to {appended_history}")
 
-    status = "PASS" if result.gate_passed else "FAIL"
+    status = result.gate_status.upper()
     print(f"Gate: {status}")
-    return 0 if result.gate_passed else 1
+
+    warn_exit_code = getattr(args, "warn_exit_code", 0)
+    if result.gate_status == "fail":
+        return 1
+    if result.gate_status == "warn":
+        return warn_exit_code
+    return 0
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
@@ -755,6 +761,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             max_s1_drop_pct=args.max_s1_drop_pct,
             output_file=args.output_file,
             decision_file=args.decision_file,
+            warn_exit_code=args.warn_exit_code,
         )
     )
     return check_exit
@@ -835,6 +842,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional gate decision JSON path (default: <log-dir>/gate-decision.json)",
     )
+    p_gate.add_argument(
+        "--warn-exit-code",
+        type=int,
+        default=0,
+        help="Exit code when gate status is warn (default: 0, set to 1 to block on warn)",
+    )
 
     # --- check ---
     p_check = sub.add_parser("check", help="Run quality gate check")
@@ -872,6 +885,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--decision-file",
         default=None,
         help="Optional gate decision JSON path (default: <log-dir>/gate-decision.json)",
+    )
+    p_check.add_argument(
+        "--warn-exit-code",
+        type=int,
+        default=0,
+        help="Exit code when gate status is warn (default: 0, set to 1 to block on warn)",
     )
 
     # --- gen-cases ---

@@ -34,6 +34,13 @@ class GateConfig:
     max_overall_drop_pct: float = 0.0
     max_s1_drop_pct: float = 0.0
 
+    # Warn thresholds (0 = disabled).  When a metric passes the fail threshold
+    # but misses the warn threshold the gate status becomes "warn" instead of
+    # "pass".  Warn does **not** block (exit 0 by default) but is surfaced in
+    # reports and gate-decision.json so operators notice degradation early.
+    s1_pass_rate_warn: float = 0.0
+    overall_pass_rate_warn: float = 0.0
+
     @classmethod
     def from_yaml(cls, path: str) -> GateConfig:
         import yaml
@@ -50,6 +57,8 @@ class GateConfig:
             max_cost_per_query_usd=th.get("max_cost_per_query_usd", 0.0),
             max_overall_drop_pct=th.get("max_overall_drop_pct", 0.0),
             max_s1_drop_pct=th.get("max_s1_drop_pct", 0.0),
+            s1_pass_rate_warn=th.get("s1_pass_rate_warn", 0.0),
+            overall_pass_rate_warn=th.get("overall_pass_rate_warn", 0.0),
         )
 
 
@@ -104,6 +113,8 @@ class ThresholdResult:
     actual: float
     passed: bool
     detail: str = ""
+    warn_threshold: float = 0.0
+    warned: bool = False
 
 
 @dataclass
@@ -129,6 +140,17 @@ class CheckResult:
         return all(t.passed for t in self.thresholds) and all(
             t.passed for t in self.case_thresholds
         )
+
+    @property
+    def gate_status(self) -> str:
+        """Return 'pass', 'warn', or 'fail'."""
+        if not self.gate_passed:
+            return "fail"
+        if any(t.warned for t in self.thresholds) or any(
+            t.warned for t in self.case_thresholds
+        ):
+            return "warn"
+        return "pass"
 
 
 # ------------------------------------------------------------------
@@ -259,6 +281,9 @@ def run_check(
     overall_drop: float | None = None
     s1_drop: float | None = None
 
+    def _should_warn(actual: float, fail_th: float, warn_th: float) -> bool:
+        return warn_th > 0 and actual >= fail_th and actual < warn_th
+
     checks.append(
         ThresholdResult(
             name="S1 pass rate",
@@ -266,6 +291,8 @@ def run_check(
             actual=s1_rate,
             passed=s1_rate >= config.s1_pass_rate,
             detail=f"{s1_passed}/{s1_total}",
+            warn_threshold=config.s1_pass_rate_warn,
+            warned=_should_warn(s1_rate, config.s1_pass_rate, config.s1_pass_rate_warn),
         )
     )
     checks.append(
@@ -275,6 +302,10 @@ def run_check(
             actual=overall_rate,
             passed=overall_rate >= config.overall_pass_rate,
             detail=f"{passed}/{total}",
+            warn_threshold=config.overall_pass_rate_warn,
+            warned=_should_warn(
+                overall_rate, config.overall_pass_rate, config.overall_pass_rate_warn
+            ),
         )
     )
 
@@ -444,7 +475,21 @@ def build_gate_decision(
         for t in failed_case_thresholds
     )
 
-    status = "pass" if result.gate_passed else "fail"
+    status = result.gate_status
+
+    # Append warn reasons when gate is not failing
+    if status == "warn":
+        warned_thresholds = [t for t in result.thresholds if t.warned]
+        warned_case_thresholds = [t for t in result.case_thresholds if t.warned]
+        for t in warned_thresholds:
+            reasons.append(
+                f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}"
+            )
+        for t in warned_case_thresholds:
+            reasons.append(
+                f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}"
+            )
+
     metrics = {
         "overall_pass_rate": result.overall_rate,
         "s1_pass_rate": result.s1_rate,
@@ -483,13 +528,18 @@ def render_gate_markdown(
     failure_actions: dict[str, str] | None = None,
 ) -> str:
     """Render a gate check result as Markdown."""
-    status = "PASS" if result.gate_passed else "FAIL"
+    status = result.gate_status.upper()
     lines = [f"## RAG Quality Gate: {status}\n"]
 
     lines.append("| Metric | Actual | Threshold | Status |")
     lines.append("|--------|--------|-----------|--------|")
     for t in result.thresholds:
-        icon = "OK" if t.passed else "NG"
+        if not t.passed:
+            icon = "NG"
+        elif t.warned:
+            icon = "WARN"
+        else:
+            icon = "OK"
         lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {icon} |")
 
     if result.case_thresholds:
