@@ -1,9 +1,12 @@
-name: Phase2.5 Weekly Ops Review Issue
+name: Phase2.5 Weekly Ops Review Issue (Manual/Backfill)
 
 on:
-  schedule:
-    - cron: "45 0 * * 1"
   workflow_dispatch:
+    inputs:
+      week_start_override:
+        description: "Optional week_start override (YYYY-MM-DD) for backfill"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -20,13 +23,16 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const now = new Date();
-            const weekday = now.getUTCDay();
-            const diffToMonday = (weekday + 6) % 7;
-            const weekStartDate = new Date(
-              Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
-            );
-            const weekStart = weekStartDate.toISOString().slice(0, 10);
+            let weekStart = `${{ github.event.inputs.week_start_override || '' }}`.trim();
+            if (!weekStart) {
+              const now = new Date();
+              const weekday = now.getUTCDay();
+              const diffToMonday = (weekday + 6) % 7;
+              const weekStartDate = new Date(
+                Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
+              );
+              weekStart = weekStartDate.toISOString().slice(0, 10);
+            }
             const title = `[Phase2.5][Weekly Review] ${weekStart}`;
 
             const query = `repo:${owner}/${repo} is:issue is:open in:title "${title}"`;
@@ -44,6 +50,9 @@ jobs:
                   `selected latest created_at: ${selectedIssue.html_url}`
                 );
               }
+              core.setOutput('issue_number', String(selectedIssue.number));
+              core.setOutput('issue_url', selectedIssue.html_url);
+              core.setOutput('week_start', weekStart);
               core.info(`Existing weekly review issue found: ${selectedIssue.html_url}`);
               return selectedIssue.html_url;
             }
@@ -76,8 +85,14 @@ jobs:
               title,
               body,
             });
+            core.setOutput('issue_number', String(created.data.number));
+            core.setOutput('issue_url', created.data.html_url);
+            core.setOutput('week_start', weekStart);
             core.info(`Created weekly review issue: ${created.data.html_url}`);
             return created.data.html_url;
 
       - name: Print weekly review issue URL
-        run: echo "weekly_review_issue_url=${{ steps.weekly_review_issue.outputs.result }}"
+        run: |
+          echo "weekly_review_issue_url=${{ steps.weekly_review_issue.outputs.result }}"
+          echo "weekly_review_issue_number=${{ steps.weekly_review_issue.outputs.issue_number }}"
+          echo "week_start=${{ steps.weekly_review_issue.outputs.week_start }}"
