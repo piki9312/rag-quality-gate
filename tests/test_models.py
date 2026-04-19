@@ -36,6 +36,8 @@ class TestQARunRecord:
         assert record.category == "就業規則"
         assert record.answer_match is True
         assert record.evidence_match is True
+        assert record.evidence_recall == 1.0
+        assert record.judge_relevance == 0.8
 
     def test_round_trip_json(self, passed_result, s1_case):
         record = QARunRecord.from_eval_result(passed_result, "run-001", s1_case)
@@ -43,6 +45,8 @@ class TestQARunRecord:
         restored = QARunRecord.model_validate_json(json_str)
         assert restored.case_id == record.case_id
         assert restored.passed == record.passed
+        assert restored.evidence_recall == record.evidence_recall
+        assert restored.judge_relevance == record.judge_relevance
 
     def test_failure_reasons(self, failed_result, s2_case):
         failed_result.failure_category = "synthesis"

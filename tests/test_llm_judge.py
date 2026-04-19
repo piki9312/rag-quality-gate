@@ -9,6 +9,7 @@ import pytest
 
 from rqg.quality.evaluators.llm_judge import (
     JudgeResult,
+    _JUDGE_SYSTEM,
     _mock_judge,
     _parse_judge_response,
     judge,
@@ -76,6 +77,35 @@ class TestMockJudge:
         result = _mock_judge("q", "a b c", "a b c d")
         assert isinstance(result, JudgeResult)
         assert "mock" in result.reasoning
+
+    def test_japanese_overlap_scores_relevance_without_whitespace(self):
+        result = _mock_judge(
+            "有給休暇の申請期限は？",
+            "有給休暇は5営業日前までに申請しなければならない。",
+            "有給休暇は5営業日前までに申請しなければならない。",
+        )
+        assert result.faithfulness >= 0.7
+        assert result.relevance >= 0.2
+
+    def test_japanese_relevance_uses_best_matching_sentence(self):
+        answer = (
+            "経費精算の締め日は毎月25日です。\n"
+            "有給休暇は5営業日前までに申請しなければならない。"
+        )
+        context = answer
+        result = _mock_judge("有給休暇の申請期限は？", answer, context)
+        assert result.relevance >= 0.2
+
+
+class TestJudgePrompt:
+    def test_prompt_reserves_perfect_scores_for_complete_answers(self):
+        assert "1.0 is rare" in _JUDGE_SYSTEM
+        assert "no material requested detail is missing" in _JUDGE_SYSTEM
+
+    def test_prompt_penalizes_partial_and_heading_answers(self):
+        assert "section heading" in _JUDGE_SYSTEM
+        assert "introductory sentence is not complete" in _JUDGE_SYSTEM
+        assert "enumerated or list-style question" in _JUDGE_SYSTEM
 
 
 # ==================================================================
@@ -215,6 +245,8 @@ class TestJudgeInRunner:
         runner = RAGQualityRunner(store=FakeStore(), mock_llm=True)
         result = runner.run_case(s1_case)
         assert result.faithfulness_score is not None
+        assert result.judge_relevance is not None
+        assert result.evidence_recall == 1.0
         assert 0.0 <= result.faithfulness_score <= 1.0
 
     def test_empty_retrieval_no_faithfulness(self, s1_case):
@@ -241,6 +273,10 @@ class TestJudgeInRunner:
         result = runner.run_case(s1_case)
         record = QARunRecord.from_eval_result(result, "run-001", s1_case)
         assert record.faithfulness_score == result.faithfulness_score
+        assert record.judge_relevance == result.judge_relevance
+        assert record.evidence_recall == result.evidence_recall
         # Verify it serializes to JSON
         data = json.loads(record.model_dump_json())
         assert "faithfulness_score" in data
+        assert "judge_relevance" in data
+        assert "evidence_recall" in data

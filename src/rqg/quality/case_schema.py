@@ -4,7 +4,7 @@ This module separates review lightweight output from the formal cases.csv
 schema and provides a clean mapping layer between them.
 
 Design principles:
-- review (lightweight 7 fields) ≠ cases.csv (formal 14 fields)
+- review (lightweight 9 fields) ≠ cases.csv (formal 16 fields)
 - normalize / mapper always sits between them
 - Ambiguous cases → needs_review (prefer safety over automation)
 - Implementation-dependent names (expected_chunks) → evidence-oriented names
@@ -26,9 +26,11 @@ FORMAL_CASE_FIELDS: list[str] = [
     "name",
     "status",
     "severity",
+    "eval_mode",
     "question",
     "expected_answer",
     "expected_evidence",
+    "expected_keywords",
     "category",
     "source_doc",
     "owner",
@@ -41,8 +43,10 @@ FORMAL_CASE_FIELDS: list[str] = [
 REVIEW_OUTPUT_FIELDS: list[str] = [
     "title",
     "question",
+    "eval_mode",
     "expected_answer",
     "expected_evidence",
+    "expected_keywords",
     "severity",
     "category",
     "notes",
@@ -50,7 +54,72 @@ REVIEW_OUTPUT_FIELDS: list[str] = [
 
 VALID_STATUSES = {"draft", "active", "needs_review", "deprecated"}
 VALID_SEVERITIES = {"S1", "S2"}
+VALID_EVAL_MODES = {"exact", "evidence_keyword", "grounded_judge"}
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")
+_QUESTION_WHITESPACE_RE = re.compile(r"\s+")
+
+_QUESTION_TYPE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "contact",
+        (
+            "問い合わせ先",
+            "窓口",
+            "連絡先",
+            "エスカレーション",
+            "who must be contacted",
+            "who should be contacted",
+            "contacted first",
+        ),
+    ),
+    ("exception", ("例外", "exception condition", "exception conditions")),
+    ("list", ("主な", "要点", "事由", "reasons", "注意事項", "概要", "ポイント")),
+    ("amount", ("いくら", "何円", "月額", "amount", "cost")),
+    (
+        "deadline",
+        (
+            "いつ",
+            "期限",
+            "締め日",
+            "何日",
+            "いつまで",
+            "when should",
+            "how often",
+            "cadence",
+        ),
+    ),
+    (
+        "procedure",
+        (
+            "手順",
+            "方法",
+            "どのように",
+            "どうやって",
+            "申請方法",
+            "how should",
+            "how to submit",
+            "how to apply",
+            "submit through",
+            "request method",
+        ),
+    ),
+    (
+        "policy",
+        (
+            "条件",
+            "ルール",
+            "required",
+            "requirement",
+            "what is required",
+            "what are the requirements",
+            "what is the rule",
+            "what are the rules",
+            "必要な証憑",
+            "必要書類",
+            "必要なもの",
+            "承認条件",
+        ),
+    ),
+)
 
 # Legacy -> formal field mapping
 LEGACY_FIELD_MAP: dict[str, str] = {
@@ -74,8 +143,10 @@ class ReviewCase:
 
     title: str
     question: str
+    eval_mode: str = ""
     expected_answer: str = ""
     expected_evidence: str = ""
+    expected_keywords: str = ""
     severity: str = "S2"
     category: str = ""
     notes: str = ""
@@ -90,6 +161,46 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
+def normalize_eval_mode(value: object) -> str:
+    return _clean(value).lower().replace("-", "_")
+
+
+def _has_value(value: object) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, (list, tuple, set)):
+        return any(_clean(item) for item in value)
+    return bool(_clean(value))
+
+
+def infer_eval_mode(
+    *,
+    expected_answer: object = "",
+    expected_evidence: object = "",
+    expected_keywords: object = "",
+) -> str:
+    if _has_value(expected_answer):
+        return "exact"
+    if _has_value(expected_keywords):
+        return "evidence_keyword"
+    if _has_value(expected_evidence):
+        return "grounded_judge"
+    return ""
+
+
+def infer_question_types(question: str) -> tuple[str, ...]:
+    normalized = _QUESTION_WHITESPACE_RE.sub(" ", (question or "").strip().lower())
+    detected: list[str] = []
+    for label, patterns in _QUESTION_TYPE_PATTERNS:
+        if any(pattern in normalized for pattern in patterns):
+            detected.append(label)
+    return tuple(detected)
+
+
+def is_mixed_question(question: str) -> bool:
+    return len(set(infer_question_types(question))) >= 2
+
+
 def classify_review_status(review: ReviewCase) -> str:
     """Determine initial status for a ReviewCase being promoted to formal schema.
 
@@ -98,8 +209,11 @@ def classify_review_status(review: ReviewCase) -> str:
 
     Conditions for needs_review:
     - question is empty or very short (< 5 chars)
-    - expected_answer is empty (cannot evaluate without expected answer)
-    - expected_evidence is empty (no grounding reference)
+    - eval_mode is invalid
+    - exact requires expected_answer
+    - evidence_keyword requires expected_evidence and expected_keywords
+    - grounded_judge requires expected_evidence
+    - unresolved legacy rows still require expected_answer and expected_evidence
     - severity is missing or invalid
     """
     reasons: list[str] = []
@@ -109,12 +223,39 @@ def classify_review_status(review: ReviewCase) -> str:
         reasons.append("question空")
     elif len(question) < 5:
         reasons.append("question短すぎ")
+    elif is_mixed_question(question):
+        reasons.append(f"question問い型混在({','.join(infer_question_types(question))})")
 
-    if not (review.expected_answer or "").strip():
-        reasons.append("expected_answer空")
+    raw_eval_mode = normalize_eval_mode(review.eval_mode)
+    if raw_eval_mode and raw_eval_mode not in VALID_EVAL_MODES:
+        reasons.append(f"eval_mode不正({review.eval_mode})")
 
-    if not (review.expected_evidence or "").strip():
-        reasons.append("expected_evidence空")
+    effective_eval_mode = (
+        raw_eval_mode
+        if raw_eval_mode in VALID_EVAL_MODES
+        else infer_eval_mode(
+            expected_answer=review.expected_answer,
+            expected_evidence=review.expected_evidence,
+            expected_keywords=review.expected_keywords,
+        )
+    )
+
+    if effective_eval_mode == "exact":
+        if not (review.expected_answer or "").strip():
+            reasons.append("expected_answer空")
+    elif effective_eval_mode == "evidence_keyword":
+        if not (review.expected_evidence or "").strip():
+            reasons.append("expected_evidence空")
+        if not (review.expected_keywords or "").strip():
+            reasons.append("expected_keywords空")
+    elif effective_eval_mode == "grounded_judge":
+        if not (review.expected_evidence or "").strip():
+            reasons.append("expected_evidence空")
+    else:
+        if not (review.expected_answer or "").strip():
+            reasons.append("expected_answer空")
+        if not (review.expected_evidence or "").strip():
+            reasons.append("expected_evidence空")
 
     severity = (review.severity or "").strip().upper()
     if severity not in VALID_SEVERITIES:
@@ -144,6 +285,14 @@ def review_case_to_formal_row(
     if severity not in VALID_SEVERITIES:
         severity = "S2"
 
+    eval_mode = normalize_eval_mode(review.eval_mode)
+    if not eval_mode:
+        eval_mode = infer_eval_mode(
+            expected_answer=review.expected_answer,
+            expected_evidence=review.expected_evidence,
+            expected_keywords=review.expected_keywords,
+        )
+
     if default_status is not None:
         status = default_status if default_status in VALID_STATUSES else "draft"
     else:
@@ -152,6 +301,9 @@ def review_case_to_formal_row(
     notes_parts: list[str] = []
     if review.notes:
         notes_parts.append(review.notes)
+    question_types = infer_question_types(review.question)
+    if len(set(question_types)) >= 2:
+        notes_parts.append(f"mixed_question:{','.join(question_types)}")
     notes_parts.append("source_doc未設定")
 
     default_score = "100" if severity == "S1" else "85"
@@ -161,9 +313,11 @@ def review_case_to_formal_row(
         "name": review.title.strip() if review.title else "",
         "status": status,
         "severity": severity,
+        "eval_mode": eval_mode,
         "question": review.question.strip() if review.question else "",
         "expected_answer": review.expected_answer.strip() if review.expected_answer else "",
         "expected_evidence": review.expected_evidence.strip() if review.expected_evidence else "",
+        "expected_keywords": review.expected_keywords.strip() if review.expected_keywords else "",
         "category": (review.category.strip() if review.category else "") or "general",
         "source_doc": "",
         "owner": default_owner,
@@ -179,8 +333,10 @@ def review_row_to_review_case(row: dict[str, str]) -> ReviewCase:
     return ReviewCase(
         title=_clean(row.get("title") or row.get("name") or ""),
         question=_clean(row.get("question") or ""),
+        eval_mode=_clean(row.get("eval_mode") or ""),
         expected_answer=_clean(row.get("expected_answer") or row.get("golden_answer") or ""),
         expected_evidence=_clean(row.get("expected_evidence") or row.get("expected_chunks") or ""),
+        expected_keywords=_clean(row.get("expected_keywords") or ""),
         severity=_clean(row.get("severity") or row.get("risk_level") or "S2"),
         category=_clean(row.get("category") or ""),
         notes=_clean(row.get("notes") or ""),
@@ -208,6 +364,9 @@ def normalize_legacy_row(row: dict[str, str]) -> dict[str, str]:
     # Ensure all formal fields exist
     for f in FORMAL_CASE_FIELDS:
         result.setdefault(f, "")
+
+    if result["eval_mode"]:
+        result["eval_mode"] = normalize_eval_mode(result["eval_mode"])
 
     # Fill defaults for new mandatory fields
     if not result["status"]:
@@ -240,34 +399,47 @@ class ValidationError:
     level: Literal["error", "warn"] = "error"
 
 
+def _required_field_level(status: str) -> Literal["error", "warn"]:
+    return "error" if status == "active" else "warn"
+
+
+def _append_required_field_error(
+    errors: list[ValidationError],
+    case_id: str,
+    *,
+    field: str,
+    status: str,
+    eval_mode: str,
+) -> None:
+    level = _required_field_level(status)
+    prefix = "active " if level == "error" else ""
+    errors.append(
+        ValidationError(case_id, field, f"{prefix}{eval_mode}ケースの{field}が空です", level)
+    )
+
+
 def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
     """Validate a formal case row dict. Returns empty list if valid."""
     errors: list[ValidationError] = []
     case_id = row.get("case_id", "").strip()
     cid = case_id or "(empty)"
+    status = row.get("status", "").strip()
+    raw_eval_mode = normalize_eval_mode(row.get("eval_mode", ""))
+    effective_eval_mode = (
+        raw_eval_mode
+        if raw_eval_mode in VALID_EVAL_MODES
+        else infer_eval_mode(
+            expected_answer=row.get("expected_answer", ""),
+            expected_evidence=row.get("expected_evidence", ""),
+            expected_keywords=row.get("expected_keywords", ""),
+        )
+    )
 
     # case_id non-empty
     if not case_id:
         errors.append(ValidationError(cid, "case_id", "case_idが空です"))
 
-    # question non-empty
-    if not row.get("question", "").strip():
-        errors.append(ValidationError(cid, "question", "questionが空です"))
-
-    # expected_answer non-empty (error for active, warn for draft/needs_review)
-    if not row.get("expected_answer", "").strip():
-        status_val = row.get("status", "").strip()
-        if status_val == "active":
-            errors.append(
-                ValidationError(cid, "expected_answer", "activeケースのexpected_answerが空です")
-            )
-        else:
-            errors.append(
-                ValidationError(cid, "expected_answer", "expected_answerが空です", "warn")
-            )
-
     # status in valid set
-    status = row.get("status", "").strip()
     if status and status not in VALID_STATUSES:
         errors.append(
             ValidationError(
@@ -288,6 +460,16 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
             )
         )
 
+    # eval_mode in valid set
+    if raw_eval_mode and raw_eval_mode not in VALID_EVAL_MODES:
+        errors.append(
+            ValidationError(
+                cid,
+                "eval_mode",
+                f"無効なeval_mode: '{raw_eval_mode}' (許容値: {', '.join(sorted(VALID_EVAL_MODES))})",
+            )
+        )
+
     # min_case_score numeric and in range
     score_str = row.get("min_case_score", "").strip()
     if score_str:
@@ -299,6 +481,17 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
                 )
         except ValueError:
             errors.append(ValidationError(cid, "min_case_score", f"数値でない値: '{score_str}'"))
+
+    # date format checks
+    for date_field in ("updated_at", "last_reviewed_at"):
+        val = row.get(date_field, "").strip()
+        if val and not _ISO_DATE_RE.match(val):
+            errors.append(
+                ValidationError(cid, date_field, f"日付形式が不正: '{val}' (YYYY-MM-DD 想定)")
+            )
+
+    if status == "deprecated":
+        return errors
 
     # expected_evidence format
     ev = row.get("expected_evidence", "").strip()
@@ -318,13 +511,48 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
                     )
                 )
 
-    # date format checks
-    for date_field in ("updated_at", "last_reviewed_at"):
-        val = row.get(date_field, "").strip()
-        if val and not _ISO_DATE_RE.match(val):
-            errors.append(
-                ValidationError(cid, date_field, f"日付形式が不正: '{val}' (YYYY-MM-DD 想定)")
+    # question non-empty
+    if not row.get("question", "").strip():
+        errors.append(ValidationError(cid, "question", "questionが空です"))
+
+    if effective_eval_mode == "exact":
+        if not row.get("expected_answer", "").strip():
+            _append_required_field_error(
+                errors,
+                cid,
+                field="expected_answer",
+                status=status,
+                eval_mode="exact",
             )
+    elif effective_eval_mode == "evidence_keyword":
+        if not row.get("expected_evidence", "").strip():
+            _append_required_field_error(
+                errors,
+                cid,
+                field="expected_evidence",
+                status=status,
+                eval_mode="evidence_keyword",
+            )
+        if not row.get("expected_keywords", "").strip():
+            _append_required_field_error(
+                errors,
+                cid,
+                field="expected_keywords",
+                status=status,
+                eval_mode="evidence_keyword",
+            )
+    elif effective_eval_mode == "grounded_judge":
+        if not row.get("expected_evidence", "").strip():
+            _append_required_field_error(
+                errors,
+                cid,
+                field="expected_evidence",
+                status=status,
+                eval_mode="grounded_judge",
+            )
+    elif not row.get("expected_answer", "").strip():
+        level = _required_field_level(status)
+        errors.append(ValidationError(cid, "expected_answer", "expected_answerが空です", level))
 
     return errors
 

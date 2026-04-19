@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from rqg.domain import EvalCase
 
+from .case_schema import infer_eval_mode, normalize_eval_mode
 from .models import QATestCase
 
 
@@ -27,11 +28,29 @@ def _as_list(value: object) -> list[str]:
     return []
 
 
+def normalize_case_status(value: object) -> str:
+    if value is None:
+        return "active"
+    status = str(value).strip().lower()
+    return status or "active"
+
+
+def filter_cases_by_status(
+    cases: list[QATestCase], *, allowed_statuses: set[str] | None = None
+) -> list[QATestCase]:
+    """Return only cases whose normalized status is in allowed_statuses."""
+    if allowed_statuses is None:
+        allowed = {"active"}
+    else:
+        allowed = {normalize_case_status(status) for status in allowed_statuses}
+    return [case for case in cases if normalize_case_status(case.status) in allowed]
+
+
 def eval_case_to_qa_test_case(
     eval_case: EvalCase,
     *,
     name: str | None = None,
-    category: str = "general",
+    category: str | None = None,
     owner: str = "",
     min_case_score: float = 0.0,
     last_reviewed_at: str = "",
@@ -42,10 +61,11 @@ def eval_case_to_qa_test_case(
         name=name or eval_case.case_id,
         question=eval_case.question,
         severity=eval_case.risk_level,
+        eval_mode="evidence_keyword",
         expected_keywords=list(eval_case.expected_keywords),
         expected_evidence=list(eval_case.expected_evidence),
         expected_answer="",
-        category=category,
+        category=category or eval_case.category,
         owner=owner,
         min_case_score=min_case_score,
         last_reviewed_at=last_reviewed_at,
@@ -66,6 +86,7 @@ def qa_test_case_to_eval_case(
         expected_keywords=list(case.expected_keywords),
         risk_level=case.severity if case.severity in {"S1", "S2"} else "S2",
         doc_snapshot_id=doc_snapshot_id,
+        category=case.category or "general",
         notes=notes or case.notes or None,
     )
 
@@ -93,6 +114,20 @@ def _load_cases_from_json(path: Path) -> list[QATestCase]:
                 raise ValueError(f"Invalid JSON case entry at index {idx}")
 
             severity = str(item.get("severity") or item.get("risk_level") or "S2").strip().upper()
+            expected_keywords = _as_list(item.get("expected_keywords"))
+            expected_evidence = _as_list(
+                item.get("expected_evidence")
+                if "expected_evidence" in item
+                else item.get("expected_chunks")
+            )
+            expected_answer = str(item.get("expected_answer") or item.get("golden_answer") or "")
+            eval_mode = normalize_eval_mode(item.get("eval_mode"))
+            if not eval_mode:
+                eval_mode = infer_eval_mode(
+                    expected_answer=expected_answer,
+                    expected_evidence=expected_evidence,
+                    expected_keywords=expected_keywords,
+                )
             raw_min_case_score = item.get("min_case_score") or item.get("min_pass_rate") or 0.0
             try:
                 min_case_score = float(raw_min_case_score) if raw_min_case_score else 0.0
@@ -104,13 +139,10 @@ def _load_cases_from_json(path: Path) -> list[QATestCase]:
                 name=str(item.get("name") or case_id),
                 question=question,
                 severity=severity,
-                expected_keywords=_as_list(item.get("expected_keywords")),
-                expected_evidence=_as_list(
-                    item.get("expected_evidence")
-                    if "expected_evidence" in item
-                    else item.get("expected_chunks")
-                ),
-                expected_answer=str(item.get("expected_answer") or item.get("golden_answer") or ""),
+                eval_mode=eval_mode,
+                expected_keywords=expected_keywords,
+                expected_evidence=expected_evidence,
+                expected_answer=expected_answer,
                 category=str(item.get("category", "general")),
                 owner=str(item.get("owner", "")),
                 min_case_score=min_case_score,
@@ -155,6 +187,7 @@ def load_eval_cases(
                     expected_keywords=expected_keywords,
                     risk_level=risk_level,
                     doc_snapshot_id=doc_snapshot_id,
+                    category=(row.get("category") or "general").strip() or "general",
                     notes=row.get("notes") or None,
                 )
             )
@@ -165,9 +198,10 @@ def load_cases(file_path: str) -> list[QATestCase]:
     """CSV/JSON ファイルから QATestCase のリストを読み込む。
 
     CSV カラム（必須: case_id, name, question。他はオプション）:
-        case_id, name, severity, question, expected_chunks,
-        expected_keywords, golden_answer, category, owner, min_pass_rate,
-        last_reviewed_at
+        case_id, name, status, severity, eval_mode, question,
+        expected_evidence/expected_chunks, expected_keywords,
+        expected_answer/golden_answer, category, source_doc, owner,
+        min_case_score/min_pass_rate, updated_at, last_reviewed_at, notes
     """
     path = Path(file_path)
     if not path.exists():
@@ -185,6 +219,14 @@ def load_cases(file_path: str) -> list[QATestCase]:
             expected_ev = _split_semicolon_list(
                 row.get("expected_evidence", "") or row.get("expected_chunks", "")
             )
+            expected_answer = row.get("expected_answer", "") or row.get("golden_answer", "")
+            eval_mode = normalize_eval_mode(row.get("eval_mode", ""))
+            if not eval_mode:
+                eval_mode = infer_eval_mode(
+                    expected_answer=expected_answer,
+                    expected_evidence=expected_ev,
+                    expected_keywords=expected_kw,
+                )
             min_cs = 0.0
             raw_score = row.get("min_case_score") or row.get("min_pass_rate") or ""
             if raw_score:
@@ -199,9 +241,10 @@ def load_cases(file_path: str) -> list[QATestCase]:
                 question=row.get("question", ""),
                 severity=row.get("severity", "S2").strip().upper(),
                 status=row.get("status", "active").strip() or "active",
+                eval_mode=eval_mode,
                 expected_keywords=expected_kw,
                 expected_evidence=expected_ev,
-                expected_answer=(row.get("expected_answer", "") or row.get("golden_answer", "")),
+                expected_answer=expected_answer,
                 category=row.get("category", "general"),
                 source_doc=row.get("source_doc", ""),
                 owner=row.get("owner", ""),

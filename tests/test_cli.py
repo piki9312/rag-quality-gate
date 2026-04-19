@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from rqg.cli import main
+from rqg.quality.models import QATestCase
 
 
 class TestCLIHelp:
@@ -389,6 +390,60 @@ class TestPhase1CLI:
         assert not (log_dir / "gate-decisions.jsonl").exists()
         assert (log_dir / "keep.txt").exists()
 
+    def test_eval_runs_only_active_cases(self):
+        fake_run = SimpleNamespace(
+            run_id="run-active-only",
+            total=1,
+            passed=1,
+            failed=0,
+            pass_rate=100.0,
+            results=[],
+        )
+        active_case = QATestCase(
+            case_id="active_001",
+            name="active case",
+            question="Q?",
+            status="active",
+            severity="S1",
+            expected_answer="A",
+        )
+        draft_case = QATestCase(
+            case_id="draft_001",
+            name="draft case",
+            question="Q?",
+            status="draft",
+            severity="S2",
+            expected_answer="A",
+        )
+        deprecated_case = QATestCase(
+            case_id="deprecated_001",
+            name="deprecated case",
+            question="Q?",
+            status="deprecated",
+            severity="S2",
+            expected_answer="A",
+        )
+
+        with patch(
+            "rqg.quality.loader.load_cases",
+            return_value=[active_case, draft_case, deprecated_case],
+        ):
+            with patch("rqg.serving.rag.RAGStore") as store_cls:
+                store_cls.return_value.index = object()
+                with patch("rqg.quality.runner.RAGQualityRunner") as runner_cls:
+                    runner_cls.return_value.run_all.return_value = fake_run
+                    runner_cls.save_jsonl.return_value = (
+                        Path("tests/.tmp") / f"{uuid.uuid4()}-active-only.jsonl"
+                    )
+
+                    exit_code = main(["eval", "packs/hr/cases.csv", "--mock"])
+
+        assert exit_code == 0
+        run_cases = runner_cls.return_value.run_all.call_args.args[0]
+        saved_cases = runner_cls.save_jsonl.call_args.args[1]
+        assert [case.case_id for case in run_cases] == ["active_001"]
+        assert [case.case_id for case in saved_cases] == ["active_001"]
+
     def test_init_pack_list_profiles(self, capsys):
         exit_code = main(["init-pack", "--list-profiles"])
 
@@ -646,8 +701,10 @@ class TestPhase1CLI:
 
         assert len(rows) == 1
         row = rows[0]
+        assert row["eval_mode"] == "evidence_keyword"
         assert row["severity"] == "S2"
         assert row["expected_evidence"].endswith("#sec-1")
+        assert row["expected_keywords"]
 
     def test_merge_cases_writes_merged_csv_and_report(self):
         base_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-base.csv"
@@ -936,3 +993,59 @@ class TestMergeCasesValidation:
         )
         assert rc == 0
         assert output_path.exists()
+
+
+def test_merge_cases_skips_high_priority_mixed_review_rows(capsys):
+    base_path = Path("tests/.tmp") / f"{uuid.uuid4()}-base.csv"
+    review_path = Path("tests/.tmp") / f"{uuid.uuid4()}-review.csv"
+    output_path = Path("tests/.tmp") / f"{uuid.uuid4()}-out.csv"
+
+    with open(base_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["case_id", "question", "expected_answer", "status"])
+        writer.writeheader()
+        writer.writerow({"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"})
+
+    with open(review_path, "w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["title", "question", "expected_evidence", "expected_keywords", "notes"],
+        )
+        writer.writeheader()
+        writer.writerows(
+            [
+                {
+                    "title": "expense_001",
+                    "question": "締め日と提出方法はいつまでに対応する必要がありますか？",
+                    "expected_evidence": "packs/hr/documents/経費精算ガイドライン.md#sec-1-1",
+                    "expected_keywords": "締め日;提出方法",
+                    "notes": "mixed_question:deadline,procedure; manual_review_priority:high",
+                },
+                {
+                    "title": "expense_002",
+                    "question": "締め日はいつですか？",
+                    "expected_evidence": "packs/hr/documents/経費精算ガイドライン.md#sec-1-1",
+                    "expected_keywords": "締め日;25日",
+                    "notes": "split_candidate_from:締め日と提出方法はいつまでに対応する必要がありますか; manual_review_priority:medium",
+                },
+            ]
+        )
+
+    rc = main(
+        [
+            "merge-cases",
+            "--cases",
+            str(base_path),
+            "--review",
+            str(review_path),
+            "--output",
+            str(output_path),
+            "--no-validate",
+        ]
+    )
+
+    assert rc == 0
+    rows = list(csv.DictReader(output_path.open("r", encoding="utf-8", newline="")))
+    assert [row["case_id"] for row in rows] == ["base_001", "expense_002"]
+    out = capsys.readouterr().out
+    assert "Skipped high-priority mixed review cases: 1" in out
+    assert "expense_001" in out

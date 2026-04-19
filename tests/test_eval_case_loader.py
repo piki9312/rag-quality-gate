@@ -24,6 +24,7 @@ def eval_cases_csv(tmp_path):
         "expected_evidence",
         "expected_chunks",
         "expected_keywords",
+        "category",
         "doc_snapshot_id",
         "notes",
     ]
@@ -36,6 +37,7 @@ def eval_cases_csv(tmp_path):
             "expected_evidence": "chunk_A;chunk_B",
             "expected_chunks": "",
             "expected_keywords": "leave;policy",
+            "category": "policy",
             "doc_snapshot_id": "snapshot-001",
             "notes": "critical",
         },
@@ -47,6 +49,7 @@ def eval_cases_csv(tmp_path):
             "expected_evidence": "",
             "expected_chunks": "chunk_C",
             "expected_keywords": "reimbursement",
+            "category": "procedure",
             "doc_snapshot_id": "",
             "notes": "",
         },
@@ -64,7 +67,9 @@ def test_load_eval_cases_reads_existing_csv_shape(eval_cases_csv):
     assert len(cases) == 2
     assert cases[0].risk_level == "S1"
     assert cases[0].expected_evidence == ["chunk_A", "chunk_B"]
+    assert cases[0].category == "policy"
     assert cases[1].risk_level == "S2"
+    assert cases[1].category == "procedure"
     assert cases[1].doc_snapshot_id == "unlinked-snapshot"
 
 
@@ -106,6 +111,7 @@ def test_eval_case_to_qa_test_case_maps_fields():
         expected_keywords=["leave"],
         risk_level="S1",
         doc_snapshot_id="snapshot-001",
+        category="policy",
     )
 
     qa_case = eval_case_to_qa_test_case(eval_case, name="Leave policy")
@@ -113,6 +119,7 @@ def test_eval_case_to_qa_test_case_maps_fields():
     assert qa_case.case_id == "EC001"
     assert qa_case.severity == "S1"
     assert qa_case.expected_evidence == ["chunk_A"]
+    assert qa_case.category == "policy"
 
 
 def test_qa_test_case_to_eval_case_maps_fields():
@@ -123,6 +130,7 @@ def test_qa_test_case_to_eval_case_maps_fields():
         severity="S2",
         expected_keywords=["leave"],
         expected_evidence=["chunk_A"],
+        category="procedure",
     )
 
     eval_case = qa_test_case_to_eval_case(qa_case, doc_snapshot_id="snapshot-002")
@@ -130,3 +138,4 @@ def test_qa_test_case_to_eval_case_maps_fields():
     assert eval_case.case_id == "QA001"
     assert eval_case.risk_level == "S2"
     assert eval_case.expected_evidence == ["chunk_A"]
+    assert eval_case.category == "procedure"

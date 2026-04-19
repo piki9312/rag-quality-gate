@@ -18,9 +18,10 @@ class QATestCase:
     """1件の品質テストケース。CSV から読み込む。
 
     正式スキーマ (cases.csv):
-        case_id, name, status, severity, question, expected_answer,
-        expected_evidence, category, source_doc, owner, min_case_score,
-        updated_at, last_reviewed_at, notes
+        case_id, name, status, severity, eval_mode, question,
+        expected_answer, expected_evidence, expected_keywords,
+        category, source_doc, owner, min_case_score, updated_at,
+        last_reviewed_at, notes
 
     旧項目との対応:
         golden_answer   -> expected_answer
@@ -33,6 +34,7 @@ class QATestCase:
     question: str
     severity: str = "S2"  # S1 | S2
     status: str = "active"  # draft | active | needs_review | deprecated
+    eval_mode: str = ""  # exact | evidence_keyword | grounded_judge
     expected_answer: str = ""
     expected_evidence: list[str] = field(default_factory=list)
     expected_keywords: list[str] = field(default_factory=list)
@@ -87,7 +89,9 @@ class EvalResult:
     answer_match: bool | None = None  # expected_keywords の閾値判定を満たしたか
     evidence_match: bool | None = None  # 互換キー: expected_chunks が検索結果に含まれたか
     retrieval_hit: bool | None = None  # expected chunk が top-k に含まれたか
+    evidence_recall: float | None = None  # 0.0〜1.0
     faithfulness_score: float | None = None  # 0.0〜1.0
+    judge_relevance: float | None = None  # 0.0〜1.0
     judge_fallback_used: bool = False
     judge_fallback_reason: str | None = None
 
@@ -143,7 +147,9 @@ class QARunRecord(BaseModel):
     retrieval_hit: bool | None = Field(None)
     answer_match: bool | None = Field(None)
     evidence_match: bool | None = Field(None)
+    evidence_recall: float | None = Field(None)
     faithfulness_score: float | None = Field(None)
+    judge_relevance: float | None = Field(None)
     judge_fallback_used: bool | None = Field(None)
     judge_fallback_reason: str | None = Field(None)
 
@@ -186,7 +192,9 @@ class QARunRecord(BaseModel):
             retrieval_hit=result.retrieval_hit,
             answer_match=answer_match,
             evidence_match=evidence_match,
+            evidence_recall=result.evidence_recall,
             faithfulness_score=result.faithfulness_score,
+            judge_relevance=result.judge_relevance,
             judge_fallback_used=result.judge_fallback_used or None,
             judge_fallback_reason=result.judge_fallback_reason,
         )

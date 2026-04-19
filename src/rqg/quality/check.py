@@ -16,6 +16,25 @@ from .models import QARunRecord
 
 logger = logging.getLogger(__name__)
 
+VALID_AGGREGATION_POLICIES = {"latest_run", "window"}
+
+
+def normalize_aggregation_policy(value: object) -> str:
+    """Normalize gate aggregation policy names."""
+    if value is None:
+        return "latest_run"
+
+    normalized = str(value).strip().lower().replace("-", "_")
+    if normalized == "":
+        return "latest_run"
+    if normalized in {"latest", "latest_run"}:
+        return "latest_run"
+    if normalized == "window":
+        return "window"
+
+    allowed = ", ".join(sorted(VALID_AGGREGATION_POLICIES))
+    raise ValueError(f"Invalid aggregation_policy '{value}' (allowed: {allowed})")
+
 # ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
@@ -29,6 +48,7 @@ class GateConfig:
     overall_pass_rate: float = 80.0
     retrieval_precision_threshold: float = 0.0  # 0 = チェックしない
     min_faithfulness: float = 0.0  # 0 = チェックしない (例: 70.0 = 70%以上)
+    min_evidence_recall: float = 0.0  # 0 = チェックしない (例: 90.0 = 90%以上)
     max_latency_p95_ms: float = 0.0  # 0 = チェックしない
     max_cost_per_query_usd: float = 0.0
     max_overall_drop_pct: float = 0.0
@@ -40,6 +60,8 @@ class GateConfig:
     # reports and gate-decision.json so operators notice degradation early.
     s1_pass_rate_warn: float = 0.0
     overall_pass_rate_warn: float = 0.0
+    judge_relevance_warn: float = 0.0  # 0 = 警告しない
+    aggregation_policy: str = "latest_run"  # latest_run | window
 
     @classmethod
     def from_yaml(cls, path: str) -> GateConfig:
@@ -53,12 +75,15 @@ class GateConfig:
             overall_pass_rate=th.get("overall_pass_rate", 80.0),
             retrieval_precision_threshold=th.get("retrieval_precision", 0.0),
             min_faithfulness=th.get("min_faithfulness", 0.0),
+            min_evidence_recall=th.get("min_evidence_recall", 0.0),
             max_latency_p95_ms=th.get("max_latency_p95_ms", 0.0),
             max_cost_per_query_usd=th.get("max_cost_per_query_usd", 0.0),
             max_overall_drop_pct=th.get("max_overall_drop_pct", 0.0),
             max_s1_drop_pct=th.get("max_s1_drop_pct", 0.0),
             s1_pass_rate_warn=th.get("s1_pass_rate_warn", 0.0),
             overall_pass_rate_warn=th.get("overall_pass_rate_warn", 0.0),
+            judge_relevance_warn=th.get("judge_relevance_warn", 0.0),
+            aggregation_policy=normalize_aggregation_policy(th.get("aggregation_policy")),
         )
 
 
@@ -126,6 +151,7 @@ class CheckResult:
     s1_rate: float
     s1_passed: int
     s1_total: int
+    aggregation_policy: str = "latest_run"
     baseline_overall_rate: float | None = None
     baseline_s1_rate: float | None = None
     overall_drop: float | None = None
@@ -134,6 +160,12 @@ class CheckResult:
     case_thresholds: list[ThresholdResult] = field(default_factory=list)
     failure_categories: dict[str, int] = field(default_factory=dict)
     failure_case_ids: dict[str, list[str]] = field(default_factory=dict)
+    avg_faithfulness: float | None = None
+    faithfulness_scored: int = 0
+    avg_judge_relevance: float | None = None
+    judge_relevance_scored: int = 0
+    avg_evidence_recall: float | None = None
+    evidence_recall_scored: int = 0
 
     @property
     def gate_passed(self) -> bool:
@@ -197,6 +229,36 @@ def load_records(
     return records
 
 
+def _average_metric(records: list[QARunRecord], field_name: str) -> tuple[float | None, int]:
+    values = [value for record in records if (value := getattr(record, field_name, None)) is not None]
+    if not values:
+        return None, 0
+    return sum(values) / len(values) * 100, len(values)
+
+
+def _group_records_by_run(records: list[QARunRecord]) -> dict[str, list[QARunRecord]]:
+    grouped: dict[str, list[QARunRecord]] = {}
+    for record in records:
+        grouped.setdefault(record.run_id, []).append(record)
+    return grouped
+
+
+def _select_records_by_policy(
+    records: list[QARunRecord],
+    aggregation_policy: str,
+) -> list[QARunRecord]:
+    if aggregation_policy == "window" or not records:
+        return records
+
+    grouped = _group_records_by_run(records)
+    latest_run_id, latest_records = max(
+        grouped.items(),
+        key=lambda item: (max(record.timestamp for record in item[1]), item[0]),
+    )
+    logger.debug("selected latest run for gate aggregation: %s (%d records)", latest_run_id, len(latest_records))
+    return latest_records
+
+
 # ------------------------------------------------------------------
 # Gate logic
 # ------------------------------------------------------------------
@@ -230,6 +292,20 @@ def run_check(
             baseline_since = now - timedelta(days=baseline_days) if baseline_days else None
             baseline = load_records(baseline_dir or log_dir, since=baseline_since)
 
+    active_cases = None
+    if cases_file:
+        from .loader import filter_cases_by_status, load_cases
+
+        loaded_cases = load_cases(cases_file)
+        active_cases = filter_cases_by_status(loaded_cases, allowed_statuses={"active"})
+        active_case_ids = {case.case_id for case in active_cases}
+        current = [record for record in current if record.case_id in active_case_ids]
+        baseline = [record for record in baseline if record.case_id in active_case_ids]
+
+    aggregation_policy = normalize_aggregation_policy(config.aggregation_policy)
+    current = _select_records_by_policy(current, aggregation_policy)
+    baseline = _select_records_by_policy(baseline, aggregation_policy)
+
     baseline_overall_rate: float | None = None
     baseline_s1_rate: float | None = None
     if baseline:
@@ -246,6 +322,7 @@ def run_check(
     if not current:
         return CheckResult(
             run_id="check-no-data",
+            aggregation_policy=aggregation_policy,
             current_runs=0,
             baseline_runs=len(baseline),
             overall_rate=0.0,
@@ -275,6 +352,9 @@ def run_check(
     s1_passed = sum(1 for r in s1 if r.passed)
     s1_total = len(s1)
     s1_rate = (s1_passed / s1_total * 100) if s1_total else 100.0
+    avg_faithfulness, faithfulness_scored = _average_metric(current, "faithfulness_score")
+    avg_judge_relevance, judge_relevance_scored = _average_metric(current, "judge_relevance")
+    avg_evidence_recall, evidence_recall_scored = _average_metric(current, "evidence_recall")
 
     # Threshold checks
     checks: list[ThresholdResult] = []
@@ -326,15 +406,42 @@ def run_check(
 
     # Faithfulness (optional)
     if config.min_faithfulness > 0:
-        faith_scores = [r.faithfulness_score for r in current if r.faithfulness_score is not None]
-        avg_faith = (sum(faith_scores) / len(faith_scores) * 100) if faith_scores else 0.0
+        avg_faith = avg_faithfulness if avg_faithfulness is not None else 0.0
         checks.append(
             ThresholdResult(
                 name="Avg faithfulness",
                 threshold=config.min_faithfulness,
                 actual=avg_faith,
                 passed=avg_faith >= config.min_faithfulness,
-                detail=f"{len(faith_scores)} scored",
+                detail=f"{faithfulness_scored} scored",
+            )
+        )
+
+    # Evidence recall (optional)
+    if config.min_evidence_recall > 0:
+        avg_recall = avg_evidence_recall if avg_evidence_recall is not None else 0.0
+        checks.append(
+            ThresholdResult(
+                name="Avg evidence recall",
+                threshold=config.min_evidence_recall,
+                actual=avg_recall,
+                passed=avg_recall >= config.min_evidence_recall,
+                detail=f"{evidence_recall_scored} scored",
+            )
+        )
+
+    # Judge relevance (warn only)
+    if config.judge_relevance_warn > 0:
+        avg_relevance = avg_judge_relevance if avg_judge_relevance is not None else 0.0
+        checks.append(
+            ThresholdResult(
+                name="Avg judge relevance",
+                threshold=config.judge_relevance_warn,
+                actual=avg_relevance,
+                passed=True,
+                detail=f"{judge_relevance_scored} scored",
+                warn_threshold=config.judge_relevance_warn,
+                warned=avg_relevance < config.judge_relevance_warn,
             )
         )
 
@@ -387,12 +494,9 @@ def run_check(
 
     # Per-case min_pass_rate (from CSV)
     case_checks: list[ThresholdResult] = []
-    if cases_file:
-        from .loader import load_cases
-
-        cases = load_cases(cases_file)
+    if active_cases is not None:
         case_rates = case_pass_rates(current)
-        for c in cases:
+        for c in active_cases:
             if c.min_pass_rate > 0:
                 actual = case_rates.get(c.case_id, 0.0) * 100
                 case_checks.append(
@@ -407,6 +511,7 @@ def run_check(
 
     return CheckResult(
         run_id=latest_record.run_id,
+        aggregation_policy=aggregation_policy,
         current_runs=total,
         baseline_runs=len(baseline),
         overall_rate=overall_rate,
@@ -421,6 +526,12 @@ def run_check(
         case_thresholds=case_checks,
         failure_categories=failure_category_breakdown(current),
         failure_case_ids=failure_category_case_ids(current),
+        avg_faithfulness=avg_faithfulness,
+        faithfulness_scored=faithfulness_scored,
+        avg_judge_relevance=avg_judge_relevance,
+        judge_relevance_scored=judge_relevance_scored,
+        avg_evidence_recall=avg_evidence_recall,
+        evidence_recall_scored=evidence_recall_scored,
     )
 
 
@@ -496,6 +607,15 @@ def build_gate_decision(
         "current_runs": float(result.current_runs),
         "baseline_runs": float(result.baseline_runs),
     }
+    if result.avg_faithfulness is not None:
+        metrics["avg_faithfulness"] = result.avg_faithfulness
+    metrics["faithfulness_scored_runs"] = float(result.faithfulness_scored)
+    if result.avg_judge_relevance is not None:
+        metrics["avg_judge_relevance"] = result.avg_judge_relevance
+    metrics["judge_relevance_scored_runs"] = float(result.judge_relevance_scored)
+    if result.avg_evidence_recall is not None:
+        metrics["avg_evidence_recall"] = result.avg_evidence_recall
+    metrics["evidence_recall_scored_runs"] = float(result.evidence_recall_scored)
     if result.baseline_overall_rate is not None:
         metrics["baseline_overall_pass_rate"] = result.baseline_overall_rate
     if result.baseline_s1_rate is not None:
@@ -530,6 +650,7 @@ def render_gate_markdown(
     """Render a gate check result as Markdown."""
     status = result.gate_status.upper()
     lines = [f"## RAG Quality Gate: {status}\n"]
+    lines.append(f"- Aggregation Policy: {result.aggregation_policy}")
 
     lines.append("| Metric | Actual | Threshold | Status |")
     lines.append("|--------|--------|-----------|--------|")
@@ -541,6 +662,25 @@ def render_gate_markdown(
         else:
             icon = "OK"
         lines.append(f"| {t.name} | {t.actual:.1f}% | {t.threshold:.1f}% | {icon} |")
+
+    observed_metrics: list[tuple[str, float, int]] = []
+    if result.avg_faithfulness is not None:
+        observed_metrics.append(("Avg faithfulness", result.avg_faithfulness, result.faithfulness_scored))
+    if result.avg_judge_relevance is not None:
+        observed_metrics.append(
+            ("Avg judge relevance", result.avg_judge_relevance, result.judge_relevance_scored)
+        )
+    if result.avg_evidence_recall is not None:
+        observed_metrics.append(
+            ("Avg evidence recall", result.avg_evidence_recall, result.evidence_recall_scored)
+        )
+
+    if observed_metrics:
+        lines.append("\n### Observed Metrics")
+        lines.append("| Metric | Average | Scored Runs |")
+        lines.append("|--------|---------|-------------|")
+        for name, actual, scored in observed_metrics:
+            lines.append(f"| {name} | {actual:.1f}% | {scored} |")
 
     if result.case_thresholds:
         failed = [t for t in result.case_thresholds if not t.passed]
