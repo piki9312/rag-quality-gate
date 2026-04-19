@@ -64,10 +64,13 @@ class TestRetrievalHit:
         assert retrieval_hit(["chunk_A", "chunk_B"], ["chunk_X", "chunk_A"]) is True
 
     def test_matches_section_evidence_against_retrieved_chunk_alias(self):
-        assert retrieval_hit(
-            ["leave_policy.md@abc123#chunk0"],
-            ["docs/leave_policy.md#sec-1"],
-        ) is True
+        assert (
+            retrieval_hit(
+                ["leave_policy.md@abc123#chunk0"],
+                ["docs/leave_policy.md#sec-1"],
+            )
+            is True
+        )
 
 
 # ==================================================================
@@ -89,10 +92,13 @@ class TestRetrievalPrecision:
         assert retrieval_precision_at_k(["a"], []) == 1.0
 
     def test_counts_alias_match_for_section_evidence(self):
-        assert retrieval_precision_at_k(
-            ["leave_policy.md@abc123#chunk0"],
-            ["docs/leave_policy.md#sec-1"],
-        ) == 1.0
+        assert (
+            retrieval_precision_at_k(
+                ["leave_policy.md@abc123#chunk0"],
+                ["docs/leave_policy.md#sec-1"],
+            )
+            == 1.0
+        )
 
 
 # ==================================================================
