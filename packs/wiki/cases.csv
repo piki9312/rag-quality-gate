@@ -1,5 +1,5 @@
-case_id,name,status,severity,question,expected_answer,expected_evidence,category,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes
-WIKI001,VPN exception deadline,active,S1,When should temporary VPN exception access be requested?,,,deadline,,it-helpdesk,100,2026-04-13,2026-03-30,
-WIKI002,VPN exception request method,active,S2,How should employees submit a temporary VPN exception request?,,,procedure,,it-helpdesk,85,2026-04-13,2026-03-30,
-WIKI003,Security incident escalation,active,S1,Who must be contacted first for a P1 security incident?,,,compliance,,security-team,100,2026-04-13,2026-03-30,
-WIKI004,Knowledge update cadence,active,S2,How often must internal wiki runbooks be reviewed?,,,policy,,knowledge-team,85,2026-04-13,2026-03-30,
+case_id,name,status,severity,eval_mode,question,expected_answer,expected_evidence,expected_keywords,category,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes
+WIKI001,VPN exception deadline,active,S1,grounded_judge,When should temporary VPN exception access be requested?,,access_faq.md@dac58ceb2837bf8e#chunk0,VPN;exception;2 business days,deadline,access_faq.md,it-helpdesk,100,2026-04-13,2026-03-30,
+WIKI002,VPN exception request method,active,S2,evidence_keyword,How should employees submit a temporary VPN exception request?,,access_faq.md@dac58ceb2837bf8e#chunk0,IT service portal|service portal;business reason;manager approval,procedure,access_faq.md,it-helpdesk,85,2026-04-13,2026-03-30,
+WIKI003,Security incident escalation,active,S1,evidence_keyword,Who must be contacted first for a P1 security incident?,,security_runbook.md@a235a5c44e92fa85#chunk0,security on-call;15 minutes;incident commander|CISO delegate,escalation,security_runbook.md,security-team,100,2026-04-19,2026-03-30,
+WIKI004,Knowledge update cadence,active,S2,evidence_keyword,How often must internal wiki runbooks be reviewed?,,security_runbook.md@a235a5c44e92fa85#chunk0,weekly;runbooks review|weekly runbooks review;weekly review cycle|weekly review,policy,security_runbook.md,knowledge-team,85,2026-04-13,2026-03-30,

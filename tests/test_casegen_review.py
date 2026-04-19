@@ -16,6 +16,7 @@ def _sample_case() -> EvalCase:
         expected_keywords=["年次有給休暇", "申請"],
         risk_level="S2",
         doc_snapshot_id="snapshot-001",
+        category="policy",
         notes="auto-generated from section 1",
     )
 
@@ -24,11 +25,44 @@ def test_render_cases_markdown_contains_review_columns():
     markdown = render_cases_markdown([_sample_case()])
 
     assert "# Eval Case Review" in markdown
+    assert "## Summary" in markdown
     assert "## Case: doc_001" in markdown
     assert "- Expected Evidence:" in markdown
     assert "- Expected Keywords:" in markdown
     assert "- Risk Level: S2" in markdown
     assert "- Document Snapshot: snapshot-001" in markdown
+
+
+def test_render_cases_markdown_summarizes_mixed_and_manual_review_priority():
+    mixed_case = EvalCase(
+        case_id="doc_mixed",
+        question="締め日と提出方法はいつまでに対応する必要がありますか？",
+        expected_evidence=["docs/hr.md#sec-1"],
+        expected_keywords=["締め日", "提出方法"],
+        risk_level="S1",
+        doc_snapshot_id="snapshot-003",
+        category="general",
+        notes="auto-generated from section 1; mixed_question:deadline,procedure; manual_review_priority:high",
+    )
+    split_case = EvalCase(
+        case_id="doc_split",
+        question="締め日はいつまでに対応する必要がありますか？",
+        expected_evidence=["docs/hr.md#sec-1"],
+        expected_keywords=["締め日"],
+        risk_level="S2",
+        doc_snapshot_id="snapshot-003",
+        category="deadline",
+        notes="auto-generated split candidate from section 1; split_candidate_from:締め日と提出方法はいつまでに対応する必要がありますか; manual_review_priority:medium",
+    )
+
+    markdown = render_cases_markdown([mixed_case, split_case])
+
+    assert "- Mixed-question cases: 1" in markdown
+    assert "- Split-candidate cases: 1" in markdown
+    assert "## Manual Review Priority" in markdown
+    mixed_index = markdown.index("doc_mixed")
+    split_index = markdown.index("doc_split")
+    assert mixed_index < split_index
 
 
 def test_render_cases_markdown_handles_empty_expected_keywords():
@@ -81,7 +115,9 @@ def test_write_review_output_csv_file_includes_lightweight_columns():
     assert reader.fieldnames is not None
     assert "title" in reader.fieldnames
     assert "question" in reader.fieldnames
+    assert "eval_mode" in reader.fieldnames
     assert "expected_evidence" in reader.fieldnames
+    assert "expected_keywords" in reader.fieldnames
     assert "severity" in reader.fieldnames
     assert "notes" in reader.fieldnames
     # Lightweight schema should NOT include formal-only fields
@@ -92,8 +128,11 @@ def test_write_review_output_csv_file_includes_lightweight_columns():
     assert len(rows) == 1
     row = rows[0]
     assert row["title"] == "doc_001"
+    assert row["eval_mode"] == "evidence_keyword"
     assert row["severity"] == "S2"
     assert row["expected_evidence"] == "docs/hr.md#sec-1"
+    assert row["expected_keywords"] == "年次有給休暇;申請"
+    assert row["category"] == "policy"
     assert row["notes"] == "auto-generated from section 1"
 
 
