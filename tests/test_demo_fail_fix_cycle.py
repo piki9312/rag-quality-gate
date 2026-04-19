@@ -77,9 +77,7 @@ def _make_cli_side_effect(tmp_path, phase_statuses):
                 log_path = Path(log_dir)
                 log_path.mkdir(parents=True, exist_ok=True)
                 decision = {"status": phase_statuses[idx]}
-                (log_path / "gate-decision.json").write_text(
-                    json.dumps(decision), encoding="utf-8"
-                )
+                (log_path / "gate-decision.json").write_text(json.dumps(decision), encoding="utf-8")
                 (log_path / "gate-report.md").write_text("# Report", encoding="utf-8")
             return 0 if phase_statuses[idx] == "pass" else 1
         return 0
@@ -102,4 +100,3 @@ def test_run_demo_smoke(tmp_path):
 
     summary_path = tmp_path / "summary.json"
     assert summary_path.exists(), "Summary JSON should be written"
-

@@ -16,6 +16,8 @@ from typing import Any
 
 from openai import APIError
 
+from ..locales import detect_locale, is_english_text
+from ..locales import ja as ja_locale
 from ..serving.llm_client import generate_answer
 from ..serving.rag import RAGStore
 from .case_schema import normalize_eval_mode
@@ -44,38 +46,15 @@ S1_KEYWORD_THRESHOLD = 0.8  # S1: 80% 以上のキーワード一致必須
 S2_KEYWORD_THRESHOLD = 0.5  # S2: 50% で OK
 GROUNDED_JUDGE_THRESHOLD = 0.5  # rollout threshold; citation and evidence recall remain mandatory
 _EXACT_WHITESPACE_RE = re.compile(r"\s+")
-_CONTACT_ANSWER_RE = re.compile(r"(人事部|情報セキュリティ担当|[\w一-龠ぁ-んァ-ヶー々]+担当)")
-_NUMERIC_ANSWER_RE = re.compile(r"\d|毎月|翌営業日|営業日|前営業日|週\s*\d+\s*回|最長\s*\d+\s*歳")
-_PROCEDURE_ANSWER_RE = re.compile(r"申請|承認|提出|添付|システム|打刻|報告")
-_POLICY_ANSWER_RE = re.compile(r"禁止|必要|可能|対象|条件|事由|違反|原則")
-_QUESTION_SPLIT_RE = re.compile(r"[はをにでがと、。？！?\s]+")
-_QUESTION_SUFFIXES = (
-    "はどの手順で申請しますか",
-    "はどの手順ですか",
-    "はどうやって申請しますか",
-    "はどうやって行いますか",
-    "は何ですか",
-    "はいつまでですか",
-    "はいつですか",
-    "はどこですか",
-    "はいくらですか",
-)
-_QUESTION_GENERIC_PHRASES = {
-    "何ですか",
-    "何",
-    "いつですか",
-    "いつ",
-    "どこですか",
-    "どこ",
-    "いくらですか",
-    "いくら",
-    "ですか",
-    "ますか",
-    "する場合",
-    "場合",
-    "主な",
-    "必要",
-}
+
+# Japanese locale patterns — imported from locales/ja.py
+_CONTACT_ANSWER_RE = ja_locale.CONTACT_ANSWER_RE
+_NUMERIC_ANSWER_RE = ja_locale.NUMERIC_ANSWER_RE
+_PROCEDURE_ANSWER_RE = ja_locale.PROCEDURE_ANSWER_RE
+_POLICY_ANSWER_RE = ja_locale.POLICY_ANSWER_RE
+_QUESTION_SPLIT_RE = ja_locale.QUESTION_SPLIT_RE
+_QUESTION_SUFFIXES = ja_locale.QUESTION_SUFFIXES
+_QUESTION_GENERIC_PHRASES = ja_locale.QUESTION_GENERIC_PHRASES
 
 
 def _mode_threshold(severity: str) -> float:
@@ -155,29 +134,23 @@ def _question_intent_boost(question: str, excerpt: str) -> float:
     normalized_excerpt = normalize_text(excerpt)
     boost = 0.0
 
-    if any(
-        term in normalized_question
-        for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
-    ):
+    if any(term in normalized_question for term in ja_locale.CONTACT_QUESTION_TERMS):
         if _CONTACT_ANSWER_RE.search(normalized_excerpt) or "人事部" in normalized_excerpt:
             boost += 0.18
 
-    if any(
-        term in normalized_question
-        for term in ("いつ", "期限", "締め日", "何日", "いつまで", "上限")
-    ):
+    if any(term in normalized_question for term in ja_locale.DEADLINE_QUESTION_TERMS):
         if _NUMERIC_ANSWER_RE.search(normalized_excerpt):
             boost += 0.12
 
-    if any(term in normalized_question for term in ("いくら", "金額", "何円", "月額")):
+    if any(term in normalized_question for term in ja_locale.AMOUNT_QUESTION_TERMS):
         if _NUMERIC_ANSWER_RE.search(normalized_excerpt):
             boost += 0.15
 
-    if any(term in normalized_question for term in ("手順", "方法", "申請", "どうやって")):
+    if any(term in normalized_question for term in ja_locale.PROCEDURE_QUESTION_TERMS):
         if _PROCEDURE_ANSWER_RE.search(normalized_excerpt):
             boost += 0.12
 
-    if any(term in normalized_question for term in ("条件", "ルール", "事由", "主な", "何ですか")):
+    if any(term in normalized_question for term in ja_locale.POLICY_QUESTION_TERMS):
         if _POLICY_ANSWER_RE.search(normalized_excerpt):
             boost += 0.08
 
@@ -216,24 +189,9 @@ def _question_focus_phrases(question: str) -> list[str]:
 
 def _phrase_aliases(phrase: str) -> tuple[str, ...]:
     aliases: list[str] = []
-    if "証憑" in phrase:
-        aliases.extend(["レシート", "領収書", "添付", "原本"])
-    if "問い合わせ" in phrase or "窓口" in phrase or "連絡先" in phrase:
-        aliases.extend(["人事部", "担当", "窓口"])
-    if "期限" in phrase or "締め日" in phrase:
-        aliases.extend(["営業日", "前営業日", "翌営業日", "毎月25日"])
-    if "残業" in phrase:
-        aliases.append("残業")
-    if "持ち出し" in phrase:
-        aliases.extend(["社外への持ち出し", "社外持ち出し", "原則禁止"])
-    if "承認" in phrase or "手順" in phrase:
-        aliases.extend(["承認", "申請", "上司", "上長"])
-    if "懲戒" in phrase or "事由" in phrase:
-        aliases.extend(["背信行為", "無断欠勤", "有罪判決", "機密情報"])
-    if "在宅勤務" in phrase:
-        aliases.extend(["在宅勤務", "週2回", "在宅"])
-    if "育児休業" in phrase or "延長" in phrase:
-        aliases.extend(["育児休業", "最長2歳", "保育所"])
+    for key, values in ja_locale.PHRASE_ALIAS_MAP.items():
+        if key in phrase:
+            aliases.extend(values)
     return tuple(dict.fromkeys(aliases))
 
 
@@ -312,16 +270,19 @@ def _format_mock_excerpt(question: str, excerpt: str) -> str:
 
     contact_match = _CONTACT_ANSWER_RE.search(excerpt)
     if contact_match and any(
-        term in normalized_question
-        for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
+        term in normalized_question for term in ja_locale.CONTACT_QUESTION_TERMS
     ):
-        return f"問い合わせ先は{contact_match.group(1)}です。\n" + "\n".join(content_lines)
+        return (
+            ja_locale.CONTACT_ANSWER_TEMPLATE.format(contact=contact_match.group(1))
+            + "\n"
+            + "\n".join(content_lines)
+        )
 
     best_line = max(content_lines, key=lambda line: _score_mock_excerpt(question, line))
     remaining_lines = [line for line in content_lines if line != best_line]
     focus_label = _question_focus_label(question)
     if focus_label and focus_label not in best_line:
-        first_line = f"{focus_label}については、{best_line}"
+        first_line = ja_locale.FOCUS_LABEL_TEMPLATE.format(label=focus_label, line=best_line)
     else:
         first_line = best_line
 

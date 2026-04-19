@@ -12,7 +12,6 @@ from .helpers import reset_eval_log_dir, validate_index_dir, write_json_output
 def cmd_ingest(args: argparse.Namespace) -> int:
     """文書をRAGに投入する。"""
     from ..serving.rag import RAGStore
-
     from .helpers import build_document_snapshot, snapshot_output_path
 
     if not validate_index_dir(args.index_dir):

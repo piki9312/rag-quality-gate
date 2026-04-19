@@ -10,18 +10,20 @@ from pathlib import Path
 from openai import APIError
 
 from rqg.casegen.sections import DocumentSection
+from rqg.locales import detect_locale, is_english_text
+from rqg.locales import ja as ja_locale
 from rqg.quality.case_schema import infer_question_types
 from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
 
 logger = logging.getLogger(__name__)
 
 _SPACE_RE = re.compile(r"\s+")
-_SECTION_PREFIX_RE = re.compile(r"^(?:第[0-9０-９]+[条章]\s*|[0-9０-９]+[.)．]\s*)")
-_TIME_RANGE_RE = re.compile(r"\d{1,2}:\d{2}\s*[〜~\-]\s*\d{1,2}:\d{2}")
+_SECTION_PREFIX_RE = ja_locale.SECTION_PREFIX_RE
+_TIME_RANGE_RE = ja_locale.TIME_RANGE_RE
 _ASCII_LABEL_RE = re.compile(r"^[A-Za-z0-9_\- ]+$")
-_COMPLIANCE_HINT_RE = re.compile(r"禁止|違反|漏洩|懲戒|機密情報|個人情報|施錠|暗号化")
+_COMPLIANCE_HINT_RE = ja_locale.COMPLIANCE_HINT_RE
 _ASCII_ALPHA_RE = re.compile(r"[A-Za-z]")
-_JAPANESE_TEXT_RE = re.compile(r"[ぁ-んァ-ヶ一-龠々]")
+_JAPANESE_TEXT_RE = ja_locale.JAPANESE_TEXT_RE
 
 
 def normalize_question_text(question: str) -> str:
@@ -31,10 +33,8 @@ def normalize_question_text(question: str) -> str:
 
 
 def is_english_text(text: str) -> bool:
-    normalized = _SPACE_RE.sub(" ", (text or "").strip())
-    return bool(_ASCII_ALPHA_RE.search(normalized)) and not bool(
-        _JAPANESE_TEXT_RE.search(normalized)
-    )
+    """Delegate to locales for language detection."""
+    return detect_locale(text) == "en" and bool(_ASCII_ALPHA_RE.search((text or "").strip()))
 
 
 def _append_question_mark(question: str) -> str:
@@ -59,7 +59,7 @@ def _document_label(section: DocumentSection) -> str:
 
 def _document_topic(section: DocumentSection) -> str:
     label = _strip_section_prefix(_document_label(section)).replace("_", " ").strip()
-    for suffix in ("ガイドライン", "制度", "規定", "規程", "runbook", "faq", "policy"):
+    for suffix in ja_locale.DOCUMENT_TOPIC_SUFFIXES:
         if label.lower().endswith(suffix.lower()) and len(label) > len(suffix):
             return label[: -len(suffix)].strip()
     return label
@@ -261,8 +261,7 @@ def _is_generic_question(question: str) -> bool:
     normalized = normalize_question_text(question)
     if not normalized:
         return True
-    generic_tokens = ["この内容", "このセクション", "本文", "本セクション"]
-    return any(token in normalized for token in generic_tokens)
+    return any(token in normalized for token in ja_locale.GENERIC_QUESTION_TOKENS)
 
 
 def filter_reviewable_questions(questions: list[str]) -> list[str]:
@@ -327,13 +326,13 @@ def generate_rule_questions(section: DocumentSection, max_questions: int = 1) ->
             return filtered[:max_questions]
         return ["What are the key points of this section?"]
 
-    if any(keyword in subject + content for keyword in ["期限", "いつまで", "日まで", "期日"]):
+    if any(keyword in subject + content for keyword in ja_locale.DEADLINE_KEYWORDS):
         templates.append(f"{subject}はいつまでに対応する必要がありますか？")
-    if any(keyword in subject + content for keyword in ["申請", "手続", "届け出", "提出"]):
+    if any(keyword in subject + content for keyword in ja_locale.APPLICATION_KEYWORDS):
         templates.append(f"{subject}の申請方法は何ですか？")
-    if any(keyword in subject + content for keyword in ["条件", "対象", "要件"]):
+    if any(keyword in subject + content for keyword in ja_locale.CONDITION_KEYWORDS):
         templates.append(f"{subject}の条件は何ですか？")
-    if any(keyword in subject + content for keyword in ["禁止", "不可", "してはいけない"]):
+    if any(keyword in subject + content for keyword in ja_locale.PROHIBITION_KEYWORDS):
         templates.append(f"{subject}で禁止されていることは何ですか？")
 
     templates.append(f"{subject}の要点は何ですか？")

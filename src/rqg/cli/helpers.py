@@ -12,7 +12,6 @@ from pydantic import ValidationError
 
 from ..domain import DocumentSnapshot
 
-
 # ---------------------------------------------------------------------------
 # JSON / JSONL output helpers
 # ---------------------------------------------------------------------------
