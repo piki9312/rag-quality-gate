@@ -19,6 +19,7 @@ def cases_csv(tmp_path):
             "case_id": "T001",
             "name": "有給",
             "severity": "S1",
+            "eval_mode": "evidence_keyword",
             "question": "有給の期限は？",
             "expected_evidence": "chunk_A;chunk_B",
             "expected_keywords": "5営業日;申請",
@@ -32,6 +33,7 @@ def cases_csv(tmp_path):
             "case_id": "T002",
             "name": "経費",
             "severity": "s2",
+            "eval_mode": "",
             "question": "締め日は？",
             "expected_evidence": "",
             "expected_keywords": "25日",
@@ -76,6 +78,7 @@ def cases_json_qa_shape(tmp_path):
             "name": "json qa case",
             "question": "How should employees submit paid leave requests?",
             "severity": "s2",
+            "eval_mode": "grounded_judge",
             "expected_evidence": ["chunk-1"],
             "expected_keywords": ["submit", "HR system"],
             "category": "procedure",
@@ -126,6 +129,7 @@ class TestLoadCases:
         assert cases[0].case_id == "J001"
         assert cases[0].severity == "S1"
         assert cases[0].name == "J001"
+        assert cases[0].eval_mode == "evidence_keyword"
         assert "paid leave" in cases[0].expected_keywords
 
     def test_load_json_qa_shape(self, cases_json_qa_shape):
@@ -133,7 +137,12 @@ class TestLoadCases:
         assert len(cases) == 1
         assert cases[0].case_id == "J002"
         assert cases[0].severity == "S2"
+        assert cases[0].eval_mode == "grounded_judge"
         assert cases[0].expected_evidence == ["chunk-1"]
+
+    def test_load_csv_eval_mode(self, cases_csv):
+        cases = load_cases(cases_csv)
+        assert cases[0].eval_mode == "evidence_keyword"
 
     def test_invalid_json_raises_value_error(self, tmp_path):
         path = tmp_path / "broken.json"

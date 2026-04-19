@@ -11,7 +11,9 @@ from pathlib import Path
 from .case_schema import (
     FORMAL_CASE_FIELDS,
     LEGACY_FIELD_MAP,
+    infer_eval_mode,
     normalize_legacy_row,
+    normalize_eval_mode,
 )
 
 AUTO_UPDATE_FIELDS = ("question", "expected_evidence", "expected_keywords")
@@ -29,6 +31,7 @@ class CaseMergeSummary:
     unchanged_case_ids: list[str] = field(default_factory=list)
     duplicate_review_case_ids: list[str] = field(default_factory=list)
     matched_by_content_review_case_ids: list[str] = field(default_factory=list)
+    skipped_high_priority_review_case_ids: list[str] = field(default_factory=list)
 
 
 def _clean(value: object) -> str:
@@ -70,6 +73,17 @@ def _content_signature(row: dict[str, str]) -> str:
     return f"{question_key}||{evidence_key}"
 
 
+def _review_row_case_id(row: dict[str, str]) -> str:
+    return _clean(row.get("case_id") or row.get("title") or row.get("name"))
+
+
+def _should_skip_review_row(row: dict[str, str]) -> bool:
+    notes = _clean(row.get("notes"))
+    if not notes:
+        return False
+    return "mixed_question:" in notes and "manual_review_priority:high" in notes
+
+
 def _apply_review_updates_to_existing_row(
     target_row: dict[str, str], review_row: dict[str, str]
 ) -> bool:
@@ -94,6 +108,10 @@ def _apply_review_updates_to_existing_row(
         if not target_row.get(field) and review_row.get(field):
             target_row[field] = review_row[field]
             changed = True
+
+    if not target_row.get("eval_mode") and review_row.get("eval_mode"):
+        target_row["eval_mode"] = review_row["eval_mode"]
+        changed = True
 
     return changed
 
@@ -130,6 +148,7 @@ def _normalize_base_row(row: dict[str, str]) -> dict[str, str]:
         "name": _clean(mapped.get("name")) or case_id,
         "status": _clean(mapped.get("status")) or "active",
         "severity": severity,
+        "eval_mode": normalize_eval_mode(mapped.get("eval_mode")),
         "question": _clean(mapped.get("question")),
         "expected_answer": _clean(mapped.get("expected_answer")),
         "expected_evidence": _normalize_semicolon_list(mapped.get("expected_evidence")),
@@ -151,23 +170,33 @@ def _review_to_ops_row(row: dict[str, str]) -> dict[str, str]:
     Handles legacy field names (expected_chunks, golden_answer, min_pass_rate,
     risk_level) for backward compatibility.
     """
-    case_id = _clean(row.get("case_id"))
+    case_id = _review_row_case_id(row)
     if not case_id:
         raise ValueError("Review CSV includes empty case_id")
 
     severity = _normalize_severity(row.get("severity") or row.get("risk_level"))
+    expected_answer = _clean(row.get("expected_answer") or row.get("golden_answer"))
     expected_evidence = _normalize_semicolon_list(
         row.get("expected_evidence") or row.get("expected_chunks")
     )
+    expected_keywords = _normalize_semicolon_list(row.get("expected_keywords"))
+    eval_mode = normalize_eval_mode(row.get("eval_mode"))
+    if not eval_mode:
+        eval_mode = infer_eval_mode(
+            expected_answer=expected_answer,
+            expected_evidence=expected_evidence,
+            expected_keywords=expected_keywords,
+        )
     normalized = {
         "case_id": case_id,
         "name": _clean(row.get("name") or row.get("title")) or case_id,
         "status": _clean(row.get("status")) or "draft",
         "severity": severity,
+        "eval_mode": eval_mode,
         "question": _clean(row.get("question")),
-        "expected_answer": _clean(row.get("expected_answer") or row.get("golden_answer")),
+        "expected_answer": expected_answer,
         "expected_evidence": expected_evidence,
-        "expected_keywords": _normalize_semicolon_list(row.get("expected_keywords")),
+        "expected_keywords": expected_keywords,
         "category": _clean(row.get("category")) or "general",
         "source_doc": _clean(row.get("source_doc") or row.get("doc_snapshot_id")),
         "owner": _clean(row.get("owner")),
@@ -197,8 +226,14 @@ def merge_cases_rows(
     normalized_review_by_id: dict[str, dict[str, str]] = {}
     review_order: list[str] = []
     duplicate_review_case_ids: list[str] = []
+    skipped_high_priority_review_case_ids: list[str] = []
 
     for row in review_rows:
+        if _should_skip_review_row(row):
+            case_id = _review_row_case_id(row)
+            if case_id:
+                skipped_high_priority_review_case_ids.append(case_id)
+            continue
         normalized = _review_to_ops_row(row)
         case_id = normalized["case_id"]
         if case_id in normalized_review_by_id:
@@ -272,6 +307,7 @@ def merge_cases_rows(
         unchanged_case_ids=unchanged_case_ids,
         duplicate_review_case_ids=sorted(set(duplicate_review_case_ids)),
         matched_by_content_review_case_ids=sorted(set(matched_by_content_review_case_ids)),
+        skipped_high_priority_review_case_ids=sorted(set(skipped_high_priority_review_case_ids)),
     )
     return merged_rows, summary
 

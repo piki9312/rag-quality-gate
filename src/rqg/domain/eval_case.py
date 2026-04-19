@@ -16,6 +16,7 @@ class EvalCase(BaseModel):
     expected_keywords: list[str] = Field(default_factory=list)
     risk_level: Literal["S1", "S2"]
     doc_snapshot_id: str
+    category: str = Field(default="general", min_length=1)
     notes: str | None = None
 
     model_config = ConfigDict(extra="forbid")

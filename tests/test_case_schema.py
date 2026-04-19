@@ -11,6 +11,8 @@ from rqg.quality.case_schema import (
     ReviewCase,
     ValidationError,
     classify_review_status,
+    infer_question_types,
+    is_mixed_question,
     normalize_legacy_row,
     promote_review_cases,
     review_case_to_formal_row,
@@ -36,11 +38,25 @@ class TestReviewCaseToFormalRow:
         assert row["name"] == "経費精算の締め日"
         assert row["question"] == "経費精算の締め日はいつですか？"
         assert row["severity"] == "S1"
+        assert row["eval_mode"] == "exact"
         assert row["status"] == "draft"  # complete case → draft
         assert row["owner"] == "hr-team"
         assert row["min_case_score"] == "100"  # S1 default
         assert row["source_doc"] == ""
         assert "source_doc未設定" in row["notes"]
+
+    def test_infers_evidence_keyword_mode(self):
+        rc = ReviewCase(
+            title="有給申請の要件",
+            question="有給休暇の申請要件は何ですか？",
+            expected_evidence="就業規則.md#sec-1",
+            expected_keywords="有給;申請",
+            severity="S2",
+        )
+        row = review_case_to_formal_row(rc, case_id="NEW002")
+
+        assert row["eval_mode"] == "evidence_keyword"
+        assert row["status"] == "draft"
 
     def test_explicit_default_status_overrides_auto(self):
         rc = ReviewCase(title="test", question="q?")
@@ -70,6 +86,11 @@ class TestReviewCaseToFormalRow:
         assert "手動確認が必要" in row["notes"]
         assert "source_doc未設定" in row["notes"]
 
+    def test_mixed_question_note_added(self):
+        rc = ReviewCase(title="t", question="締め日と提出方法はいつまでに対応する必要がありますか？")
+        row = review_case_to_formal_row(rc)
+        assert "mixed_question:deadline,procedure" in row["notes"]
+
     def test_all_formal_fields_present(self):
         rc = ReviewCase(title="t", question="q?")
         row = review_case_to_formal_row(rc)
@@ -82,15 +103,19 @@ class TestReviewRowToReviewCase:
         row = {
             "title": "test case",
             "question": "What?",
+            "eval_mode": "evidence-keyword",
             "expected_answer": "Answer",
             "expected_evidence": "doc.md#sec-1",
+            "expected_keywords": "policy;request",
             "severity": "S1",
             "category": "policy",
             "notes": "note",
         }
         rc = review_row_to_review_case(row)
         assert rc.title == "test case"
+        assert rc.eval_mode == "evidence-keyword"
         assert rc.expected_answer == "Answer"
+        assert rc.expected_keywords == "policy;request"
 
     def test_with_legacy_field_names(self):
         row = {
@@ -157,6 +182,50 @@ class TestValidation:
         }
         errors = validate_case_row(row)
         assert [e for e in errors if e.level == "error"] == []
+
+    def test_active_evidence_keyword_requires_keywords(self):
+        row = {
+            "case_id": "V001A",
+            "question": "What?",
+            "status": "active",
+            "eval_mode": "evidence_keyword",
+            "expected_evidence": "doc.md#sec-1",
+            "expected_keywords": "",
+        }
+        errors = validate_case_row(row)
+        keyword_errors = [e for e in errors if e.field == "expected_keywords"]
+        assert len(keyword_errors) == 1
+        assert keyword_errors[0].level == "error"
+
+    def test_active_grounded_judge_requires_evidence(self):
+        row = {
+            "case_id": "V001B",
+            "question": "What?",
+            "status": "active",
+            "eval_mode": "grounded_judge",
+            "expected_evidence": "",
+        }
+        errors = validate_case_row(row)
+        evidence_errors = [e for e in errors if e.field == "expected_evidence"]
+        assert len(evidence_errors) == 1
+        assert evidence_errors[0].level == "error"
+
+    def test_invalid_eval_mode(self):
+        row = {"case_id": "V001C", "question": "What?", "eval_mode": "bad-mode"}
+        errors = validate_case_row(row)
+        assert any(e.field == "eval_mode" for e in errors)
+
+    def test_deprecated_skips_content_requirements(self):
+        row = {
+            "case_id": "V001D",
+            "status": "deprecated",
+            "question": "",
+            "expected_answer": "",
+            "expected_evidence": "",
+            "expected_keywords": "",
+        }
+        errors = validate_case_row(row)
+        assert errors == []
 
     def test_empty_case_id(self):
         row = {"case_id": "", "question": "What?"}
@@ -251,6 +320,12 @@ class TestExpectedAnswerValidationByStatus:
         assert len(ea_errors) == 1
         assert ea_errors[0].level == "warn"
 
+    def test_deprecated_status_empty_answer_is_ignored(self):
+        row = {"case_id": "VA03D", "question": "", "status": "deprecated", "expected_answer": ""}
+        errors = validate_case_row(row)
+        ea_errors = [e for e in errors if e.field == "expected_answer"]
+        assert ea_errors == []
+
     def test_active_with_answer_no_error(self):
         row = {"case_id": "VA04", "question": "q?", "status": "active", "expected_answer": "ans"}
         errors = validate_case_row(row)
@@ -260,6 +335,15 @@ class TestExpectedAnswerValidationByStatus:
 
 class TestClassifyReviewStatus:
     """classify_review_status の判定ロジック。"""
+
+    def test_infer_question_types_detects_multiple_intents(self):
+        assert infer_question_types("締め日と提出方法はいつまでに対応する必要がありますか？") == (
+            "deadline",
+            "procedure",
+        )
+
+    def test_is_mixed_question_true_for_combined_prompt(self):
+        assert is_mixed_question("締め日と提出方法はいつまでに対応する必要がありますか？") is True
 
     def test_complete_case_returns_draft(self):
         rc = ReviewCase(
@@ -279,12 +363,25 @@ class TestClassifyReviewStatus:
         rc = ReviewCase(title="t", question="q?", expected_answer="a", expected_evidence="e")
         assert classify_review_status(rc) == "needs_review"
 
-    def test_empty_answer_returns_needs_review(self):
+    def test_evidence_only_infers_grounded_judge(self):
         rc = ReviewCase(title="t", question="有給の期限は？", expected_evidence="e")
+        assert classify_review_status(rc) == "draft"
+
+    def test_answer_only_infers_exact(self):
+        rc = ReviewCase(title="t", question="有給の期限は？", expected_answer="a")
+        assert classify_review_status(rc) == "draft"
+
+    def test_exact_mode_without_answer_returns_needs_review(self):
+        rc = ReviewCase(title="t", question="有給の期限は？", eval_mode="exact", expected_evidence="e")
         assert classify_review_status(rc) == "needs_review"
 
-    def test_empty_evidence_returns_needs_review(self):
-        rc = ReviewCase(title="t", question="有給の期限は？", expected_answer="a")
+    def test_evidence_keyword_without_keywords_returns_needs_review(self):
+        rc = ReviewCase(
+            title="t",
+            question="有給の期限は？",
+            eval_mode="evidence_keyword",
+            expected_evidence="e",
+        )
         assert classify_review_status(rc) == "needs_review"
 
     def test_invalid_severity_returns_needs_review(self):
@@ -294,6 +391,15 @@ class TestClassifyReviewStatus:
             expected_answer="a",
             expected_evidence="e",
             severity="S3",
+        )
+        assert classify_review_status(rc) == "needs_review"
+
+    def test_mixed_question_returns_needs_review(self):
+        rc = ReviewCase(
+            title="t",
+            question="締め日と提出方法はいつまでに対応する必要がありますか？",
+            expected_evidence="doc.md#sec-1",
+            expected_keywords="締め日;提出方法",
         )
         assert classify_review_status(rc) == "needs_review"
 

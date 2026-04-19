@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -81,6 +82,7 @@ class TestGateConfig:
         cfg = GateConfig()
         assert cfg.s1_pass_rate == 100.0
         assert cfg.overall_pass_rate == 80.0
+        assert cfg.aggregation_policy == "latest_run"
 
     def test_from_yaml(self, tmp_path):
         yaml_path = tmp_path / "gate.yml"
@@ -91,6 +93,8 @@ class TestGateConfig:
                 "  overall_pass_rate: 75.0\n"
                 "  max_overall_drop_pct: 10.0\n"
                 "  max_s1_drop_pct: 5.0\n"
+                "  min_evidence_recall: 90.0\n"
+                "  aggregation_policy: window\n"
             ),
             encoding="utf-8",
         )
@@ -99,6 +103,8 @@ class TestGateConfig:
         assert cfg.overall_pass_rate == 75.0
         assert cfg.max_overall_drop_pct == 10.0
         assert cfg.max_s1_drop_pct == 5.0
+        assert cfg.min_evidence_recall == 90.0
+        assert cfg.aggregation_policy == "window"
 
     def test_load_failure_actions_from_quality_pack(self, tmp_path):
         quality_pack = tmp_path / "quality-pack.yml"
@@ -164,10 +170,155 @@ class TestRunCheck:
         assert result.gate_passed is False
         assert result.failure_categories.get("synthesis") == 1
 
+    def test_latest_run_policy_uses_only_newest_run(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now - timedelta(minutes=30),
+                run_id="run-old",
+                case_id="QA001",
+                severity="S2",
+                passed=False,
+                failure_type="keyword_miss",
+                failure_category="synthesis",
+            ),
+            QARunRecord(
+                timestamp=now - timedelta(minutes=5),
+                run_id="run-new",
+                case_id="QA001",
+                severity="S2",
+                passed=True,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(record.model_dump_json() for record in records) + "\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=100.0)
+        result = run_check(str(log_dir), cfg, days=1)
+
+        assert result.aggregation_policy == "latest_run"
+        assert result.run_id == "run-new"
+        assert result.current_runs == 1
+        assert result.gate_passed is True
+
+    def test_window_policy_uses_all_runs_in_window(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now - timedelta(minutes=30),
+                run_id="run-old",
+                case_id="QA001",
+                severity="S2",
+                passed=False,
+                failure_type="keyword_miss",
+                failure_category="synthesis",
+            ),
+            QARunRecord(
+                timestamp=now - timedelta(minutes=5),
+                run_id="run-new",
+                case_id="QA001",
+                severity="S2",
+                passed=True,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(record.model_dump_json() for record in records) + "\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=100.0, aggregation_policy="window")
+        result = run_check(str(log_dir), cfg, days=1)
+
+        assert result.aggregation_policy == "window"
+        assert result.current_runs == 2
+        assert result.gate_passed is False
+
     def test_no_data_fails(self, tmp_path, gate_config):
         result = run_check(str(tmp_path / "empty"), gate_config, days=1)
         assert result.current_runs == 0
         assert result.gate_passed is False
+
+    def test_cases_file_filters_non_active_records(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        today = datetime.now(timezone.utc).strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="ACTIVE001",
+                severity="S1",
+                passed=True,
+            ),
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="DRAFT001",
+                severity="S2",
+                passed=False,
+                failure_type="keyword_miss",
+                failure_category="synthesis",
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(record.model_dump_json() for record in records) + "\n",
+            encoding="utf-8",
+        )
+
+        cases_file = tmp_path / "cases.csv"
+        with open(cases_file, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "case_id",
+                    "name",
+                    "status",
+                    "severity",
+                    "question",
+                    "expected_answer",
+                    "min_case_score",
+                ],
+            )
+            writer.writeheader()
+            writer.writerows(
+                [
+                    {
+                        "case_id": "ACTIVE001",
+                        "name": "active",
+                        "status": "active",
+                        "severity": "S1",
+                        "question": "Q?",
+                        "expected_answer": "A",
+                        "min_case_score": "100",
+                    },
+                    {
+                        "case_id": "DRAFT001",
+                        "name": "draft",
+                        "status": "draft",
+                        "severity": "S2",
+                        "question": "Q?",
+                        "expected_answer": "A",
+                        "min_case_score": "100",
+                    },
+                ]
+            )
+
+        cfg = GateConfig(s1_pass_rate=100.0, overall_pass_rate=100.0)
+        result = run_check(str(log_dir), cfg, days=1, cases_file=str(cases_file))
+
+        assert result.current_runs == 1
+        assert result.overall_rate == 100.0
+        assert result.gate_passed is True
+        assert result.failure_categories == {}
+        assert [threshold.name for threshold in result.case_thresholds] == ["case:ACTIVE001"]
 
     def test_regression_drop_fails_when_drop_exceeds_threshold(self, tmp_path):
         log_dir = tmp_path / "logs"
@@ -249,6 +400,53 @@ class TestRunCheck:
             and "No baseline run data found" in t.detail
             for t in result.thresholds
         )
+
+    def test_observed_metrics_include_judge_relevance_and_evidence_recall(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                faithfulness_score=0.9,
+                judge_relevance=0.8,
+                evidence_recall=1.0,
+            ),
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA002",
+                severity="S2",
+                passed=True,
+                faithfulness_score=0.7,
+                judge_relevance=0.6,
+                evidence_recall=0.5,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(record.model_dump_json() for record in records) + "\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0)
+        result = run_check(str(log_dir), cfg, days=1)
+        decision = build_gate_decision(result)
+
+        assert result.avg_faithfulness == pytest.approx(80.0)
+        assert result.avg_judge_relevance == pytest.approx(70.0)
+        assert result.avg_evidence_recall == pytest.approx(75.0)
+        assert result.faithfulness_scored == 2
+        assert result.judge_relevance_scored == 2
+        assert result.evidence_recall_scored == 2
+        assert decision.metrics["avg_judge_relevance"] == pytest.approx(70.0)
+        assert decision.metrics["avg_evidence_recall"] == pytest.approx(75.0)
+        assert decision.metrics["judge_relevance_scored_runs"] == 2.0
+        assert decision.metrics["evidence_recall_scored_runs"] == 2.0
 
 
 class TestCheckResult:
@@ -380,6 +578,12 @@ class TestRenderMarkdown:
         assert "Failure Categories" in md
         assert "retrieval_miss" in md
 
+    def test_render_gate_markdown_includes_aggregation_policy(self, log_dir_with_records):
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0)
+        result = run_check(log_dir_with_records, cfg, days=1)
+        markdown = render_gate_markdown(result)
+        assert "- Aggregation Policy: latest_run" in markdown
+
     def test_fail_rendering_with_next_actions(self):
         result = CheckResult(
             run_id="run-002",
@@ -409,6 +613,30 @@ class TestRenderMarkdown:
         assert "Review retrieval settings" in md
         assert "Define next action in weekly review issue" in md
         assert "T.B.D." in md
+
+    def test_rendering_includes_observed_metrics(self):
+        result = CheckResult(
+            run_id="run-observed",
+            current_runs=4,
+            baseline_runs=0,
+            overall_rate=75.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[ThresholdResult("Overall", 70.0, 75.0, True, "3/4")],
+            avg_faithfulness=82.0,
+            faithfulness_scored=4,
+            avg_judge_relevance=78.0,
+            judge_relevance_scored=3,
+            avg_evidence_recall=66.0,
+            evidence_recall_scored=2,
+        )
+
+        md = render_gate_markdown(result)
+
+        assert "Observed Metrics" in md
+        assert "Avg judge relevance" in md
+        assert "Avg evidence recall" in md
 
 
 # ==================================================================
@@ -524,6 +752,94 @@ class TestFaithfulnessGate:
         assert cfg.min_faithfulness == 75.0
 
 
+# ==================================================================
+# Evidence recall gate threshold
+# ==================================================================
+
+
+class TestEvidenceRecallGate:
+    def test_evidence_recall_gate_pass(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                evidence_recall=1.0,
+            ),
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA002",
+                severity="S2",
+                passed=True,
+                evidence_recall=0.8,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(r.model_dump_json() for r in records) + "\n",
+            encoding="utf-8",
+        )
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_evidence_recall=85.0)
+        result = run_check(str(log_dir), cfg, days=1)
+        assert result.gate_passed is True
+        recall = [t for t in result.thresholds if t.name == "Avg evidence recall"]
+        assert len(recall) == 1
+        assert recall[0].actual == pytest.approx(90.0)
+
+    def test_evidence_recall_gate_fail(self, tmp_path):
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y%m%d")
+        records = [
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                evidence_recall=0.6,
+            ),
+            QARunRecord(
+                timestamp=now,
+                run_id="r1",
+                case_id="QA002",
+                severity="S2",
+                passed=True,
+                evidence_recall=0.4,
+            ),
+        ]
+        (log_dir / f"{today}.jsonl").write_text(
+            "\n".join(r.model_dump_json() for r in records) + "\n",
+            encoding="utf-8",
+        )
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_evidence_recall=70.0)
+        result = run_check(str(log_dir), cfg, days=1)
+        assert result.gate_passed is False
+        recall = [t for t in result.thresholds if t.name == "Avg evidence recall"]
+        assert recall[0].actual == pytest.approx(50.0)
+
+    def test_evidence_recall_zero_disables_check(self, log_dir_with_records):
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_evidence_recall=0.0)
+        result = run_check(log_dir_with_records, cfg, days=1)
+        assert not any(t.name == "Avg evidence recall" for t in result.thresholds)
+
+    def test_from_yaml_reads_min_evidence_recall(self, tmp_path):
+        yaml_path = tmp_path / "gate.yml"
+        yaml_path.write_text(
+            "thresholds:\n  min_evidence_recall: 90.0\n",
+            encoding="utf-8",
+        )
+        cfg = GateConfig.from_yaml(str(yaml_path))
+        assert cfg.min_evidence_recall == 90.0
+
+
 # ------------------------------------------------------------------
 # Warn status tests
 # ------------------------------------------------------------------
@@ -547,6 +863,7 @@ class TestWarnStatus:
         cfg = GateConfig()
         assert cfg.s1_pass_rate_warn == 0.0
         assert cfg.overall_pass_rate_warn == 0.0
+        assert cfg.judge_relevance_warn == 0.0
 
     def test_gate_config_warn_from_yaml(self, tmp_path):
         yaml_path = tmp_path / "gate.yml"
@@ -557,12 +874,14 @@ class TestWarnStatus:
                 "  overall_pass_rate: 80.0\n"
                 "  s1_pass_rate_warn: 100.0\n"
                 "  overall_pass_rate_warn: 90.0\n"
+                "  judge_relevance_warn: 30.0\n"
             ),
             encoding="utf-8",
         )
         cfg = GateConfig.from_yaml(str(yaml_path))
         assert cfg.s1_pass_rate_warn == 100.0
         assert cfg.overall_pass_rate_warn == 90.0
+        assert cfg.judge_relevance_warn == 30.0
 
     def test_gate_status_pass_when_above_warn(self, tmp_path):
         """Metrics above both fail and warn thresholds → pass."""
@@ -584,6 +903,60 @@ class TestWarnStatus:
         result = run_check(log_dir, cfg, days=1)
         assert result.gate_passed is True
         assert result.gate_status == "pass"
+
+    def test_judge_relevance_warn_triggers(self, tmp_path):
+        records = [
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                judge_relevance=0.25,
+            ),
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="QA002",
+                severity="S2",
+                passed=True,
+                judge_relevance=0.35,
+            ),
+        ]
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(
+            s1_pass_rate=0.0,
+            overall_pass_rate=0.0,
+            judge_relevance_warn=40.0,
+        )
+
+        result = run_check(log_dir, cfg, days=1)
+
+        assert result.gate_passed is True
+        assert result.gate_status == "warn"
+        judge_check = [t for t in result.thresholds if t.name == "Avg judge relevance"]
+        assert len(judge_check) == 1
+        assert judge_check[0].warned is True
+        assert judge_check[0].actual == pytest.approx(30.0)
+
+    def test_judge_relevance_warn_disabled_when_zero(self, tmp_path):
+        records = [
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="r1",
+                case_id="QA001",
+                severity="S1",
+                passed=True,
+                judge_relevance=0.1,
+            ),
+        ]
+        log_dir = self._make_log_dir(tmp_path, records)
+        cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, judge_relevance_warn=0.0)
+
+        result = run_check(log_dir, cfg, days=1)
+
+        assert result.gate_status == "pass"
+        assert not any(t.name == "Avg judge relevance" for t in result.thresholds)
 
     def test_gate_status_warn_when_between_fail_and_warn(self, tmp_path):
         """Metrics above fail but below warn → warn."""

@@ -52,6 +52,9 @@ def passed_result() -> EvalResult:
         retrieved_ids=["chunk_A", "chunk_B"],
         latency_ms=120.0,
         retrieval_hit=True,
+        evidence_recall=1.0,
+        faithfulness_score=0.9,
+        judge_relevance=0.8,
     )
 
 

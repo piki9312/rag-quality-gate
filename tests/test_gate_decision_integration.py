@@ -139,6 +139,39 @@ def test_check_command_writes_default_artifacts_to_log_dir() -> None:
     assert json.loads(history_lines[0])["run_id"] == "run-004"
 
 
+def test_check_command_overrides_aggregation_policy() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-aggregation-logs"
+    fake_result = CheckResult(
+        run_id="run-agg",
+        aggregation_policy="window",
+        current_runs=4,
+        baseline_runs=0,
+        overall_rate=100.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 100.0, True, "4/4"),
+        ],
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result) as mocked_run_check:
+        with patch("rqg.quality.check.render_gate_markdown", return_value="md-window"):
+            exit_code = main(
+                [
+                    "check",
+                    "--log-dir",
+                    str(log_dir),
+                    "--aggregation-policy",
+                    "window",
+                ]
+            )
+
+    assert exit_code == 0
+    passed_config = mocked_run_check.call_args.kwargs["config"]
+    assert passed_config.aggregation_policy == "window"
+
+
 def test_check_command_appends_gate_decision_history_jsonl() -> None:
     log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-history-logs"
     first_result = CheckResult(

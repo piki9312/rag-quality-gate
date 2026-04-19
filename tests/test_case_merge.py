@@ -44,6 +44,7 @@ def test_merge_updates_core_content_but_preserves_curated_fields():
     assert row["question"] == "new question"
     assert row["expected_evidence"] == "docs/new#sec-2"
     assert row["expected_keywords"] == "new;keyword"
+    assert row["eval_mode"] == "exact"
 
     # Existing curated fields are preserved unless base value is empty.
     assert row["name"] == "leave policy"
@@ -80,8 +81,30 @@ def test_merge_adds_new_case_from_review_rows():
     assert row["name"] == "C002"
     assert row["min_case_score"] == "100"
     assert row["status"] == "draft"
+    assert row["eval_mode"] == "grounded_judge"
     assert summary.added_case_ids == ["C002"]
     assert summary.updated_case_ids == []
+
+
+def test_merge_accepts_review_title_when_case_id_is_missing():
+    merged_rows, summary = merge_cases_rows(
+        base_rows=[],
+        review_rows=[
+            {
+                "title": "経費精算ガイドライン_004",
+                "question": "通勤交通費はどのように申請しますか？",
+                "expected_evidence": "packs/hr/documents/経費精算ガイドライン.md#sec-1-2",
+                "expected_keywords": "通勤交通費;申請",
+                "severity": "S2",
+                "category": "procedure",
+            }
+        ],
+    )
+
+    assert len(merged_rows) == 1
+    assert merged_rows[0]["case_id"] == "経費精算ガイドライン_004"
+    assert merged_rows[0]["name"] == "経費精算ガイドライン_004"
+    assert summary.added_case_ids == ["経費精算ガイドライン_004"]
 
 
 def test_merge_records_duplicate_review_case_ids_and_last_row_wins():
@@ -176,6 +199,33 @@ def test_merge_does_not_over_dedupe_partial_overlap():
     assert summary.matched_by_content_review_case_ids == []
 
 
+def test_merge_skips_high_priority_mixed_review_rows():
+    merged_rows, summary = merge_cases_rows(
+        base_rows=[],
+        review_rows=[
+            {
+                "title": "経費精算ガイドライン_001",
+                "question": "締め日と提出方法はいつまでに対応する必要がありますか？",
+                "expected_evidence": "packs/hr/documents/経費精算ガイドライン.md#sec-1-1",
+                "expected_keywords": "締め日;提出方法",
+                "notes": "auto-generated from sec-1; mixed_question:deadline,procedure; manual_review_priority:high",
+            },
+            {
+                "title": "経費精算ガイドライン_002",
+                "question": "締め日はいつですか？",
+                "expected_evidence": "packs/hr/documents/経費精算ガイドライン.md#sec-1-1",
+                "expected_keywords": "締め日;25日",
+                "notes": "auto-generated split candidate; split_candidate_from:締め日と提出方法はいつまでに対応する必要がありますか; manual_review_priority:medium",
+            },
+        ],
+    )
+
+    assert len(merged_rows) == 1
+    assert merged_rows[0]["case_id"] == "経費精算ガイドライン_002"
+    assert summary.added_case_ids == ["経費精算ガイドライン_002"]
+    assert summary.skipped_high_priority_review_case_ids == ["経費精算ガイドライン_001"]
+
+
 def test_merge_handles_legacy_field_names_in_base():
     """Base CSV with old field names (expected_chunks, golden_answer, min_pass_rate)
     should be normalized to the formal schema."""
@@ -204,4 +254,5 @@ def test_merge_handles_legacy_field_names_in_base():
     assert row["expected_answer"] == "legacy answer"
     assert row["min_case_score"] == "100"
     assert row["status"] == "active"
+    assert row["eval_mode"] == ""
     assert "expected_chunks" not in row or row.get("expected_chunks") is None

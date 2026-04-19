@@ -531,10 +531,21 @@ def cmd_merge_cases(args: argparse.Namespace) -> int:
     print(f"Updated cases: {len(summary.updated_case_ids)}")
     print(f"Unchanged cases: {len(summary.unchanged_case_ids)}")
     print("Matched by content (not added): " f"{len(summary.matched_by_content_review_case_ids)}")
+    print(
+        "Skipped high-priority mixed review cases: "
+        f"{len(summary.skipped_high_priority_review_case_ids)}"
+    )
 
     if summary.duplicate_review_case_ids:
         duplicate_ids = ", ".join(summary.duplicate_review_case_ids)
         print(f"[WARN] Duplicate case_id in review CSV (last row wins): {duplicate_ids}")
+
+    if summary.skipped_high_priority_review_case_ids:
+        skipped_ids = ", ".join(summary.skipped_high_priority_review_case_ids)
+        print(
+            "[WARN] Skipped high-priority mixed review rows; promote split candidates or curate manually: "
+            f"{skipped_ids}"
+        )
 
     if args.report:
         report_path = write_merge_report(args.report, summary)
@@ -587,7 +598,7 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 def cmd_eval(args: argparse.Namespace) -> int:
     """テストケースを実行して品質評価する。"""
-    from .quality.loader import load_cases
+    from .quality.loader import filter_cases_by_status, load_cases
     from .quality.runner import RAGQualityRunner
     from .serving.rag import RAGStore
 
@@ -598,9 +609,16 @@ def cmd_eval(args: argparse.Namespace) -> int:
         removed = _reset_eval_log_dir(args.log_dir)
         print(f"Reset log_dir {args.log_dir}: removed {len(removed)} files")
 
-    cases = load_cases(args.cases)
+    all_cases = load_cases(args.cases)
+    cases = filter_cases_by_status(all_cases, allowed_statuses={"active"})
     if args.verbose:
-        print(f"Loaded {len(cases)} test cases from {args.cases}")
+        print(f"Loaded {len(all_cases)} test cases from {args.cases}")
+    if len(cases) != len(all_cases):
+        skipped = len(all_cases) - len(cases)
+        print(
+            f"Selected {len(cases)} active test cases from {args.cases} "
+            f"(skipped {skipped} non-active cases)"
+        )
 
     store = RAGStore(index_dir=args.index_dir)
     if store.index is None:
@@ -651,19 +669,28 @@ def cmd_check(args: argparse.Namespace) -> int:
         GateConfig,
         build_gate_decision,
         load_failure_actions_from_quality_pack,
+        normalize_aggregation_policy,
         render_gate_markdown,
         run_check,
     )
 
-    if args.config and Path(args.config).exists():
-        config = GateConfig.from_yaml(args.config)
-    else:
-        config = GateConfig(
-            s1_pass_rate=args.s1_threshold,
-            overall_pass_rate=args.overall_threshold,
-            max_overall_drop_pct=args.max_overall_drop_pct or 0.0,
-            max_s1_drop_pct=args.max_s1_drop_pct or 0.0,
-        )
+    try:
+        if args.config and Path(args.config).exists():
+            config = GateConfig.from_yaml(args.config)
+        else:
+            config = GateConfig(
+                s1_pass_rate=args.s1_threshold,
+                overall_pass_rate=args.overall_threshold,
+                max_overall_drop_pct=args.max_overall_drop_pct or 0.0,
+                max_s1_drop_pct=args.max_s1_drop_pct or 0.0,
+                aggregation_policy=normalize_aggregation_policy(args.aggregation_policy),
+            )
+
+        if args.aggregation_policy is not None:
+            config.aggregation_policy = normalize_aggregation_policy(args.aggregation_policy)
+    except ValueError as exc:
+        print(f"[ERROR] Failed to load gate config: {exc}", file=sys.stderr)
+        return 1
 
     if args.max_overall_drop_pct is not None:
         config.max_overall_drop_pct = args.max_overall_drop_pct
@@ -759,6 +786,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             overall_threshold=args.overall_threshold,
             max_overall_drop_pct=args.max_overall_drop_pct,
             max_s1_drop_pct=args.max_s1_drop_pct,
+            aggregation_policy=args.aggregation_policy,
             output_file=args.output_file,
             decision_file=args.decision_file,
             warn_exit_code=args.warn_exit_code,
@@ -810,6 +838,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_gate.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
     p_gate.add_argument("--config", help="Path to .rqg.yml config")
     p_gate.add_argument("--days", type=int, default=1)
+    p_gate.add_argument(
+        "--aggregation-policy",
+        default=None,
+        choices=["latest_run", "window"],
+        help="How to aggregate current/baseline records before gate evaluation (default: latest_run)",
+    )
     p_gate.add_argument("--baseline-dir", default=None)
     p_gate.add_argument("--baseline-days", type=int, default=7)
     p_gate.add_argument("--cases-file", default=None)
@@ -854,6 +888,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument("--log-dir", default="runs/quality")
     p_check.add_argument("--config", help="Path to .rqg.yml config")
     p_check.add_argument("--days", type=int, default=1)
+    p_check.add_argument(
+        "--aggregation-policy",
+        default=None,
+        choices=["latest_run", "window"],
+        help="How to aggregate current/baseline records before gate evaluation (default: latest_run)",
+    )
     p_check.add_argument("--baseline-dir", default=None)
     p_check.add_argument("--baseline-days", type=int, default=7)
     p_check.add_argument("--cases-file", default=None)

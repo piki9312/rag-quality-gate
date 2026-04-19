@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,14 +33,29 @@ class JudgeResult:
 # ---------------------------------------------------------------------------
 
 _JUDGE_SYSTEM = (
-    "You are a strict quality evaluator for a RAG (Retrieval-Augmented Generation) system.\n"
+    "You are a strict, conservative quality evaluator for a RAG (Retrieval-Augmented Generation) system.\n"
+    "Score the ANSWER against the QUESTION and CONTEXT only.\n"
+    "Use the full score range and prefer conservative grading. When unsure, choose the lower score.\n\n"
     "You must evaluate the ANSWER on two axes:\n"
     "1. **Faithfulness** (0.0-1.0): Is the answer grounded in the provided CONTEXT? "
-    "1.0 = every claim is supported by the context. "
-    "0.0 = the answer contains fabricated information not in the context.\n"
-    "2. **Relevance** (0.0-1.0): Does the answer address the QUESTION? "
-    "1.0 = fully answers the question. "
-    "0.0 = completely off-topic or unhelpful.\n\n"
+    "1.0 = every material claim is explicitly supported by the context with no unsupported additions. "
+    "0.0 = the answer is contradicted by the context, fabricated, or effectively unsupported.\n"
+    "2. **Relevance** (0.0-1.0): Does the answer directly and sufficiently address the QUESTION? "
+    "1.0 = complete, direct, and audit-ready answer to the whole question. "
+    "0.0 = completely off-topic, empty, or unhelpful.\n\n"
+    "Scoring rubric:\n"
+    "- 1.0 is rare. Use it only when the answer completely resolves the whole question and no material requested detail is missing.\n"
+    "- 0.8-0.95: strongly useful and mostly complete, but slightly compressed, indirect, or missing minor detail.\n"
+    "- 0.5-0.75: partially answers the question, gives only one aspect of a multi-part ask, or requires reader inference.\n"
+    "- 0.1-0.45: related snippet, heading, label, lead-in sentence, or vague statement that does not actually answer the question.\n"
+    "- 0.0: off-topic, empty, contradictory, or unsupported.\n\n"
+    "Apply these conservative rules:\n"
+    "- If the question asks for a procedure, conditions, exceptions, list of reasons, list of steps, or contact order, an answer that gives only one fact or only the introductory sentence is not complete.\n"
+    "- If the answer only repeats a section heading, document title, label, or citation, relevance must be very low.\n"
+    "- If the answer omits requested items from an enumerated or list-style question, relevance should usually stay at or below 0.6.\n"
+    "- Do not award 1.0 when the reader must infer the requested target from a merely related sentence.\n"
+    "- A short fact answer can still score high, but reserve 1.0 for cases where it fully answers exactly what was asked.\n"
+    "- Do not reward answers for sounding plausible; judge only what is explicitly supported by the CONTEXT.\n\n"
     "Respond with ONLY a JSON object:\n"
     '{"faithfulness": <float>, "relevance": <float>, "reasoning": "<brief explanation>"}\n'
     "No markdown, no extra text."
@@ -57,28 +74,89 @@ def _mock_judge(question: str, answer: str, context: str) -> JudgeResult:
     if not answer.strip():
         return JudgeResult(faithfulness=0.0, relevance=0.0, reasoning="empty answer")
 
-    # 簡易近似: context と answer の共通単語率
-    ctx_words = set(context.lower().split())
-    ans_words = set(answer.lower().split())
-    q_words = set(question.lower().split())
+    ctx_words = _overlap_tokens(context)
+    ans_words = _overlap_tokens(answer)
+    q_words = _overlap_tokens(question)
 
-    if ctx_words:
-        overlap = len(ans_words & ctx_words) / max(len(ans_words), 1)
-        faithfulness = min(round(overlap, 2), 1.0)
+    if ctx_words and ans_words:
+        faithfulness = min(round(_overlap_precision(ctx_words, ans_words), 2), 1.0)
     else:
         faithfulness = 0.0
 
     if q_words:
-        q_overlap = len(ans_words & q_words) / max(len(q_words), 1)
-        relevance = min(round(q_overlap, 2), 1.0)
+        answer_segments = _split_text_units(answer)
+        segment_scores = [_overlap_f1(q_words, _overlap_tokens(segment)) for segment in answer_segments]
+        if not segment_scores:
+            segment_scores = [_overlap_f1(q_words, ans_words)]
+        relevance = min(round(max(segment_scores), 2), 1.0)
     else:
         relevance = 0.5
 
     return JudgeResult(
         faithfulness=faithfulness,
         relevance=relevance,
-        reasoning="mock judge (word overlap heuristic)",
+        reasoning="mock judge (multilingual token overlap heuristic)",
     )
+
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+|[ぁ-んァ-ヶー一-龠々〆ヵヶ]+", re.IGNORECASE)
+_ASCII_TOKEN_RE = re.compile(r"^[a-z0-9]+$", re.IGNORECASE)
+
+
+def _normalize_text(text: str) -> str:
+    normalized = unicodedata.normalize("NFKC", text).lower()
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def _overlap_tokens(text: str) -> set[str]:
+    normalized = _normalize_text(text)
+    tokens: set[str] = set()
+    for piece in _TOKEN_RE.findall(normalized):
+        if not piece:
+            continue
+        if _ASCII_TOKEN_RE.match(piece):
+            tokens.add(piece)
+            continue
+
+        if len(piece) <= 2:
+            tokens.add(piece)
+            continue
+
+        for n in (2, 3):
+            if len(piece) < n:
+                continue
+            for idx in range(len(piece) - n + 1):
+                tokens.add(piece[idx : idx + n])
+
+        if len(piece) <= 8:
+            tokens.add(piece)
+    return tokens
+
+
+def _split_text_units(text: str) -> list[str]:
+    normalized = unicodedata.normalize("NFKC", text).lower()
+    segments = re.split(r"[。！？.!?]+|\r?\n+", normalized)
+    return [re.sub(r"\s+", " ", segment).strip() for segment in segments if segment.strip()]
+
+
+def _overlap_precision(reference_tokens: set[str], candidate_tokens: set[str]) -> float:
+    if not reference_tokens or not candidate_tokens:
+        return 0.0
+    overlap = len(reference_tokens & candidate_tokens)
+    return overlap / len(candidate_tokens)
+
+
+def _overlap_f1(reference_tokens: set[str], candidate_tokens: set[str]) -> float:
+    if not reference_tokens or not candidate_tokens:
+        return 0.0
+
+    overlap = len(reference_tokens & candidate_tokens)
+    if overlap == 0:
+        return 0.0
+
+    precision = overlap / len(candidate_tokens)
+    recall = overlap / len(reference_tokens)
+    return (2 * precision * recall) / (precision + recall)
 
 
 # ---------------------------------------------------------------------------
