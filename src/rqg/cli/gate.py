@@ -11,7 +11,9 @@ from .helpers import validate_index_dir
 
 def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
-    if not validate_index_dir(args.index_dir):
+    # Skip index-dir validation when using external RAG
+    rag_endpoint = getattr(args, "rag_endpoint", None)
+    if not rag_endpoint and not validate_index_dir(args.index_dir):
         return 1
 
     print("=== Step 1/2: eval ===")
@@ -24,6 +26,8 @@ def cmd_gate(args: argparse.Namespace) -> int:
             reset_log_dir=args.reset_log_dir,
             context_k=args.context_k,
             mock=args.mock,
+            rag_endpoint=getattr(args, "rag_endpoint", None),
+            rag_api_key_env=getattr(args, "rag_api_key_env", None),
             verbose=args.verbose,
         )
     )

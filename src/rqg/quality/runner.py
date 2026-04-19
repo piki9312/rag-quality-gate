@@ -19,7 +19,7 @@ from openai import APIError
 from ..locales import detect_locale, is_english_text
 from ..locales import ja as ja_locale
 from ..serving.llm_client import generate_answer
-from ..serving.rag import RAGStore
+from ..serving.protocol import RAGStoreProtocol
 from .case_schema import normalize_eval_mode
 from .evaluators.keyword import keyword_match_rate
 from .evaluators.llm_judge import judge as llm_judge
@@ -345,7 +345,7 @@ class RAGQualityRunner:
 
     def __init__(
         self,
-        store: RAGStore,
+        store: RAGStoreProtocol,
         retrieval_k: int = 20,
         context_k: int = 3,
         use_multi: bool = False,

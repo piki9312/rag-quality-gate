@@ -72,8 +72,11 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> list[str
     return [c for c in chunks if c]
 
 
-class RAGStore:
-    """FAISS ベースの RAG ストア。"""
+class FaissRAGStore:
+    """FAISS ベースの RAG ストア。
+
+    ``RAGStoreProtocol`` を duck typing で満たす。
+    """
 
     def __init__(
         self,
@@ -285,3 +288,8 @@ class RAGStore:
         for p in [self.index_path, self.meta_path]:
             if os.path.exists(p):
                 os.remove(p)
+
+
+# Backward-compatible alias — existing imports ``from rqg.serving.rag import RAGStore``
+# continue to work.
+RAGStore = FaissRAGStore

@@ -5,8 +5,23 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 from .helpers import reset_eval_log_dir, validate_index_dir, write_json_output
+
+
+def _load_rag_config() -> dict[str, Any]:
+    """Load RAG section from .rqg.yml if it exists."""
+    import yaml
+
+    for candidate in (Path(".rqg.yml"), Path(".rqg.yaml")):
+        if candidate.exists():
+            try:
+                data = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
+                return data.get("rag", {})
+            except Exception:
+                return {}
+    return {}
 
 
 def cmd_ingest(args: argparse.Namespace) -> int:
@@ -53,12 +68,46 @@ def cmd_eval(args: argparse.Namespace) -> int:
     """テストケースを実行して品質評価する。"""
     from ..quality.loader import filter_cases_by_status, load_cases
     from ..quality.runner import RAGQualityRunner
-    from ..serving.rag import RAGStore
 
-    if not validate_index_dir(args.index_dir):
-        return 1
+    rag_endpoint = getattr(args, "rag_endpoint", None)
+    rag_api_key_env = getattr(args, "rag_api_key_env", None)
 
-    if args.log_dir and args.reset_log_dir:
+    # Load config file for rag settings if not specified on CLI
+    if rag_endpoint is None:
+        cfg = _load_rag_config()
+        if cfg.get("type") == "http" and cfg.get("endpoint"):
+            rag_endpoint = cfg["endpoint"]
+            rag_api_key_env = rag_api_key_env or cfg.get("api_key_env")
+
+    if rag_endpoint and not getattr(args, "mock", False):
+        # External RAG mode — skip index-dir validation
+        from ..serving.external_adapter import HTTPRAGAdapter
+
+        store = HTTPRAGAdapter(
+            endpoint=rag_endpoint,
+            api_key_env=rag_api_key_env,
+        )
+    else:
+        # Local FAISS mode (default)
+        from ..serving.rag import RAGStore
+
+        if not validate_index_dir(args.index_dir):
+            return 1
+
+        store = RAGStore(index_dir=args.index_dir)
+        if store.index is None:
+            # 文書がまだ投入されていない場合、--docs から投入
+            if args.docs:
+                cmd_ingest_args = argparse.Namespace(
+                    docs_dir=args.docs,
+                    index_dir=args.index_dir,
+                    verbose=args.verbose,
+                )
+                cmd_ingest(cmd_ingest_args)
+                # Reload store
+                store = RAGStore(index_dir=args.index_dir)
+
+    if args.log_dir and getattr(args, "reset_log_dir", False):
         removed = reset_eval_log_dir(args.log_dir)
         print(f"Reset log_dir {args.log_dir}: removed {len(removed)} files")
 
@@ -72,19 +121,6 @@ def cmd_eval(args: argparse.Namespace) -> int:
             f"Selected {len(cases)} active test cases from {args.cases} "
             f"(skipped {skipped} non-active cases)"
         )
-
-    store = RAGStore(index_dir=args.index_dir)
-    if store.index is None:
-        # 文書がまだ投入されていない場合、--docs から投入
-        if args.docs:
-            cmd_ingest_args = argparse.Namespace(
-                docs_dir=args.docs,
-                index_dir=args.index_dir,
-                verbose=args.verbose,
-            )
-            cmd_ingest(cmd_ingest_args)
-            # Reload store
-            store = RAGStore(index_dir=args.index_dir)
 
     runner = RAGQualityRunner(
         store=store,

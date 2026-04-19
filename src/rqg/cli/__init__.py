@@ -57,6 +57,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_eval.add_argument("--context-k", type=int, default=3)
     p_eval.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
+    p_eval.add_argument(
+        "--rag-endpoint",
+        default=None,
+        help="External RAG API endpoint URL. When set, uses HTTP adapter instead of local FAISS.",
+    )
+    p_eval.add_argument(
+        "--rag-api-key-env",
+        default=None,
+        help="Environment variable name containing API key for external RAG endpoint.",
+    )
 
     # --- gate ---
     p_gate = sub.add_parser("gate", help="Run eval + check in one command")
@@ -71,6 +81,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_gate.add_argument("--context-k", type=int, default=3)
     p_gate.add_argument("--mock", action="store_true", help="Use mock LLM (no API key needed)")
+    p_gate.add_argument(
+        "--rag-endpoint",
+        default=None,
+        help="External RAG API endpoint URL. When set, uses HTTP adapter instead of local FAISS.",
+    )
+    p_gate.add_argument(
+        "--rag-api-key-env",
+        default=None,
+        help="Environment variable name containing API key for external RAG endpoint.",
+    )
     p_gate.add_argument("--config", help="Path to .rqg.yml config")
     p_gate.add_argument("--days", type=int, default=1)
     p_gate.add_argument(
