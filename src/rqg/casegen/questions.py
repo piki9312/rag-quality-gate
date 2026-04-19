@@ -13,7 +13,7 @@ from rqg.casegen.sections import DocumentSection
 from rqg.locales import detect_locale
 from rqg.locales import is_english_text as is_english_text  # re-export
 from rqg.locales import ja as ja_locale
-from rqg.quality.case_schema import infer_question_types
+from rqg.quality.case_schema import infer_question_types, strip_ordinal_prefix
 from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
 
 logger = logging.getLogger(__name__)
@@ -32,6 +32,21 @@ def normalize_question_text(question: str) -> str:
     return compact.rstrip("?？ ")
 
 
+def _contains_any(text: str, patterns: tuple[str, ...]) -> bool:
+    return any(pattern in text for pattern in patterns)
+
+
+def _infer_rule_hint_category(subject: str, content: str, question: str = "") -> str:
+    combined = f"{subject}\n{content}\n{question}"
+    if _contains_any(combined, ja_locale.DEADLINE_KEYWORDS):
+        return "deadline"
+    if _contains_any(combined, ja_locale.APPLICATION_KEYWORDS):
+        return "procedure"
+    if _contains_any(combined, ja_locale.CONDITION_KEYWORDS):
+        return "policy"
+    if _contains_any(combined, ja_locale.PROHIBITION_KEYWORDS):
+        return "compliance"
+    return "general"
 def _append_question_mark(question: str) -> str:
     normalized = normalize_question_text(question)
     if not normalized:
@@ -245,7 +260,10 @@ def infer_case_category(question: str, section: DocumentSection) -> str:
         return "deadline"
     if _COMPLIANCE_HINT_RE.search(text):
         return "compliance"
-    if "list" in question_types or "policy" in question_types or "amount" in question_types:
+    rule_hint_category = _infer_rule_hint_category(section.heading, section.content, normalized)
+    if rule_hint_category != "general":
+        return rule_hint_category
+    if "policy" in question_types or "amount" in question_types:
         return "policy"
     if "目的" in normalized or _TIME_RANGE_RE.search(section.content):
         return "policy"
@@ -266,6 +284,7 @@ def filter_reviewable_questions(questions: list[str]) -> list[str]:
 
     for question in questions:
         normalized = normalize_question_text(question)
+        normalized = strip_ordinal_prefix(normalized)
         if not normalized:
             continue
         if len(normalized) < 8 or len(normalized) > 120:

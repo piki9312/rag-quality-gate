@@ -4,7 +4,7 @@ This module separates review lightweight output from the formal cases.csv
 schema and provides a clean mapping layer between them.
 
 Design principles:
-- review (lightweight 9 fields) ≠ cases.csv (formal 16 fields)
+- review (lightweight 10 fields) ≠ cases.csv (formal 16 fields)
 - normalize / mapper always sits between them
 - Ambiguous cases → needs_review (prefer safety over automation)
 - Implementation-dependent names (expected_chunks) → evidence-oriented names
@@ -47,6 +47,7 @@ REVIEW_OUTPUT_FIELDS: list[str] = [
     "expected_answer",
     "expected_evidence",
     "expected_keywords",
+    "source_doc",
     "severity",
     "category",
     "notes",
@@ -57,6 +58,7 @@ VALID_SEVERITIES = {"S1", "S2"}
 VALID_EVAL_MODES = {"exact", "evidence_keyword", "grounded_judge"}
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")
 _QUESTION_WHITESPACE_RE = re.compile(r"\s+")
+_ORDINAL_PREFIX_RE = re.compile(r"^\d+\s*[.)．、）]\s*")
 
 _QUESTION_TYPE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -147,6 +149,7 @@ class ReviewCase:
     expected_answer: str = ""
     expected_evidence: str = ""
     expected_keywords: str = ""
+    source_doc: str = ""
     severity: str = "S2"
     category: str = ""
     notes: str = ""
@@ -186,6 +189,42 @@ def infer_eval_mode(
     if _has_value(expected_evidence):
         return "grounded_judge"
     return ""
+
+
+def strip_ordinal_prefix(text: object) -> str:
+    return _ORDINAL_PREFIX_RE.sub("", _clean(text), count=1)
+
+
+def _first_evidence_token(expected_evidence: object) -> str:
+    if isinstance(expected_evidence, (list, tuple, set)):
+        for item in expected_evidence:
+            token = _clean(item)
+            if token:
+                return token
+        return ""
+
+    for item in _clean(expected_evidence).split(";"):
+        token = item.strip()
+        if token:
+            return token
+    return ""
+
+
+def infer_source_doc(
+    *,
+    expected_evidence: object = "",
+    source_doc: object = "",
+    doc_snapshot_id: object = "",
+) -> str:
+    first_evidence = _first_evidence_token(expected_evidence)
+    if first_evidence and ("/" in first_evidence or "\\" in first_evidence):
+        return first_evidence.split("#", 1)[0]
+
+    existing_source_doc = _clean(source_doc)
+    if existing_source_doc:
+        return existing_source_doc
+
+    return _clean(doc_snapshot_id)
 
 
 def infer_question_types(question: str) -> tuple[str, ...]:
@@ -298,13 +337,19 @@ def review_case_to_formal_row(
     else:
         status = classify_review_status(review)
 
+    source_doc = infer_source_doc(
+        expected_evidence=review.expected_evidence,
+        source_doc=review.source_doc,
+    )
+
     notes_parts: list[str] = []
     if review.notes:
         notes_parts.append(review.notes)
     question_types = infer_question_types(review.question)
     if len(set(question_types)) >= 2:
         notes_parts.append(f"mixed_question:{','.join(question_types)}")
-    notes_parts.append("source_doc未設定")
+    if not source_doc:
+        notes_parts.append("source_doc未設定")
 
     default_score = "100" if severity == "S1" else "85"
 
@@ -319,7 +364,7 @@ def review_case_to_formal_row(
         "expected_evidence": review.expected_evidence.strip() if review.expected_evidence else "",
         "expected_keywords": review.expected_keywords.strip() if review.expected_keywords else "",
         "category": (review.category.strip() if review.category else "") or "general",
-        "source_doc": "",
+        "source_doc": source_doc,
         "owner": default_owner,
         "min_case_score": default_score,
         "updated_at": _now_iso(),
@@ -337,6 +382,7 @@ def review_row_to_review_case(row: dict[str, str]) -> ReviewCase:
         expected_answer=_clean(row.get("expected_answer") or row.get("golden_answer") or ""),
         expected_evidence=_clean(row.get("expected_evidence") or row.get("expected_chunks") or ""),
         expected_keywords=_clean(row.get("expected_keywords") or ""),
+        source_doc=_clean(row.get("source_doc") or ""),
         severity=_clean(row.get("severity") or row.get("risk_level") or "S2"),
         category=_clean(row.get("category") or ""),
         notes=_clean(row.get("notes") or ""),
@@ -374,12 +420,11 @@ def normalize_legacy_row(row: dict[str, str]) -> dict[str, str]:
     if not result["updated_at"]:
         result["updated_at"] = _now_iso()
 
-    # source_doc: migrate from expected_evidence path hints if possible
-    if not result["source_doc"] and result["expected_evidence"]:
-        first_ev = result["expected_evidence"].split(";")[0].strip()
-        if "/" in first_ev:
-            # e.g. "packs/hr/documents/doc.md#sec-1" -> "packs/hr/documents/doc.md"
-            result["source_doc"] = first_ev.split("#")[0]
+    # source_doc is a helper field derived from evidence path hints when possible.
+    result["source_doc"] = infer_source_doc(
+        expected_evidence=result["expected_evidence"],
+        source_doc=result["source_doc"],
+    )
 
     return result
 
