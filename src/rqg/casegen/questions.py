@@ -10,7 +10,8 @@ from pathlib import Path
 from openai import APIError
 
 from rqg.casegen.sections import DocumentSection
-from rqg.locales import detect_locale, is_english_text
+from rqg.locales import detect_locale
+from rqg.locales import is_english_text as is_english_text  # re-export
 from rqg.locales import ja as ja_locale
 from rqg.quality.case_schema import infer_question_types
 from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
@@ -22,7 +23,6 @@ _SECTION_PREFIX_RE = ja_locale.SECTION_PREFIX_RE
 _TIME_RANGE_RE = ja_locale.TIME_RANGE_RE
 _ASCII_LABEL_RE = re.compile(r"^[A-Za-z0-9_\- ]+$")
 _COMPLIANCE_HINT_RE = ja_locale.COMPLIANCE_HINT_RE
-_ASCII_ALPHA_RE = re.compile(r"[A-Za-z]")
 _JAPANESE_TEXT_RE = ja_locale.JAPANESE_TEXT_RE
 
 
@@ -30,11 +30,6 @@ def normalize_question_text(question: str) -> str:
     """Normalize question text for dedupe and quality checks."""
     compact = _SPACE_RE.sub(" ", question.strip())
     return compact.rstrip("?？ ")
-
-
-def is_english_text(text: str) -> bool:
-    """Delegate to locales for language detection."""
-    return detect_locale(text) == "en" and bool(_ASCII_ALPHA_RE.search((text or "").strip()))
 
 
 def _append_question_mark(question: str) -> str:
