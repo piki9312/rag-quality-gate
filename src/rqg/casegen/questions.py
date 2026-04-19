@@ -10,7 +10,7 @@ from pathlib import Path
 from openai import APIError
 
 from rqg.casegen.sections import DocumentSection
-from rqg.quality.case_schema import infer_question_types
+from rqg.quality.case_schema import infer_question_types, strip_ordinal_prefix
 from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
 
 logger = logging.getLogger(__name__)
@@ -22,12 +22,33 @@ _ASCII_LABEL_RE = re.compile(r"^[A-Za-z0-9_\- ]+$")
 _COMPLIANCE_HINT_RE = re.compile(r"禁止|違反|漏洩|懲戒|機密情報|個人情報|施錠|暗号化")
 _ASCII_ALPHA_RE = re.compile(r"[A-Za-z]")
 _JAPANESE_TEXT_RE = re.compile(r"[ぁ-んァ-ヶ一-龠々]")
+_DEADLINE_HINTS = ("期限", "いつまで", "日まで", "期日")
+_PROCEDURE_HINTS = ("申請", "手続", "届け出", "提出")
+_POLICY_HINTS = ("条件", "対象", "要件")
+_COMPLIANCE_RULE_HINTS = ("禁止", "不可", "してはいけない")
 
 
 def normalize_question_text(question: str) -> str:
     """Normalize question text for dedupe and quality checks."""
     compact = _SPACE_RE.sub(" ", question.strip())
     return compact.rstrip("?？ ")
+
+
+def _contains_any(text: str, patterns: tuple[str, ...]) -> bool:
+    return any(pattern in text for pattern in patterns)
+
+
+def _infer_rule_hint_category(subject: str, content: str, question: str = "") -> str:
+    combined = f"{subject}\n{content}\n{question}"
+    if _contains_any(combined, _DEADLINE_HINTS):
+        return "deadline"
+    if _contains_any(combined, _PROCEDURE_HINTS):
+        return "procedure"
+    if _contains_any(combined, _POLICY_HINTS):
+        return "policy"
+    if _contains_any(combined, _COMPLIANCE_RULE_HINTS):
+        return "compliance"
+    return "general"
 
 
 def is_english_text(text: str) -> bool:
@@ -235,7 +256,10 @@ def infer_case_category(question: str, section: DocumentSection) -> str:
         return "deadline"
     if _COMPLIANCE_HINT_RE.search(text):
         return "compliance"
-    if "list" in question_types or "policy" in question_types or "amount" in question_types:
+    rule_hint_category = _infer_rule_hint_category(section.heading, section.content, normalized)
+    if rule_hint_category != "general":
+        return rule_hint_category
+    if "policy" in question_types or "amount" in question_types:
         return "policy"
     if "目的" in normalized or _TIME_RANGE_RE.search(section.content):
         return "policy"
@@ -257,6 +281,7 @@ def filter_reviewable_questions(questions: list[str]) -> list[str]:
 
     for question in questions:
         normalized = normalize_question_text(question)
+        normalized = strip_ordinal_prefix(normalized)
         if not normalized:
             continue
         if len(normalized) < 8 or len(normalized) > 120:
@@ -312,13 +337,15 @@ def generate_rule_questions(section: DocumentSection, max_questions: int = 1) ->
             return filtered[:max_questions]
         return ["What are the key points of this section?"]
 
-    if any(keyword in subject + content for keyword in ["期限", "いつまで", "日まで", "期日"]):
+    combined = f"{subject}\n{content}"
+
+    if _contains_any(combined, _DEADLINE_HINTS):
         templates.append(f"{subject}はいつまでに対応する必要がありますか？")
-    if any(keyword in subject + content for keyword in ["申請", "手続", "届け出", "提出"]):
+    if _contains_any(combined, _PROCEDURE_HINTS):
         templates.append(f"{subject}の申請方法は何ですか？")
-    if any(keyword in subject + content for keyword in ["条件", "対象", "要件"]):
+    if _contains_any(combined, _POLICY_HINTS):
         templates.append(f"{subject}の条件は何ですか？")
-    if any(keyword in subject + content for keyword in ["禁止", "不可", "してはいけない"]):
+    if _contains_any(combined, _COMPLIANCE_RULE_HINTS):
         templates.append(f"{subject}で禁止されていることは何ですか？")
 
     templates.append(f"{subject}の要点は何ですか？")

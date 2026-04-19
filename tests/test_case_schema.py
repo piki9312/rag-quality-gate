@@ -107,6 +107,7 @@ class TestReviewRowToReviewCase:
             "expected_answer": "Answer",
             "expected_evidence": "doc.md#sec-1",
             "expected_keywords": "policy;request",
+            "source_doc": "doc.md",
             "severity": "S1",
             "category": "policy",
             "notes": "note",
@@ -116,6 +117,7 @@ class TestReviewRowToReviewCase:
         assert rc.eval_mode == "evidence-keyword"
         assert rc.expected_answer == "Answer"
         assert rc.expected_keywords == "policy;request"
+        assert rc.source_doc == "doc.md"
 
     def test_with_legacy_field_names(self):
         row = {

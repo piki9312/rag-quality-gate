@@ -91,6 +91,23 @@ def test_generate_llm_questions_filters_short_and_duplicate_questions():
     assert questions == ["申請期限はいつまでですか？"]
 
 
+def test_filter_reviewable_questions_strips_leading_ordinal_prefix_only():
+    questions = [
+        "1. 申請期限はいつまでですか？",
+        "2) 申請期限はいつまでですか？",
+        "3、禁止事項は何ですか？",
+        "対象は3、4月入社者ですか？",
+    ]
+
+    filtered = filter_reviewable_questions(questions)
+
+    assert filtered == [
+        "申請期限はいつまでですか？",
+        "禁止事項は何ですか？",
+        "対象は3、4月入社者ですか？",
+    ]
+
+
 def test_generate_rule_questions_for_access_faq_in_english():
     section = DocumentSection(
         section_id="packs/wiki/documents/access_faq.md#sec-1",
@@ -109,6 +126,45 @@ def test_generate_rule_questions_for_access_faq_in_english():
         "When should temporary VPN exception access be requested?",
         "How should employees submit a temporary VPN exception request?",
     ]
+
+
+def test_infer_case_category_uses_rule_hint_fallbacks_for_initial_review_labels():
+    deadline_section = DocumentSection(
+        section_id="docs/hr.md#sec-1",
+        heading="申請期限",
+        content="有給休暇は5営業日前までに申請します。",
+        level=2,
+    )
+    procedure_section = DocumentSection(
+        section_id="docs/hr.md#sec-2",
+        heading="申請手続",
+        content="申請は勤怠管理システムから行います。",
+        level=2,
+    )
+    policy_section = DocumentSection(
+        section_id="docs/hr.md#sec-3",
+        heading="利用要件",
+        content="利用対象と承認要件を定めます。",
+        level=2,
+    )
+    compliance_section = DocumentSection(
+        section_id="docs/hr.md#sec-4",
+        heading="禁止事項",
+        content="個人情報の持ち出しは禁止です。",
+        level=2,
+    )
+    general_section = DocumentSection(
+        section_id="docs/hr.md#sec-5",
+        heading="概要",
+        content="この制度の背景を説明します。",
+        level=2,
+    )
+
+    assert infer_case_category(generate_rule_questions(deadline_section)[0], deadline_section) == "deadline"
+    assert infer_case_category(generate_rule_questions(procedure_section)[0], procedure_section) == "procedure"
+    assert infer_case_category(generate_rule_questions(policy_section)[0], policy_section) == "policy"
+    assert infer_case_category(generate_rule_questions(compliance_section)[0], compliance_section) == "compliance"
+    assert infer_case_category(generate_rule_questions(general_section)[0], general_section) == "general"
 
 
 def test_generate_rule_questions_for_security_runbook_in_english():

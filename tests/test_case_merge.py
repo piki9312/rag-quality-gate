@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from rqg.quality.case_merge import merge_cases_rows
+from rqg.quality.case_schema import normalize_legacy_row
 
 
 def test_merge_updates_core_content_but_preserves_curated_fields():
@@ -256,3 +257,51 @@ def test_merge_handles_legacy_field_names_in_base():
     assert row["status"] == "active"
     assert row["eval_mode"] == ""
     assert "expected_chunks" not in row or row.get("expected_chunks") is None
+
+
+def test_merge_review_source_doc_matches_legacy_path_derivation():
+    legacy_row = normalize_legacy_row(
+        {
+            "case_id": "LEGACY002",
+            "expected_evidence": "packs/hr/docs/leave.md#sec-1",
+            "question": "q?",
+        }
+    )
+
+    merged_rows, _ = merge_cases_rows(
+        base_rows=[],
+        review_rows=[
+            {
+                "title": "LEGACY002",
+                "question": "q?",
+                "expected_evidence": "packs/hr/docs/leave.md#sec-1",
+                "source_doc": "override.md",
+            }
+        ],
+    )
+
+    assert merged_rows[0]["source_doc"] == legacy_row["source_doc"] == "packs/hr/docs/leave.md"
+
+
+def test_merge_review_source_doc_falls_back_to_existing_then_snapshot_id():
+    merged_rows, _ = merge_cases_rows(
+        base_rows=[],
+        review_rows=[
+            {
+                "title": "C010",
+                "question": "q?",
+                "expected_evidence": "chunk-1",
+                "source_doc": "docs/from-source.md",
+            },
+            {
+                "title": "C011",
+                "question": "q?",
+                "expected_evidence": "chunk-2",
+                "doc_snapshot_id": "snapshot-fallback-002",
+            },
+        ],
+    )
+
+    by_id = {row["case_id"]: row for row in merged_rows}
+    assert by_id["C010"]["source_doc"] == "docs/from-source.md"
+    assert by_id["C011"]["source_doc"] == "snapshot-fallback-002"

@@ -12,13 +12,14 @@ from .case_schema import (
     FORMAL_CASE_FIELDS,
     LEGACY_FIELD_MAP,
     infer_eval_mode,
+    infer_source_doc,
     normalize_legacy_row,
     normalize_eval_mode,
+    strip_ordinal_prefix,
 )
 
 AUTO_UPDATE_FIELDS = ("question", "expected_evidence", "expected_keywords")
 _SPACE_RE = re.compile(r"\s+")
-_ORDINAL_PREFIX_RE = re.compile(r"^\d+\.\s*")
 
 
 @dataclass
@@ -57,8 +58,7 @@ def _normalize_semicolon_list(raw: object) -> str:
 
 
 def _normalize_question_for_signature(raw: object) -> str:
-    question = _clean(raw)
-    question = _ORDINAL_PREFIX_RE.sub("", question)
+    question = strip_ordinal_prefix(raw)
     question = _SPACE_RE.sub(" ", question)
     return question.strip().lower()
 
@@ -187,6 +187,11 @@ def _review_to_ops_row(row: dict[str, str]) -> dict[str, str]:
             expected_evidence=expected_evidence,
             expected_keywords=expected_keywords,
         )
+    source_doc = infer_source_doc(
+        expected_evidence=expected_evidence,
+        source_doc=row.get("source_doc"),
+        doc_snapshot_id=row.get("doc_snapshot_id"),
+    )
     normalized = {
         "case_id": case_id,
         "name": _clean(row.get("name") or row.get("title")) or case_id,
@@ -198,7 +203,7 @@ def _review_to_ops_row(row: dict[str, str]) -> dict[str, str]:
         "expected_evidence": expected_evidence,
         "expected_keywords": expected_keywords,
         "category": _clean(row.get("category")) or "general",
-        "source_doc": _clean(row.get("source_doc") or row.get("doc_snapshot_id")),
+        "source_doc": source_doc,
         "owner": _clean(row.get("owner")),
         "min_case_score": _normalize_min_case_score(
             row.get("min_case_score") or row.get("min_pass_rate"), severity

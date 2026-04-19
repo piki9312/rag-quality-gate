@@ -705,6 +705,7 @@ class TestPhase1CLI:
         assert row["severity"] == "S2"
         assert row["expected_evidence"].endswith("#sec-1")
         assert row["expected_keywords"]
+        assert row["source_doc"] == "snapshot-001"
 
     def test_merge_cases_writes_merged_csv_and_report(self):
         base_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-base.csv"

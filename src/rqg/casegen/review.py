@@ -7,7 +7,7 @@ from pathlib import Path
 
 from rqg.domain import EvalCase
 from rqg.presentation.markdown import render_eval_case_review_markdown
-from rqg.quality.case_schema import REVIEW_OUTPUT_FIELDS
+from rqg.quality.case_schema import REVIEW_OUTPUT_FIELDS, infer_source_doc
 
 
 def render_cases_markdown(cases: list[EvalCase]) -> str:
@@ -28,6 +28,7 @@ def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
             writer = csv.DictWriter(f, fieldnames=REVIEW_OUTPUT_FIELDS)
             writer.writeheader()
             for case in cases:
+                # source_doc is a reviewer aid only; expected_evidence remains authoritative.
                 writer.writerow(
                     {
                         "title": case.case_id,
@@ -36,6 +37,10 @@ def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
                         "expected_answer": "",
                         "expected_evidence": ";".join(case.expected_evidence),
                         "expected_keywords": ";".join(case.expected_keywords),
+                        "source_doc": infer_source_doc(
+                            expected_evidence=case.expected_evidence,
+                            doc_snapshot_id=case.doc_snapshot_id,
+                        ),
                         "severity": case.risk_level,
                         "category": case.category,
                         "notes": case.notes or "",

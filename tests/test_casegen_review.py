@@ -118,6 +118,7 @@ def test_write_review_output_csv_file_includes_lightweight_columns():
     assert "eval_mode" in reader.fieldnames
     assert "expected_evidence" in reader.fieldnames
     assert "expected_keywords" in reader.fieldnames
+    assert "source_doc" in reader.fieldnames
     assert "severity" in reader.fieldnames
     assert "notes" in reader.fieldnames
     # Lightweight schema should NOT include formal-only fields
@@ -132,6 +133,7 @@ def test_write_review_output_csv_file_includes_lightweight_columns():
     assert row["severity"] == "S2"
     assert row["expected_evidence"] == "docs/hr.md#sec-1"
     assert row["expected_keywords"] == "年次有給休暇;申請"
+    assert row["source_doc"] == "docs/hr.md"
     assert row["category"] == "policy"
     assert row["notes"] == "auto-generated from section 1"
 
@@ -145,3 +147,23 @@ def test_write_review_output_csv_preserves_s1_severity():
         row = next(csv.DictReader(f))
 
     assert row["severity"] == "S1"
+
+
+def test_write_review_output_csv_falls_back_to_doc_snapshot_for_source_doc():
+    output = Path("tests/.tmp") / f"{uuid.uuid4()}-review-source-doc.csv"
+    case = EvalCase(
+        case_id="doc_004",
+        question="申請方法は何ですか？",
+        expected_evidence=["chunk-1"],
+        expected_keywords=["申請"],
+        risk_level="S2",
+        doc_snapshot_id="snapshot-fallback-001",
+        notes="auto-generated",
+    )
+
+    write_review_output(output, [case])
+
+    with open(output, "r", encoding="utf-8", newline="") as f:
+        row = next(csv.DictReader(f))
+
+    assert row["source_doc"] == "snapshot-fallback-001"
