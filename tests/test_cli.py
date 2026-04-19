@@ -292,8 +292,8 @@ class TestPhase1CLI:
         load_cases_mock.assert_not_called()
 
     def test_gate_rejects_index_dir_under_runs_before_eval_and_check(self, capsys):
-        with patch("rqg.cli.cmd_eval") as eval_mock:
-            with patch("rqg.cli.cmd_check") as check_mock:
+        with patch("rqg.cli.gate.cmd_eval") as eval_mock:
+            with patch("rqg.cli.gate.cmd_check") as check_mock:
                 exit_code = main(
                     [
                         "gate",
@@ -311,8 +311,8 @@ class TestPhase1CLI:
         check_mock.assert_not_called()
 
     def test_gate_runs_check_even_if_eval_has_failures(self):
-        with patch("rqg.cli.cmd_eval", return_value=1) as eval_mock:
-            with patch("rqg.cli.cmd_check", return_value=0) as check_mock:
+        with patch("rqg.cli.gate.cmd_eval", return_value=1) as eval_mock:
+            with patch("rqg.cli.gate.cmd_check", return_value=0) as check_mock:
                 exit_code = main(["gate", "packs/hr/cases.csv", "--mock"])
 
         assert exit_code == 0
@@ -323,8 +323,8 @@ class TestPhase1CLI:
         assert check_args.cases_file == "packs/hr/cases.csv"
 
     def test_gate_allows_cases_file_override(self):
-        with patch("rqg.cli.cmd_eval", return_value=0):
-            with patch("rqg.cli.cmd_check", return_value=1) as check_mock:
+        with patch("rqg.cli.gate.cmd_eval", return_value=0):
+            with patch("rqg.cli.gate.cmd_check", return_value=1) as check_mock:
                 exit_code = main(
                     [
                         "gate",
@@ -339,8 +339,8 @@ class TestPhase1CLI:
         assert check_args.cases_file == "packs/wiki/cases.csv"
 
     def test_gate_passes_reset_log_dir_to_eval(self):
-        with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
-            with patch("rqg.cli.cmd_check", return_value=0):
+        with patch("rqg.cli.gate.cmd_eval", return_value=0) as eval_mock:
+            with patch("rqg.cli.gate.cmd_check", return_value=0):
                 exit_code = main(["gate", "packs/hr/cases.csv", "--reset-log-dir"])
 
         assert exit_code == 0
@@ -1004,7 +1004,9 @@ def test_merge_cases_skips_high_priority_mixed_review_rows(capsys):
     with open(base_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["case_id", "question", "expected_answer", "status"])
         writer.writeheader()
-        writer.writerow({"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"})
+        writer.writerow(
+            {"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"}
+        )
 
     with open(review_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(

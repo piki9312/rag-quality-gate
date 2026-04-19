@@ -8,8 +8,8 @@ from unittest.mock import patch
 import pytest
 
 from rqg.quality.evaluators.llm_judge import (
-    JudgeResult,
     _JUDGE_SYSTEM,
+    JudgeResult,
     _mock_judge,
     _parse_judge_response,
     judge,
@@ -89,8 +89,7 @@ class TestMockJudge:
 
     def test_japanese_relevance_uses_best_matching_sentence(self):
         answer = (
-            "経費精算の締め日は毎月25日です。\n"
-            "有給休暇は5営業日前までに申請しなければならない。"
+            "経費精算の締め日は毎月25日です。\n" "有給休暇は5営業日前までに申請しなければならない。"
         )
         context = answer
         result = _mock_judge("有給休暇の申請期限は？", answer, context)

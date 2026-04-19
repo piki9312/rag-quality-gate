@@ -13,8 +13,8 @@ from .case_schema import (
     LEGACY_FIELD_MAP,
     infer_eval_mode,
     infer_source_doc,
-    normalize_legacy_row,
     normalize_eval_mode,
+    normalize_legacy_row,
     strip_ordinal_prefix,
 )
 

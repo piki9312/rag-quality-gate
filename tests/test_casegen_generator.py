@@ -130,7 +130,9 @@ def test_generate_eval_cases_marks_mixed_question_notes():
         "rqg.casegen.generator.generate_rule_questions",
         return_value=["1. 締め日と提出方法はいつまでに対応する必要がありますか？"],
     ):
-        bundle = generate_eval_cases_from_snapshot(snapshot, mode="rule", max_cases=10, use_llm=False)
+        bundle = generate_eval_cases_from_snapshot(
+            snapshot, mode="rule", max_cases=10, use_llm=False
+        )
 
     assert len(bundle.cases) == 3
     assert bundle.cases[0].notes is not None

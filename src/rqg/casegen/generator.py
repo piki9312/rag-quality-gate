@@ -120,7 +120,9 @@ def _strip_question_subject(question: str) -> str:
 
 def _split_subject_fragments(subject: str) -> list[str]:
     cleaned = _QUESTION_PREFIX_RE.sub("", subject.strip())
-    fragments = [fragment.strip() for fragment in _SUBJECT_SPLIT_RE.split(cleaned) if fragment.strip()]
+    fragments = [
+        fragment.strip() for fragment in _SUBJECT_SPLIT_RE.split(cleaned) if fragment.strip()
+    ]
     if len(fragments) > 1:
         return fragments
 
@@ -188,7 +190,9 @@ def _split_candidate_questions(question: str) -> list[str]:
 
     subject = _strip_question_subject(question)
     fragments = _split_subject_fragments(subject)
-    english = bool(_ENGLISH_RE.search(question)) and not bool(re.search(r"[ぁ-んァ-ヶ一-龠々]", question))
+    english = bool(_ENGLISH_RE.search(question)) and not bool(
+        re.search(r"[ぁ-んァ-ヶ一-龠々]", question)
+    )
 
     candidates: list[str] = []
     seen: set[str] = set()
@@ -245,7 +249,9 @@ def generate_eval_cases_from_snapshot(
 
         questions: list[tuple[str, str]] = []
 
-        for question in generate_rule_questions(section, max_questions=_rule_question_limit(section)):
+        for question in generate_rule_questions(
+            section, max_questions=_rule_question_limit(section)
+        ):
             question = naturalize_question(question, section)
             questions.append(
                 (

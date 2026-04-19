@@ -63,6 +63,15 @@ class TestRetrievalHit:
     def test_one_of_many(self):
         assert retrieval_hit(["chunk_A", "chunk_B"], ["chunk_X", "chunk_A"]) is True
 
+    def test_matches_section_evidence_against_retrieved_chunk_alias(self):
+        assert (
+            retrieval_hit(
+                ["leave_policy.md@abc123#chunk0"],
+                ["docs/leave_policy.md#sec-1"],
+            )
+            is True
+        )
+
 
 # ==================================================================
 # retrieval_precision_at_k
@@ -81,6 +90,15 @@ class TestRetrievalPrecision:
 
     def test_empty_expected(self):
         assert retrieval_precision_at_k(["a"], []) == 1.0
+
+    def test_counts_alias_match_for_section_evidence(self):
+        assert (
+            retrieval_precision_at_k(
+                ["leave_policy.md@abc123#chunk0"],
+                ["docs/leave_policy.md#sec-1"],
+            )
+            == 1.0
+        )
 
 
 # ==================================================================
