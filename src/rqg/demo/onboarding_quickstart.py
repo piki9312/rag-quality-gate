@@ -79,8 +79,8 @@ P1 security incidents must be escalated to the security on-call owner first.
 PROFILE_CONFIGS: dict[str, QuickstartProfileConfig] = {
     "demo_cycle": QuickstartProfileConfig(
         template_pack_dir=REPO_ROOT / "packs" / "demo_cycle",
-        scenario_doc_relpath=Path("documents/quickstart_policy.md"),
-        doc_id="demo-quickstart-policy",
+        scenario_doc_relpath=Path("documents/leave_policy.md"),
+        doc_id="leave_policy.md",
         title="Quickstart Policy",
         good_doc=GOOD_DOC,
         updated_doc=UPDATED_DOC,
@@ -88,15 +88,15 @@ PROFILE_CONFIGS: dict[str, QuickstartProfileConfig] = {
     "hr": QuickstartProfileConfig(
         template_pack_dir=REPO_ROOT / "packs" / "hr",
         scenario_doc_relpath=Path("documents/quickstart_policy.md"),
-        doc_id="hr-quickstart-policy",
+        doc_id="quickstart_policy.md",
         title="HR Quickstart Policy",
         good_doc=GOOD_DOC,
         updated_doc=UPDATED_DOC,
     ),
     "wiki": QuickstartProfileConfig(
         template_pack_dir=REPO_ROOT / "packs" / "wiki",
-        scenario_doc_relpath=Path("documents/quickstart_policy.md"),
-        doc_id="wiki-quickstart-policy",
+        scenario_doc_relpath=Path("documents/access_faq.md"),
+        doc_id="access_faq.md",
         title="Wiki Quickstart Policy",
         good_doc=WIKI_GOOD_DOC,
         updated_doc=WIKI_UPDATED_DOC,
