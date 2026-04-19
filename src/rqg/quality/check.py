@@ -35,6 +35,7 @@ def normalize_aggregation_policy(value: object) -> str:
     allowed = ", ".join(sorted(VALID_AGGREGATION_POLICIES))
     raise ValueError(f"Invalid aggregation_policy '{value}' (allowed: {allowed})")
 
+
 # ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
@@ -178,9 +179,7 @@ class CheckResult:
         """Return 'pass', 'warn', or 'fail'."""
         if not self.gate_passed:
             return "fail"
-        if any(t.warned for t in self.thresholds) or any(
-            t.warned for t in self.case_thresholds
-        ):
+        if any(t.warned for t in self.thresholds) or any(t.warned for t in self.case_thresholds):
             return "warn"
         return "pass"
 
@@ -230,7 +229,9 @@ def load_records(
 
 
 def _average_metric(records: list[QARunRecord], field_name: str) -> tuple[float | None, int]:
-    values = [value for record in records if (value := getattr(record, field_name, None)) is not None]
+    values = [
+        value for record in records if (value := getattr(record, field_name, None)) is not None
+    ]
     if not values:
         return None, 0
     return sum(values) / len(values) * 100, len(values)
@@ -255,7 +256,11 @@ def _select_records_by_policy(
         grouped.items(),
         key=lambda item: (max(record.timestamp for record in item[1]), item[0]),
     )
-    logger.debug("selected latest run for gate aggregation: %s (%d records)", latest_run_id, len(latest_records))
+    logger.debug(
+        "selected latest run for gate aggregation: %s (%d records)",
+        latest_run_id,
+        len(latest_records),
+    )
     return latest_records
 
 
@@ -593,13 +598,9 @@ def build_gate_decision(
         warned_thresholds = [t for t in result.thresholds if t.warned]
         warned_case_thresholds = [t for t in result.case_thresholds if t.warned]
         for t in warned_thresholds:
-            reasons.append(
-                f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}"
-            )
+            reasons.append(f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}")
         for t in warned_case_thresholds:
-            reasons.append(
-                f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}"
-            )
+            reasons.append(f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}")
 
     metrics = {
         "overall_pass_rate": result.overall_rate,
@@ -665,7 +666,9 @@ def render_gate_markdown(
 
     observed_metrics: list[tuple[str, float, int]] = []
     if result.avg_faithfulness is not None:
-        observed_metrics.append(("Avg faithfulness", result.avg_faithfulness, result.faithfulness_scored))
+        observed_metrics.append(
+            ("Avg faithfulness", result.avg_faithfulness, result.faithfulness_scored)
+        )
     if result.avg_judge_relevance is not None:
         observed_metrics.append(
             ("Avg judge relevance", result.avg_judge_relevance, result.judge_relevance_scored)

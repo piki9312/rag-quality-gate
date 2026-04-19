@@ -1,6 +1,9 @@
 """RAG パイプライン — チャンク分割・embedding・FAISS 検索。
 
 rag_app から移植・再構成。パス設定は外部から注入可能。
+
+sentence-transformers と faiss-cpu はオプション依存。
+``pip install rag-quality-gate[embedding]`` でインストールできる。
 """
 
 from __future__ import annotations
@@ -13,9 +16,17 @@ import re
 from pathlib import Path
 from typing import Any, Optional
 
-import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
+
+try:
+    import faiss
+except ImportError:  # pragma: no cover
+    faiss = None  # type: ignore[assignment]
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:  # pragma: no cover
+    SentenceTransformer = None  # type: ignore[misc,assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +81,11 @@ class RAGStore:
         emb_model: str | None = None,
         auto_load: bool = True,
     ):
+        if faiss is None:
+            raise ImportError(
+                "faiss-cpu is required for RAGStore. "
+                "Install it with: pip install rag-quality-gate[embedding]"
+            )
         self.index_dir = index_dir
         self.index_path = os.path.join(index_dir, "faiss.index")
         self.meta_path = os.path.join(index_dir, "meta.json")
@@ -90,6 +106,13 @@ class RAGStore:
     # ------------------------------------------------------------------
 
     def _load_embedding_model(self):
+        if SentenceTransformer is None:
+            logger.warning(
+                "sentence-transformers not installed; using local fallback embeddings. "
+                "Install with: pip install rag-quality-gate[embedding]"
+            )
+            self.emb_model_name = "local-fallback-hash-embedding"
+            return None
         try:
             return SentenceTransformer(self.emb_model_name)
         except (OSError, RuntimeError, ValueError) as exc:

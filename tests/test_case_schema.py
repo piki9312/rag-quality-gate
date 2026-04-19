@@ -87,7 +87,9 @@ class TestReviewCaseToFormalRow:
         assert "source_doc未設定" in row["notes"]
 
     def test_mixed_question_note_added(self):
-        rc = ReviewCase(title="t", question="締め日と提出方法はいつまでに対応する必要がありますか？")
+        rc = ReviewCase(
+            title="t", question="締め日と提出方法はいつまでに対応する必要がありますか？"
+        )
         row = review_case_to_formal_row(rc)
         assert "mixed_question:deadline,procedure" in row["notes"]
 
@@ -372,7 +374,9 @@ class TestClassifyReviewStatus:
         assert classify_review_status(rc) == "draft"
 
     def test_exact_mode_without_answer_returns_needs_review(self):
-        rc = ReviewCase(title="t", question="有給の期限は？", eval_mode="exact", expected_evidence="e")
+        rc = ReviewCase(
+            title="t", question="有給の期限は？", eval_mode="exact", expected_evidence="e"
+        )
         assert classify_review_status(rc) == "needs_review"
 
     def test_evidence_keyword_without_keywords_returns_needs_review(self):
