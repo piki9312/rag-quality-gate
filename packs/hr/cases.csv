@@ -1,18 +1,19 @@
-case_id,name,status,severity,question,expected_answer,expected_evidence,category,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes
-HR001,有給申請期限,active,S1,有給休暇の申請期限はいつですか？,有給休暇は5営業日前までに勤怠管理システムから申請し上長承認を得ます,就業規則.md@8794322103c34064#chunk0,deadline,就業規則.md,hr-team,100,2026-03-30,2026-03-30,
-HR002,有給申請手順,active,S2,有給休暇はどの手順で申請しますか？,,,procedure,,hr-team,85,2026-03-30,2026-03-30,
-HR003,経費精算締め日,active,S1,経費精算の締め日はいつですか？,経費精算の締め日は毎月25日で25日が休日の場合は前営業日です,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,deadline,経費精算ガイドライン.md,finance-team,100,2026-03-30,2026-03-30,
-HR004,経費証憑要件,active,S2,経費精算に必要な証憑は何ですか？,,,procedure,,finance-team,85,2026-03-30,2026-03-30,
-HR005,在宅勤務承認条件,active,S2,在宅勤務を利用する際の承認条件は何ですか？,,,policy,,hr-team,85,2026-03-30,2026-03-30,
-HR006,打刻漏れ修正期限,active,S1,打刻漏れの修正期限はいつまでですか？,打刻漏れは翌営業日までに上長へ報告し勤怠管理システムで修正申請します,就業規則.md@8794322103c34064#chunk0,deadline,就業規則.md,hr-team,100,2026-03-30,2026-03-30,
-HR007,育児休業延長例外,active,S1,育児休業の延長が認められる例外条件は何ですか？,育児休業は原則子が1歳までですが保育所に入所できない場合などは最長2歳まで延長できます,福利厚生制度.md@68e9eb0ca43005aa#chunk0,exception,福利厚生制度.md,hr-team,100,2026-03-30,2026-03-30,
-HR008,懲戒解雇事由,active,S1,懲戒解雇の主な事由は何ですか？,懲戒解雇の主な事由は重大な背信行為 無断欠勤14日以上 刑事有罪判決 機密情報漏洩 就業規則への重大違反です,就業規則.md@8794322103c34064#chunk0,compliance,就業規則.md,legal-team,100,2026-03-30,2026-03-30,
-HR009,個人情報持出しルール,active,S1,個人情報の持ち出しに関するルールは何ですか？,個人情報の社外持ち出しは原則禁止で業務上必要な場合は情報セキュリティ担当の承認が必要です,福利厚生制度.md@68e9eb0ca43005aa#chunk0,compliance,福利厚生制度.md,legal-team,100,2026-03-30,2026-03-30,
-HR010,交通費月額上限,active,S1,通勤交通費の月額上限はいくらですか？,通勤交通費の月額上限は50000円です,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,policy,経費精算ガイドライン.md,finance-team,100,2026-03-30,2026-03-30,
-HR011,残業事前申請手順,active,S2,残業をする場合の事前申請手順は何ですか？,,,procedure,,hr-team,85,2026-03-30,2026-03-30,
-HR012,問い合わせエスカレーション先,active,S2,就業規則の解釈に迷った場合の問い合わせ先はどこですか？,,,escalation,,hr-team,80,2026-03-30,2026-03-30,
-HR013,経費精算ガイドライン_001,draft,S2,1. 締め日と提出方法はいつまでに対応する必要がありますか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-1,general,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-13,,auto-generated
-HR014,経費精算ガイドライン_002,draft,S2,2. 通勤交通費の申請方法は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-2,general,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-13,,auto-generated
-HR015,経費精算ガイドライン_003,draft,S2,3. 出張経費の要点は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-3,general,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-13,,auto-generated
-HR016,経費精算ガイドライン_004,draft,S2,4. 接待費の要点は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-4,general,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-13,,auto-generated
-HR017,経費精算ガイドライン_005,draft,S2,5. 注意事項の申請方法は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-5,general,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-13,,auto-generated
+case_id,name,status,severity,eval_mode,question,expected_answer,expected_evidence,expected_keywords,category,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes
+HR001,有給申請期限,active,S1,evidence_keyword,有給休暇の申請期限はいつですか？,有給休暇は5営業日前までに勤怠管理システムから申請し上長承認を得ます,就業規則.md@8794322103c34064#chunk0,5営業日前;勤怠管理システム;上長承認|上長の承認,deadline,就業規則.md,hr-team,100,2026-03-30,2026-03-30,
+HR002,有給申請手順,active,S2,evidence_keyword,有給休暇はどの手順で申請しますか？,,就業規則.md@8794322103c34064#chunk0,勤怠管理システム;上長承認|上長の承認;半日単位,procedure,就業規則.md,hr-team,85,2026-03-30,2026-03-30,
+HR003,経費精算締め日,active,S1,grounded_judge,経費精算の締め日はいつですか？,経費精算の締め日は毎月25日で25日が休日の場合は前営業日です,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,毎月25日;前営業日;レシート原本,deadline,経費精算ガイドライン.md,finance-team,100,2026-03-30,2026-03-30,
+HR004,経費証憑要件,active,S2,evidence_keyword,経費精算に必要な証憑は何ですか？,,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,レシート原本|レシート;添付;経費精算システム,procedure,経費精算ガイドライン.md,finance-team,85,2026-03-30,2026-03-30,
+HR005,在宅勤務承認条件,active,S2,evidence_keyword,在宅勤務を利用する際の承認条件は何ですか？,,就業規則.md@8794322103c34064#chunk0,上司の承認;週2回;在宅,policy,就業規則.md,hr-team,85,2026-03-30,2026-03-30,
+HR006,打刻漏れ修正期限,active,S1,evidence_keyword,打刻漏れの修正期限はいつまでですか？,打刻漏れは翌営業日までに上長へ報告し勤怠管理システムで修正申請します,就業規則.md@8794322103c34064#chunk0,翌営業日;上長へ報告|上長報告;修正申請,deadline,就業規則.md,hr-team,100,2026-03-30,2026-03-30,
+HR007,育児休業延長例外,active,S1,evidence_keyword,育児休業の延長が認められる例外条件は何ですか？,育児休業は原則子が1歳までですが保育所に入所できない場合などは最長2歳まで延長できます,福利厚生制度.md@68e9eb0ca43005aa#chunk0,保育所に入所できない;最長2歳;延長,exception,福利厚生制度.md,hr-team,100,2026-03-30,2026-03-30,
+HR008,懲戒解雇事由,active,S1,evidence_keyword,懲戒解雇の主な事由は何ですか？,懲戒解雇の主な事由は重大な背信行為 無断欠勤14日以上 刑事有罪判決 機密情報漏洩 就業規則への重大違反です,就業規則.md@8794322103c34064#chunk0,重大な背信行為;無断欠勤14日以上|14日以上;刑事事件で有罪判決|有罪判決;機密情報漏洩|機密情報を故意に漏洩,compliance,就業規則.md,legal-team,100,2026-03-30,2026-03-30,
+HR009,個人情報持出しルール,active,S1,evidence_keyword,個人情報の持ち出しに関するルールは何ですか？,個人情報の社外持ち出しは原則禁止で業務上必要な場合は情報セキュリティ担当の承認が必要です,福利厚生制度.md@68e9eb0ca43005aa#chunk0,社外への持ち出しは原則禁止|社外持ち出しは原則禁止;情報セキュリティ担当の承認;業務上必要,compliance,福利厚生制度.md,legal-team,100,2026-03-30,2026-03-30,
+HR010,交通費月額上限,active,S1,evidence_keyword,通勤交通費の月額上限はいくらですか？,通勤交通費の月額上限は50000円です,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,"月額50,000円|50000円;通勤交通費;上限",policy,経費精算ガイドライン.md,finance-team,100,2026-03-30,2026-03-30,
+HR011,残業事前申請手順,active,S2,evidence_keyword,残業をする場合の事前申請手順は何ですか？,,就業規則.md@8794322103c34064#chunk0,事前;上司;残業申請;承認,procedure,就業規則.md,hr-team,85,2026-03-30,2026-03-30,
+HR012,問い合わせエスカレーション先,active,S2,evidence_keyword,就業規則の解釈に迷った場合の問い合わせ先はどこですか？,,福利厚生制度.md@68e9eb0ca43005aa#chunk0,人事部,escalation,福利厚生制度.md,hr-team,80,2026-03-30,2026-03-30,manual-curation-needed
+HR013,経費精算締め日候補,deprecated,S2,evidence_keyword,締め日はいつですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-1,毎月25日;前営業日,deadline,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-19,,deprecated due to overlap with HR003; adopted split candidate from generated review; split_candidate_from:締め日と提出方法はいつまでに対応する必要がありますか
+HR014,通勤交通費申請方法候補,draft,S2,evidence_keyword,通勤交通費はどのように申請しますか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-2,最も経済的かつ合理的な経路;定期券;6ヶ月分,procedure,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-19,,review-refreshed from generated review
+HR015,出張経費精算ルール候補,draft,S2,evidence_keyword,出張経費の精算ルールは何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-3,実費精算;宿泊費;12000円|15000円,policy,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-19,,review-refreshed from generated review
+HR016,接待費承認条件候補,draft,S2,evidence_keyword,接待費の承認条件は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-4,上長の承認|上長承認;10000円;部長承認,policy,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-19,,review-refreshed from generated review
+HR017,経費精算注意事項候補,draft,S2,evidence_keyword,経費精算で注意すべき点は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-5,レシートのない経費;個人的な支出;不正な経費申請,compliance,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-19,,review-refreshed from generated review
+HR018,経費精算提出方法候補,deprecated,S2,evidence_keyword,経費精算の提出方法は何ですか？,,packs/hr/documents/経費精算ガイドライン.md#sec-1-1,レシート原本|レシート;添付;経費精算システム,procedure,packs/hr/documents/経費精算ガイドライン.md,,85,2026-04-19,,deprecated due to overlap with HR004; adopted split candidate from generated review; split_candidate_from:締め日と提出方法はいつまでに対応する必要がありますか
