@@ -32,7 +32,9 @@ def normalize_question_text(question: str) -> str:
 
 def is_english_text(text: str) -> bool:
     normalized = _SPACE_RE.sub(" ", (text or "").strip())
-    return bool(_ASCII_ALPHA_RE.search(normalized)) and not bool(_JAPANESE_TEXT_RE.search(normalized))
+    return bool(_ASCII_ALPHA_RE.search(normalized)) and not bool(
+        _JAPANESE_TEXT_RE.search(normalized)
+    )
 
 
 def _append_question_mark(question: str) -> str:
@@ -112,8 +114,14 @@ def _generate_english_rule_questions(section: DocumentSection) -> list[str]:
     subject, action = _english_subject_from_action_sentence(content)
     templates: list[str] = []
 
-    if subject and action and (
-        "business days" in content_lower or "in advance" in content_lower or "within" in content_lower
+    if (
+        subject
+        and action
+        and (
+            "business days" in content_lower
+            or "in advance" in content_lower
+            or "within" in content_lower
+        )
     ):
         templates.append(f"When should {subject} be {action}")
 
@@ -147,7 +155,9 @@ def naturalize_question(question: str, section: DocumentSection) -> str:
     content = section.content
 
     if normalized.endswith("の申請方法は何ですか"):
-        subject = _strip_section_prefix(normalized[: -len("の申請方法は何ですか")]) or heading_subject
+        subject = (
+            _strip_section_prefix(normalized[: -len("の申請方法は何ですか")]) or heading_subject
+        )
         if subject == "注意事項":
             if topic:
                 return _ensure_question_mark(f"{topic}で注意すべき点は何ですか")
@@ -161,7 +171,10 @@ def naturalize_question(question: str, section: DocumentSection) -> str:
         return _ensure_question_mark(f"{subject}はどのように申請しますか")
 
     if normalized.endswith("はいつまでに対応する必要がありますか"):
-        subject = _strip_section_prefix(normalized[: -len("はいつまでに対応する必要がありますか")]) or heading_subject
+        subject = (
+            _strip_section_prefix(normalized[: -len("はいつまでに対応する必要がありますか")])
+            or heading_subject
+        )
         if subject == "締め日":
             return _ensure_question_mark("締め日はいつですか")
         if subject == "打刻" and "打刻漏れ" in content:
@@ -217,7 +230,9 @@ def infer_case_category(question: str, section: DocumentSection) -> str:
 
     if len(question_types) >= 2:
         return "general"
-    if "how often" in normalized.lower() and ("review" in normalized.lower() or "review cycle" in text.lower()):
+    if "how often" in normalized.lower() and (
+        "review" in normalized.lower() or "review cycle" in text.lower()
+    ):
         return "policy"
     if "延長条件" in normalized or ("延長" in normalized and "最長" in section.content):
         return "exception"

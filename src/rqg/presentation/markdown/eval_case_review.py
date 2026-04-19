@@ -59,7 +59,9 @@ def render_eval_case_review_markdown(cases: list[EvalCase]) -> str:
         return "\n".join(lines)
 
     mixed_cases = [case for case in cases if _note_marker_value(case.notes, "mixed_question:")]
-    split_cases = [case for case in cases if _note_marker_value(case.notes, "split_candidate_from:")]
+    split_cases = [
+        case for case in cases if _note_marker_value(case.notes, "split_candidate_from:")
+    ]
     review_queue = _manual_review_queue(cases)
 
     lines.extend(

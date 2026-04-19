@@ -1003,7 +1003,9 @@ def test_merge_cases_skips_high_priority_mixed_review_rows(capsys):
     with open(base_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["case_id", "question", "expected_answer", "status"])
         writer.writeheader()
-        writer.writerow({"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"})
+        writer.writerow(
+            {"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"}
+        )
 
     with open(review_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(

@@ -12,8 +12,8 @@ from .case_schema import (
     FORMAL_CASE_FIELDS,
     LEGACY_FIELD_MAP,
     infer_eval_mode,
-    normalize_legacy_row,
     normalize_eval_mode,
+    normalize_legacy_row,
 )
 
 AUTO_UPDATE_FIELDS = ("question", "expected_evidence", "expected_keywords")
