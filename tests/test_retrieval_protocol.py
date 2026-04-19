@@ -176,6 +176,14 @@ class TestHTTPRAGAdapterNormalization:
         with pytest.raises(ExternalRAGSchemaError, match="missing required keys"):
             adapter._normalize([{"chunk_id": "c1", "text": "t"}])  # missing source
 
+    def test_normalize_invalid_score_raises(self, adapter):
+        from rqg.serving.external_adapter import ExternalRAGSchemaError
+
+        with pytest.raises(ExternalRAGSchemaError, match="invalid score"):
+            adapter._normalize(
+                [{"chunk_id": "c1", "source": "d.md", "text": "t", "score": "not-a-number"}]
+            )
+
     def test_normalize_invalid_type_raises(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError
 

@@ -208,11 +208,22 @@ class HTTPRAGAdapter:
                     f"External RAG result item [{i}] missing required keys: {missing}"
                 )
 
+            score: float | None = None
+            raw_score = item.get("score")
+            if raw_score is not None:
+                try:
+                    score = float(raw_score)
+                except (TypeError, ValueError) as exc:
+                    raise ExternalRAGSchemaError(
+                        f"External RAG result item [{i}] has invalid score "
+                        f"value {raw_score!r}: {exc}"
+                    ) from exc
+
             chunk = RetrievedChunk(
                 chunk_id=str(item["chunk_id"]),
                 source=str(item["source"]),
                 text=str(item["text"]),
-                score=float(item["score"]) if item.get("score") is not None else None,
+                score=score,
                 metadata=item.get("metadata"),
             )
             normalized.append(chunk.to_dict())

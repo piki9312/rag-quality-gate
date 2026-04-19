@@ -34,7 +34,11 @@ class RetrievedChunk:
     metadata: dict[str, Any] | None = field(default=None, repr=False)
 
     def to_dict(self) -> dict[str, Any]:
-        """runner 内部で既存の dict ベースのコードと互換を保つための変換。"""
+        """runner 内部で既存の dict ベースのコードと互換を保つための変換。
+
+        ``score`` が ``None`` の場合はキーごと省略される。
+        ``metadata`` が falsy の場合も省略される。
+        """
         d: dict[str, Any] = {
             "chunk_id": self.chunk_id,
             "source": self.source,
@@ -67,12 +71,12 @@ class RAGStoreProtocol(Protocol):
         ...
 
     def search_multi(self, query: str, top_k: int = 20) -> list[dict[str, Any]]:
-        """広めの retrieval を行い top_k 件を返す。
+        """Broad retrieval — return up to top_k results using expanded queries.
 
-        「複数クエリ」ではなく「より広い候補から上位を選ぶ retrieval」を意味する。
-        元クエリに対してキーワード展開やクエリ変換を行い、多角的に検索した結果を
-        マージ・重複排除して上位 top_k 件を返す。
+        This is NOT "multiple queries from the caller" but rather a single
+        logical retrieval that internally expands the query (e.g. keyword
+        variants) and merges/deduplicates results to provide broader recall.
 
-        デフォルト実装では search(top_k=top_k) に委譲してよい。
+        Default implementations may simply delegate to ``search(top_k=...)``.
         """
         ...

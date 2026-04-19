@@ -12,6 +12,8 @@ from .helpers import reset_eval_log_dir, validate_index_dir, write_json_output
 
 def _load_rag_config() -> dict[str, Any]:
     """Load RAG section from .rqg.yml if it exists."""
+    import logging
+
     import yaml
 
     for candidate in (Path(".rqg.yml"), Path(".rqg.yaml")):
@@ -19,7 +21,10 @@ def _load_rag_config() -> dict[str, Any]:
             try:
                 data = yaml.safe_load(candidate.read_text(encoding="utf-8")) or {}
                 return data.get("rag", {})
-            except Exception:
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "Failed to parse %s for RAG config: %s", candidate, exc
+                )
                 return {}
     return {}
 
