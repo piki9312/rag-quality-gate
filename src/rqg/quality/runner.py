@@ -16,9 +16,9 @@ from typing import Any
 
 from openai import APIError
 
-from ..serving.external_adapter import ExternalRAGError
 from ..locales import detect_locale, is_english_text
 from ..locales import ja as ja_locale
+from ..serving.external_adapter import ExternalRAGError
 from ..serving.llm_client import generate_answer
 from ..serving.protocol import RAGStoreProtocol
 from .case_schema import normalize_eval_mode

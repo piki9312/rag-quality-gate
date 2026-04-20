@@ -47,6 +47,8 @@ def _infer_rule_hint_category(subject: str, content: str, question: str = "") ->
     if _contains_any(combined, ja_locale.PROHIBITION_KEYWORDS):
         return "compliance"
     return "general"
+
+
 def _append_question_mark(question: str) -> str:
     normalized = normalize_question_text(question)
     if not normalized:

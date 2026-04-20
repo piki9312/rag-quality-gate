@@ -160,11 +160,25 @@ def test_infer_case_category_uses_rule_hint_fallbacks_for_initial_review_labels(
         level=2,
     )
 
-    assert infer_case_category(generate_rule_questions(deadline_section)[0], deadline_section) == "deadline"
-    assert infer_case_category(generate_rule_questions(procedure_section)[0], procedure_section) == "procedure"
-    assert infer_case_category(generate_rule_questions(policy_section)[0], policy_section) == "policy"
-    assert infer_case_category(generate_rule_questions(compliance_section)[0], compliance_section) == "compliance"
-    assert infer_case_category(generate_rule_questions(general_section)[0], general_section) == "general"
+    assert (
+        infer_case_category(generate_rule_questions(deadline_section)[0], deadline_section)
+        == "deadline"
+    )
+    assert (
+        infer_case_category(generate_rule_questions(procedure_section)[0], procedure_section)
+        == "procedure"
+    )
+    assert (
+        infer_case_category(generate_rule_questions(policy_section)[0], policy_section) == "policy"
+    )
+    assert (
+        infer_case_category(generate_rule_questions(compliance_section)[0], compliance_section)
+        == "compliance"
+    )
+    assert (
+        infer_case_category(generate_rule_questions(general_section)[0], general_section)
+        == "general"
+    )
 
 
 def test_generate_rule_questions_for_security_runbook_in_english():

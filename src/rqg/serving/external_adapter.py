@@ -142,9 +142,7 @@ class HTTPRAGAdapter:
                 f"External RAG API timed out after {self.timeout_sec}s: {exc}"
             ) from exc
         except httpx.HTTPError as exc:
-            raise ExternalRAGError(
-                f"External RAG API request failed: {exc}"
-            ) from exc
+            raise ExternalRAGError(f"External RAG API request failed: {exc}") from exc
 
         if resp.status_code in (401, 403):
             raise ExternalRAGAuthError(
@@ -198,8 +196,7 @@ class HTTPRAGAdapter:
         for i, item in enumerate(results):
             if not isinstance(item, dict):
                 raise ExternalRAGSchemaError(
-                    f"External RAG result item [{i}] must be a dict, "
-                    f"got {type(item).__name__}"
+                    f"External RAG result item [{i}] must be a dict, " f"got {type(item).__name__}"
                 )
             # Validate required fields
             missing = [k for k in ("chunk_id", "source", "text") if k not in item]

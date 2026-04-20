@@ -19,7 +19,6 @@ import pytest
 
 from rqg.serving.protocol import RAGStoreProtocol, RetrievedChunk
 
-
 # ===================================================================
 # 1. RetrievedChunk contract
 # ===================================================================
@@ -58,9 +57,7 @@ class TestRetrievedChunk:
         assert d["score"] == 0.8
 
     def test_to_dict_with_metadata(self):
-        chunk = RetrievedChunk(
-            chunk_id="c1", source="doc.md", text="hi", metadata={"k": "v"}
-        )
+        chunk = RetrievedChunk(chunk_id="c1", source="doc.md", text="hi", metadata={"k": "v"})
         d = chunk.to_dict()
         assert d["metadata"] == {"k": "v"}
 
