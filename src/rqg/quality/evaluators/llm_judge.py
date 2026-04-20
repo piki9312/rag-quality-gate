@@ -91,7 +91,9 @@ def _mock_judge(question: str, answer: str, context: str) -> JudgeResult:
 
     if q_words:
         answer_segments = split_text_units(answer)
-        segment_scores = [overlap_f1(q_words, overlap_tokens(segment)) for segment in answer_segments]
+        segment_scores = [
+            overlap_f1(q_words, overlap_tokens(segment)) for segment in answer_segments
+        ]
         if not segment_scores:
             segment_scores = [overlap_f1(q_words, ans_words)]
         relevance = min(round(max(segment_scores), 2), 1.0)
