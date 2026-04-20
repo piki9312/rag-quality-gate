@@ -1,4 +1,10 @@
 # .rqg.yml — Example gate configuration
+
+# rag:
+#   type: http            # "http" for external RAG API, "faiss" for local (default)
+#   endpoint: https://rag.example.com/api/search
+#   api_key_env: RAG_API_KEY   # env var name containing the API key
+
 thresholds:
   s1_pass_rate: 100.0
   overall_pass_rate: 80.0

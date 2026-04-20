@@ -104,13 +104,6 @@ def _infer_rule_hint_category(subject: str, content: str, question: str = "") ->
     return "general"
 
 
-def is_english_text(text: str) -> bool:
-    normalized = _SPACE_RE.sub(" ", (text or "").strip())
-    return bool(_ASCII_ALPHA_RE.search(normalized)) and not bool(
-        _JAPANESE_TEXT_RE.search(normalized)
-    )
-
-
 def _append_question_mark(question: str) -> str:
     normalized = normalize_question_text(question)
     if not normalized:

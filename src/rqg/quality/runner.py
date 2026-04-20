@@ -18,8 +18,9 @@ from openai import APIError
 
 from ..locales import detect_locale, is_english_text
 from ..locales import ja as ja_locale
+from ..serving.external_adapter import ExternalRAGError
 from ..serving.llm_client import generate_answer
-from ..serving.rag import RAGStore
+from ..serving.protocol import RAGStoreProtocol
 from .case_schema import normalize_eval_mode
 from .evaluators.keyword import keyword_match_rate
 from .evaluators.llm_judge import judge as llm_judge
@@ -352,7 +353,7 @@ class RAGQualityRunner:
 
     def __init__(
         self,
-        store: RAGStore,
+        store: RAGStoreProtocol,
         retrieval_k: int = 20,
         context_k: int = 3,
         use_multi: bool = False,
@@ -451,7 +452,7 @@ class RAGQualityRunner:
                     output_tokens += judge_result.usage.get("output_tokens", 0)
                     total_tokens += judge_result.usage.get("total_tokens", 0)
 
-        except (RuntimeError, ValueError, OSError, KeyError, APIError) as e:
+        except (RuntimeError, ValueError, OSError, KeyError, APIError, ExternalRAGError) as e:
             failure_type = "error"
             failure_reason = str(e)
             logger.error("Case %s failed: %s", case.case_id, e)
