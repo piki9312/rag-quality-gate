@@ -177,14 +177,14 @@ README は製品概要と導入に絞っています。技術仕様・運用設�
 
 運用設計（Phase2 / Phase2.5）:
 
-- docs/ops/phase2-migration-playbook.md
-- docs/ops/phase2-kickoff-board.md
-- docs/ops/phase2-weekly-metrics-register.md
-- docs/ops/phase2-5-hardening-plan.md
-- docs/ops/phase2-5-weekly-metrics-register.md
-- docs/ops/phase2-5-investigate-response-flow.md
-- docs/ops/phase2-5-case-quality-weekly-review.md
-- docs/ops/phase3-internal-docs-vertical-pack.md
+- docs/ops/archive/phase2-migration-playbook.md
+- docs/ops/archive/phase2-kickoff-board.md
+- docs/ops/operations/phase2-weekly-metrics-register.md
+- docs/ops/archive/phase2-5-hardening-plan.md
+- docs/ops/operations/phase2-5-weekly-metrics-register.md
+- docs/ops/operations/phase2-5-investigate-response-flow.md
+- docs/ops/operations/phase2-5-case-quality-weekly-review.md
+- docs/ops/operations/phase3-internal-docs-vertical-pack.md
 
 ## ライセンス
 
@@ -363,14 +363,14 @@ Architecture:
 
 Operations (Phase2 / Phase2.5):
 
-- docs/ops/phase2-migration-playbook.md
-- docs/ops/phase2-kickoff-board.md
-- docs/ops/phase2-weekly-metrics-register.md
-- docs/ops/phase2-5-hardening-plan.md
-- docs/ops/phase2-5-weekly-metrics-register.md
-- docs/ops/phase2-5-investigate-response-flow.md
-- docs/ops/phase2-5-case-quality-weekly-review.md
-- docs/ops/phase3-internal-docs-vertical-pack.md
+- docs/ops/archive/phase2-migration-playbook.md
+- docs/ops/archive/phase2-kickoff-board.md
+- docs/ops/operations/phase2-weekly-metrics-register.md
+- docs/ops/archive/phase2-5-hardening-plan.md
+- docs/ops/operations/phase2-5-weekly-metrics-register.md
+- docs/ops/operations/phase2-5-investigate-response-flow.md
+- docs/ops/operations/phase2-5-case-quality-weekly-review.md
+- docs/ops/operations/phase3-internal-docs-vertical-pack.md
 
 ## License
 
