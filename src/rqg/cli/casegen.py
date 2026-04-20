@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from .helpers import (
     format_validation_errors,
     load_snapshot_from_file,
+    write_json_data_output,
     write_json_list_output,
     write_json_output,
 )
@@ -95,8 +96,6 @@ def cmd_impact(args: argparse.Namespace) -> int:
 
 
 def cmd_migrate_cases(args: argparse.Namespace) -> int:
-    import json
-
     from ..quality.case_migration import (
         load_cases_with_format,
         load_snapshots,
@@ -140,17 +139,11 @@ def cmd_migrate_cases(args: argparse.Namespace) -> int:
     print(f"Unresolved legacy refs: {stats['unresolved_legacy_refs']}")
 
     if args.report:
-        report_path = Path(args.report)
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-
         report_payload = {
             "snapshot_count": len(snapshots),
             **stats,
         }
-        report_path.write_text(
-            json.dumps(report_payload, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        report_path = write_json_data_output(args.report, report_payload)
         print(f"Saved migration report to {report_path}")
 
     return 0

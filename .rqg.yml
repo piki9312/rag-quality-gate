@@ -21,3 +21,9 @@ thresholds:
   # Set to 0 to disable (default).
   # s1_pass_rate_warn: 100.0
   # overall_pass_rate_warn: 90.0
+
+# notifications:
+#   - type: slack            # slack | teams | webhook
+#     webhook_url_env: RQG_SLACK_WEBHOOK_URL
+#     notify_on: [warn, fail]
+#     timeout_sec: 10

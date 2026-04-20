@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | 0-5分 | [execution-template-charter-kpi-weekly.md](execution-template-charter-kpi-weekly.md), [impact-cycle.md](../demo/impact-cycle.md) | Phase1.5 の定義と期待フロー |
 | 5-12分 | [src/rqg/demo/impact_cycle.py](../../src/rqg/demo/impact_cycle.py) | pass -> fail -> pass の再現シナリオ |
-| 12-18分 | [src/rqg/cli.py](../../src/rqg/cli.py) | `cmd_impact` と関連コマンドの入口 |
+| 12-18分 | [src/rqg/cli/__init__.py](../../src/rqg/cli/__init__.py), [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py) | `cmd_impact` と関連コマンドの入口 |
 | 18-26分 | [src/rqg/quality/impact_analysis.py](../../src/rqg/quality/impact_analysis.py), [src/rqg/domain/impact_report.py](../../src/rqg/domain/impact_report.py), [src/rqg/presentation/markdown/impact_report_review.py](../../src/rqg/presentation/markdown/impact_report_review.py) | 差分検出・影響抽出・出力構造 |
 | 26-30分 | [tests/test_impact_analysis.py](../../tests/test_impact_analysis.py) | 仕様として固定している境界条件 |
 
@@ -49,8 +49,8 @@
 
 ## 3. CLI 入口（6分）
 
-- [ ] [src/rqg/cli.py](../../src/rqg/cli.py) の `cmd_impact` を読んだ
-- [ ] [src/rqg/cli.py](../../src/rqg/cli.py) の `cmd_gen_cases` を読んだ
+- [ ] [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py) の `cmd_impact` を読んだ
+- [ ] [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py) の `cmd_gen_cases` を読んだ
 - [ ] `--review-output` が有効なときの挙動を確認した
 - [ ] 例外時のエラーメッセージ境界（snapshot/cases/build 失敗）を確認した
 
@@ -102,7 +102,7 @@
 ## つまずいた時の逆引き
 
 - `impact` の入口と引数が曖昧:
-  [src/rqg/cli.py](../../src/rqg/cli.py)
+  [src/rqg/cli/__init__.py](../../src/rqg/cli/__init__.py), [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py)
 - changed/impacted の算出ロジックが曖昧:
   [src/rqg/quality/impact_analysis.py](../../src/rqg/quality/impact_analysis.py)
 - 出力 JSON の構造が曖昧:

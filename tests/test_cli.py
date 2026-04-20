@@ -37,6 +37,8 @@ class TestCLIHelp:
         assert "migrate-cases" in result.stdout
         assert "merge-cases" in result.stdout
         assert "validate-cases" in result.stdout
+        assert "history" in result.stdout
+        assert "validate-connection" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -78,6 +80,26 @@ class TestCLIParsing:
         assert args.quality_pack is None
         assert args.max_overall_drop_pct is None
         assert args.max_s1_drop_pct is None
+
+    def test_history_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["history"])
+        assert args.command == "history"
+        assert args.log_dir == "runs/quality"
+        assert args.last == 10
+
+    def test_validate_connection_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["validate-connection", "--endpoint", "https://rag.example.com/search"]
+        )
+        assert args.command == "validate-connection"
+        assert args.endpoint == "https://rag.example.com/search"
+        assert args.query == "healthcheck"
 
     def test_gate_defaults(self):
         from rqg.cli import build_parser

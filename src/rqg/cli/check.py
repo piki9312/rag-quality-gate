@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .helpers import append_jsonl_output, write_json_output
+from ..quality.notifications import send_gate_notifications
+from .helpers import append_jsonl_output, write_json_output, write_text_output
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -70,8 +71,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     report_path = (
         Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
     )
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(md, encoding="utf-8")
+    report_path = write_text_output(report_path, md)
     print(f"Saved report to {report_path}")
 
     decision_output = (
@@ -85,6 +85,15 @@ def cmd_check(args: argparse.Namespace) -> int:
     decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
     appended_history = append_jsonl_output(decision_history_path, decision)
     print(f"Appended gate decision JSONL to {appended_history}")
+
+    warnings = send_gate_notifications(
+        decision,
+        config_path=args.config,
+        report_path=report_path,
+        decision_path=decision_path,
+    )
+    for warning in warnings:
+        print(f"[WARN] {warning}")
 
     status = result.gate_status.upper()
     print(f"Gate: {status}")

@@ -1,0 +1,29 @@
+name: RQG Gate (Mock)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rqg-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install RQG
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run mock gate
+        run: |
+          rqg gate packs/hr/cases.csv \
+            --docs packs/hr/documents \
+            --log-dir runs/quality \
+            --reset-log-dir \
+            --mock \
+            --quality-pack packs/hr/quality-pack.yml

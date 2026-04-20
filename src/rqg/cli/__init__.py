@@ -26,8 +26,10 @@ from .casegen import (
 from .check import cmd_check
 from .eval import cmd_eval, cmd_ingest
 from .gate import cmd_gate
+from .history import cmd_history
 from .pack import cmd_init_pack
 from .scaffold import cmd_create_sample_case, cmd_create_sample_gate, cmd_init_snapshot
+from .validate_connection import cmd_validate_connection
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -186,6 +188,42 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=0,
         help="Exit code when gate status is warn (default: 0, set to 1 to block on warn)",
+    )
+
+    # --- history ---
+    p_history = sub.add_parser("history", help="Show recent gate decision history")
+    p_history.add_argument("--log-dir", default="runs/quality")
+    p_history.add_argument("--last", type=int, default=10)
+    p_history.add_argument(
+        "--status",
+        choices=["pass", "warn", "fail"],
+        default=None,
+        help="Filter history rows by status",
+    )
+    p_history.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional markdown output path for history report",
+    )
+
+    # --- validate-connection ---
+    p_validate_connection = sub.add_parser(
+        "validate-connection",
+        help="Validate an external HTTP RAG endpoint before running gate",
+    )
+    p_validate_connection.add_argument("--endpoint", required=True)
+    p_validate_connection.add_argument(
+        "--query",
+        default="healthcheck",
+        help="Probe query to send to the external RAG endpoint",
+    )
+    p_validate_connection.add_argument("--top-k", type=int, default=3)
+    p_validate_connection.add_argument("--api-key-env", default=None)
+    p_validate_connection.add_argument("--timeout-sec", type=float, default=10.0)
+    p_validate_connection.add_argument(
+        "--output",
+        default=None,
+        help="Optional output path (.json or .md)",
     )
 
     # --- gen-cases ---
@@ -370,6 +408,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_gate(args)
     elif args.command == "check":
         return cmd_check(args)
+    elif args.command == "history":
+        return cmd_history(args)
     elif args.command == "init-snapshot":
         return cmd_init_snapshot(args)
     elif args.command == "create-sample-case":
@@ -388,6 +428,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_merge_cases(args)
     elif args.command == "validate-cases":
         return cmd_validate_cases(args)
+    elif args.command == "validate-connection":
+        return cmd_validate_connection(args)
     else:
         parser.print_help()
         return 0
