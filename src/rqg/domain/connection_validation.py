@@ -7,6 +7,15 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+ConnectionValidationErrorType = Literal[
+    "none",
+    "timeout_error",
+    "auth_error",
+    "server_error",
+    "schema_error",
+    "request_error",
+]
+
 
 class ConnectionValidationResult(BaseModel):
     """Result of validating an external RAG connection."""
@@ -15,14 +24,7 @@ class ConnectionValidationResult(BaseModel):
     query: str = Field(..., min_length=1)
     top_k: int = Field(..., ge=1)
     ok: bool
-    error_type: Literal[
-        "none",
-        "timeout_error",
-        "auth_error",
-        "server_error",
-        "schema_error",
-        "request_error",
-    ] = "none"
+    error_type: ConnectionValidationErrorType = "none"
     latency_ms: float = Field(..., ge=0)
     chunk_count: int = Field(default=0, ge=0)
     sample_chunk_ids: list[str] = Field(default_factory=list)
