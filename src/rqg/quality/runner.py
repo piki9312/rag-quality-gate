@@ -16,6 +16,7 @@ from typing import Any
 
 from openai import APIError
 
+from ..serving.external_adapter import ExternalRAGError
 from ..locales import detect_locale, is_english_text
 from ..locales import ja as ja_locale
 from ..serving.llm_client import generate_answer
@@ -444,7 +445,7 @@ class RAGQualityRunner:
                     output_tokens += judge_result.usage.get("output_tokens", 0)
                     total_tokens += judge_result.usage.get("total_tokens", 0)
 
-        except (RuntimeError, ValueError, OSError, KeyError, APIError) as e:
+        except (RuntimeError, ValueError, OSError, KeyError, APIError, ExternalRAGError) as e:
             failure_type = "error"
             failure_reason = str(e)
             logger.error("Case %s failed: %s", case.case_id, e)

@@ -519,3 +519,158 @@ class TestBackwardCompatibility:
         args = parser.parse_args(["eval", "cases.csv", "--mock"])
         assert args.mock is True
         assert args.rag_endpoint is None
+
+
+# ===================================================================
+# 8. Runner catches ExternalRAGError
+# ===================================================================
+
+
+class TestRunnerExternalRAGErrorHandling:
+    """Runner gracefully handles ExternalRAGError from HTTPRAGAdapter."""
+
+    def test_external_rag_timeout_caught_as_error(self, s1_case):
+        from rqg.quality.runner import RAGQualityRunner
+        from rqg.serving.external_adapter import ExternalRAGTimeoutError
+
+        class TimeoutStore:
+            def search(self, query: str, top_k: int = 6) -> list[dict[str, Any]]:
+                raise ExternalRAGTimeoutError("timed out after 30s")
+
+            def search_multi(self, query: str, top_k: int = 20) -> list[dict[str, Any]]:
+                return self.search(query, top_k)
+
+        runner = RAGQualityRunner(store=TimeoutStore(), mock_llm=True)
+        result = runner.run_case(s1_case)
+        assert not result.passed
+        assert result.failure_type == "error"
+        assert "timed out" in result.failure_reason
+
+    def test_external_rag_auth_error_caught(self, s1_case):
+        from rqg.quality.runner import RAGQualityRunner
+        from rqg.serving.external_adapter import ExternalRAGAuthError
+
+        class AuthErrorStore:
+            def search(self, query: str, top_k: int = 6) -> list[dict[str, Any]]:
+                raise ExternalRAGAuthError("401 Unauthorized")
+
+            def search_multi(self, query: str, top_k: int = 20) -> list[dict[str, Any]]:
+                return self.search(query, top_k)
+
+        runner = RAGQualityRunner(store=AuthErrorStore(), mock_llm=True)
+        result = runner.run_case(s1_case)
+        assert not result.passed
+        assert result.failure_type == "error"
+
+    def test_external_rag_server_error_caught(self, s1_case):
+        from rqg.quality.runner import RAGQualityRunner
+        from rqg.serving.external_adapter import ExternalRAGServerError
+
+        class ServerErrorStore:
+            def search(self, query: str, top_k: int = 6) -> list[dict[str, Any]]:
+                raise ExternalRAGServerError("500 Internal Server Error")
+
+            def search_multi(self, query: str, top_k: int = 20) -> list[dict[str, Any]]:
+                return self.search(query, top_k)
+
+        runner = RAGQualityRunner(store=ServerErrorStore(), mock_llm=True)
+        result = runner.run_case(s1_case)
+        assert not result.passed
+        assert result.failure_type == "error"
+
+    def test_external_rag_schema_error_caught(self, s1_case):
+        from rqg.quality.runner import RAGQualityRunner
+        from rqg.serving.external_adapter import ExternalRAGSchemaError
+
+        class SchemaErrorStore:
+            def search(self, query: str, top_k: int = 6) -> list[dict[str, Any]]:
+                raise ExternalRAGSchemaError("missing 'results' key")
+
+            def search_multi(self, query: str, top_k: int = 20) -> list[dict[str, Any]]:
+                return self.search(query, top_k)
+
+        runner = RAGQualityRunner(store=SchemaErrorStore(), mock_llm=True)
+        result = runner.run_case(s1_case)
+        assert not result.passed
+        assert result.failure_type == "error"
+
+
+# ===================================================================
+# 9. E2E: cmd_eval with external RAG endpoint
+# ===================================================================
+
+
+class TestCmdEvalExternalRAGE2E:
+    """End-to-end test: cmd_eval --rag-endpoint uses HTTPRAGAdapter → runner → results."""
+
+    def test_cmd_eval_external_rag_e2e(self, tmp_path):
+        import argparse
+        import csv
+
+        from rqg.cli.eval import cmd_eval
+
+        # Create a minimal test cases CSV
+        cases_file = tmp_path / "cases.csv"
+        with open(cases_file, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "case_id",
+                    "name",
+                    "question",
+                    "severity",
+                    "expected_keywords",
+                    "expected_evidence",
+                    "expected_answer",
+                    "category",
+                ],
+            )
+            writer.writeheader()
+            writer.writerow(
+                {
+                    "case_id": "QA001",
+                    "name": "有給申請期限",
+                    "question": "有給休暇の申請期限は？",
+                    "severity": "S1",
+                    "expected_keywords": "5営業日前;申請",
+                    "expected_evidence": "chunk_A",
+                    "expected_answer": "有給休暇は5営業日前までに申請してください。",
+                    "category": "就業規則",
+                }
+            )
+
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+
+        # Mock the external RAG API response
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "results": [
+                {
+                    "chunk_id": "chunk_A",
+                    "source": "policy.md",
+                    "text": "有給休暇は5営業日前までに申請してください。",
+                    "score": 0.95,
+                }
+            ]
+        }
+
+        args = argparse.Namespace(
+            cases=str(cases_file),
+            docs=None,
+            index_dir=str(tmp_path / "index"),
+            log_dir=str(log_dir),
+            reset_log_dir=False,
+            context_k=3,
+            mock=True,  # mock LLM, but real external RAG adapter path
+            rag_endpoint="https://rag.example.com/search",
+            rag_api_key_env=None,
+            verbose=False,
+        )
+
+        with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
+            exit_code = cmd_eval(args)
+
+        # Should complete successfully (mock LLM always produces an answer)
+        assert exit_code in (0, 1)  # 0=all pass, 1=some fail — both are valid non-crash

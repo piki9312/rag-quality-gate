@@ -131,7 +131,7 @@ def generate_answer(
     for i, ch in enumerate(retrieved_chunks, 1):
         short_id = f"REF{i}"
         ref_map[short_id] = ch["chunk_id"]
-        context_parts.append(f"[{short_id}] ({ch['source']})\n{ch['text']}")
+        context_parts.append(f"[{short_id}] ({ch.get('source', '')})\n{ch['text']}")
     context_text = "\n\n".join(context_parts)
 
     system_prompt = (

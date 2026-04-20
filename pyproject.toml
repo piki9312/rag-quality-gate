@@ -25,6 +25,9 @@ rqg = "rqg.cli:main"
 qgate = "rqg.cli:main"
 
 [project.optional-dependencies]
+external = [
+    "httpx>=0.25.0",
+]
 embedding = [
     "faiss-cpu>=1.7.4",
     "sentence-transformers>=2.2.0",
