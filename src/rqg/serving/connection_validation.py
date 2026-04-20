@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import Literal
 
 from ..domain import ConnectionValidationResult
 from .external_adapter import (
@@ -13,6 +14,14 @@ from .external_adapter import (
     ExternalRAGTimeoutError,
     HTTPRAGAdapter,
 )
+
+ConnectionValidationErrorType = Literal[
+    "timeout_error",
+    "auth_error",
+    "server_error",
+    "schema_error",
+    "request_error",
+]
 
 
 def validate_http_rag_connection(
@@ -104,7 +113,7 @@ def _error_result(
     query: str,
     top_k: int,
     started: float,
-    error_type: ConnectionValidationResult.__annotations__["error_type"],
+    error_type: ConnectionValidationErrorType,
     issue: str,
 ) -> ConnectionValidationResult:
     return ConnectionValidationResult(
