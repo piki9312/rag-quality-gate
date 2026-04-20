@@ -68,6 +68,8 @@ rqg gate     ← 最初はこれだけ（eval + check のワンコマンド）
  ├── check       閾値判定 + レポート出力
  └── ingest      文書の FAISS インデックス作成
 
+rqg validate-connection  外部RAG endpoint の接続/契約検証
+rqg history             gate decision の時系列確認
 rqg gen-cases    ケース草案を文書から自動生成
 rqg merge-cases  生成ケースを cases.csv に安全マージ
 rqg validate-cases  cases.csv のバリデーション
@@ -77,6 +79,8 @@ rqg init-pack    テンプレートから pack を初期化
 rqg init-snapshot / create-sample-case / create-sample-gate  scaffold 用
 rqg migrate-cases  レガシー参照の移行
 ```
+
+GitHub Actions 向けの導入テンプレートは `/home/runner/work/rag-quality-gate/rag-quality-gate/templates/github/` に同梱しています。
 
 **日常で使うのは `gate` (+ `gen-cases` / `merge-cases`) の 2-3 コマンドです。**
 

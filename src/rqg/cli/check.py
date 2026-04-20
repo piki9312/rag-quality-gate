@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from .helpers import append_jsonl_output, write_json_output
+from ..quality.notifications import send_gate_notifications
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -85,6 +86,15 @@ def cmd_check(args: argparse.Namespace) -> int:
     decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
     appended_history = append_jsonl_output(decision_history_path, decision)
     print(f"Appended gate decision JSONL to {appended_history}")
+
+    warnings = send_gate_notifications(
+        decision,
+        config_path=args.config,
+        report_path=report_path,
+        decision_path=decision_path,
+    )
+    for warning in warnings:
+        print(f"[WARN] {warning}")
 
     status = result.gate_status.upper()
     print(f"Gate: {status}")
