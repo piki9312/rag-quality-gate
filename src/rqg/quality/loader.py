@@ -82,6 +82,7 @@ def qa_test_case_to_eval_case(
     return EvalCase(
         case_id=case.case_id,
         question=case.question,
+        expected_answer=case.expected_answer,
         expected_evidence=list(case.expected_evidence),
         expected_keywords=list(case.expected_keywords),
         risk_level=case.severity if case.severity in {"S1", "S2"} else "S2",
@@ -183,6 +184,7 @@ def load_eval_cases(
                 EvalCase(
                     case_id=row.get("case_id", ""),
                     question=row.get("question", ""),
+                    expected_answer=(row.get("expected_answer") or row.get("golden_answer") or ""),
                     expected_evidence=expected_evidence,
                     expected_keywords=expected_keywords,
                     risk_level=risk_level,

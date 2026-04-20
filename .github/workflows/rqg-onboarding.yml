@@ -25,12 +25,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: "pyproject.toml"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install "faiss-cpu>=1.7.4"
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e . --retries 10 --timeout 120 --progress-bar off
+          python -m pip install "faiss-cpu>=1.7.4" --retries 10 --timeout 120 --progress-bar off
 
       - name: Run onboarding quickstart flow
         id: run_onboarding

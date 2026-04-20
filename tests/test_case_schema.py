@@ -99,6 +99,35 @@ class TestReviewCaseToFormalRow:
         for field in FORMAL_CASE_FIELDS:
             assert field in row
 
+    def test_auto_expected_answer_draft_keeps_evidence_keyword_mode(self):
+        rc = ReviewCase(
+            title="t",
+            question="有給休暇はいつまでに申請する必要がありますか？",
+            expected_answer="有給休暇は5営業日前までに申請します。",
+            expected_evidence="doc.md#sec-1",
+            expected_keywords="有給;申請",
+            notes="auto_expected_answer:extract; auto_expected_answer_status:draft",
+        )
+
+        row = review_case_to_formal_row(rc)
+
+        assert row["eval_mode"] == "evidence_keyword"
+        assert row["status"] == "draft"
+
+    def test_auto_expected_answer_draft_never_promotes_directly_to_active(self):
+        rc = ReviewCase(
+            title="t",
+            question="有給休暇はいつまでに申請する必要がありますか？",
+            expected_answer="有給休暇は5営業日前までに申請します。",
+            expected_evidence="doc.md#sec-1",
+            expected_keywords="有給;申請",
+            notes="auto_expected_answer:extract; auto_expected_answer_status:draft",
+        )
+
+        row = review_case_to_formal_row(rc, default_status="active")
+
+        assert row["status"] == "draft"
+
 
 class TestReviewRowToReviewCase:
     def test_with_new_field_names(self):
@@ -293,6 +322,22 @@ class TestValidation:
         ev_errors = [e for e in errors if e.field == "expected_evidence"]
         assert len(ev_errors) == 1
         assert ev_errors[0].level == "warn"
+
+    def test_active_row_rejects_auto_expected_answer_draft(self):
+        row = {
+            "case_id": "V011",
+            "question": "q?",
+            "status": "active",
+            "eval_mode": "evidence_keyword",
+            "expected_answer": "5営業日前です。",
+            "expected_evidence": "doc.md#sec-1",
+            "expected_keywords": "5営業日前;申請",
+            "notes": "auto_expected_answer:extract; auto_expected_answer_status:draft",
+        }
+
+        errors = validate_case_row(row)
+
+        assert any(e.field == "notes" and e.level == "error" for e in errors)
 
 
 class TestExpectedAnswerValidationByStatus:

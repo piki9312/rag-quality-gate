@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 from rqg.casegen.questions import (
     filter_reviewable_questions,
+    generate_expected_answer_draft,
+    generate_llm_answer_draft,
     generate_llm_questions,
     generate_rule_questions,
     infer_case_category,
@@ -26,6 +28,78 @@ def test_generate_rule_questions_from_heading():
 
     assert len(questions) >= 1
     assert "いつまで" in questions[0]
+
+
+def test_generate_expected_answer_draft_extracts_deadline_sentence():
+    section = DocumentSection(
+        section_id="docs/hr.md#sec-1",
+        heading="申請期限",
+        content="年次有給休暇は5営業日前までに申請します。",
+        level=2,
+    )
+
+    answer, notes = generate_expected_answer_draft(
+        "年次有給休暇はいつまでに申請する必要がありますか？",
+        section,
+        category="deadline",
+    )
+
+    assert answer == "年次有給休暇は5営業日前までに申請します。"
+    assert notes == ["auto_expected_answer:extract", "auto_expected_answer_status:draft"]
+
+
+def test_generate_expected_answer_draft_extracts_amount_sentence():
+    section = DocumentSection(
+        section_id="docs/hr.md#sec-2",
+        heading="通勤交通費",
+        content="通勤交通費の上限は月額50,000円です。",
+        level=2,
+    )
+
+    answer, notes = generate_expected_answer_draft(
+        "通勤交通費の上限はいくらですか？",
+        section,
+        category="policy",
+    )
+
+    assert answer == "通勤交通費の上限は月額50,000円です。"
+    assert notes == ["auto_expected_answer:extract", "auto_expected_answer_status:draft"]
+
+
+def test_generate_expected_answer_draft_extracts_day_limit_sentence():
+    section = DocumentSection(
+        section_id="docs/hr.md#sec-3",
+        heading="介護休業",
+        content="対象家族1人につき通算93日まで介護休業を取得できます。",
+        level=2,
+    )
+
+    answer, notes = generate_expected_answer_draft(
+        "介護休業は通算何日まで取得できますか？",
+        section,
+        category="policy",
+    )
+
+    assert answer == "対象家族1人につき通算93日まで介護休業を取得できます。"
+    assert notes == ["auto_expected_answer:extract", "auto_expected_answer_status:draft"]
+
+
+def test_generate_expected_answer_draft_skips_ambiguous_multiple_amounts():
+    section = DocumentSection(
+        section_id="docs/hr.md#sec-4",
+        heading="宿泊費",
+        content="宿泊費の上限は1泊あたり12,000円です。東京・大阪は15,000円です。",
+        level=2,
+    )
+
+    answer, notes = generate_expected_answer_draft(
+        "宿泊費の上限はいくらですか？",
+        section,
+        category="policy",
+    )
+
+    assert answer == ""
+    assert notes == []
 
 
 def test_generate_rule_questions_without_heading():
@@ -53,6 +127,43 @@ def test_generate_llm_questions_falls_back_to_empty_list_on_error():
         questions = generate_llm_questions(section)
 
     assert questions == []
+
+
+def test_generate_llm_answer_draft_returns_empty_on_skip():
+    section = DocumentSection(
+        section_id="docs/hr.md#sec-llm-skip",
+        heading="概要",
+        content="この制度の背景を説明します。",
+        level=2,
+    )
+
+    with patch("rqg.casegen.questions.call_openai_chat", return_value={"text": "SKIP"}):
+        answer = generate_llm_answer_draft("この制度の要点は何ですか？", section)
+
+    assert answer == ""
+
+
+def test_generate_expected_answer_draft_rejects_invalid_llm_numeric_mismatch():
+    section = DocumentSection(
+        section_id="docs/hr.md#sec-llm-invalid",
+        heading="在宅勤務",
+        content="在宅勤務の申請は勤怠管理システムから行います。",
+        level=2,
+    )
+
+    with patch(
+        "rqg.casegen.questions.generate_llm_answer_draft",
+        return_value="在宅勤務手当は月額80,000円です。",
+    ):
+        answer, notes = generate_expected_answer_draft(
+            "在宅勤務の要点は何ですか？",
+            section,
+            category="policy",
+            use_llm=True,
+        )
+
+    assert answer == ""
+    assert notes == ["auto_expected_answer:llm", "auto_expected_answer_invalid:numeric_mismatch"]
 
 
 def test_filter_reviewable_questions_removes_generic_when_specific_exists():

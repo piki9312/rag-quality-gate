@@ -29,6 +29,7 @@ def test_render_cases_markdown_contains_review_columns():
     assert "## Case: doc_001" in markdown
     assert "- Expected Evidence:" in markdown
     assert "- Expected Keywords:" in markdown
+    assert "- Expected Answer: (none)" in markdown
     assert "- Risk Level: S2" in markdown
     assert "- Document Snapshot: snapshot-001" in markdown
 
@@ -131,11 +132,25 @@ def test_write_review_output_csv_file_includes_lightweight_columns():
     assert row["title"] == "doc_001"
     assert row["eval_mode"] == "evidence_keyword"
     assert row["severity"] == "S2"
+    assert row["expected_answer"] == ""
     assert row["expected_evidence"] == "docs/hr.md#sec-1"
     assert row["expected_keywords"] == "年次有給休暇;申請"
     assert row["source_doc"] == "docs/hr.md"
     assert row["category"] == "policy"
     assert row["notes"] == "auto-generated from section 1"
+
+
+def test_write_review_output_csv_writes_expected_answer_draft():
+    output = Path("tests/.tmp") / f"{uuid.uuid4()}-review-answer.csv"
+    case = _sample_case().model_copy(
+        update={"expected_answer": "年次有給休暇は5営業日前までに申請します。"}
+    )
+    write_review_output(output, [case])
+
+    with open(output, "r", encoding="utf-8", newline="") as f:
+        row = next(csv.DictReader(f))
+
+    assert row["expected_answer"] == "年次有給休暇は5営業日前までに申請します。"
 
 
 def test_write_review_output_csv_preserves_s1_severity():

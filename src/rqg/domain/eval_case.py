@@ -12,6 +12,7 @@ class EvalCase(BaseModel):
 
     case_id: str
     question: str = Field(..., min_length=1)
+    expected_answer: str = ""
     expected_evidence: list[str] = Field(..., min_length=1)
     expected_keywords: list[str] = Field(default_factory=list)
     risk_level: Literal["S1", "S2"]
