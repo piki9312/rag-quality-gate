@@ -88,7 +88,7 @@ class HTTPRAGAdapter:
         if httpx is None:
             raise ImportError(
                 "httpx is required for HTTPRAGAdapter. "
-                "Install it with: pip install httpx"
+                "Install it with: pip install rag-quality-gate[external]"
             )
         self.endpoint = endpoint.rstrip("/")
         self.timeout_sec = timeout_sec
