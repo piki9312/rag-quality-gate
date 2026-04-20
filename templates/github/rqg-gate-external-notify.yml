@@ -40,7 +40,8 @@ jobs:
           rqg validate-connection \
             --endpoint "$RAG_API_ENDPOINT" \
             --api-key-env RAG_API_KEY \
-            --query "healthcheck"
+            --query "healthcheck" \
+            --output runs/quality/connection-validation.json
 
       - name: Run gate with notifications
         run: |
