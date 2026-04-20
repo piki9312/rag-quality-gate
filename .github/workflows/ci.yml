@@ -37,7 +37,7 @@ jobs:
 
       - name: Test with coverage
         run: |
-          pytest tests/ -v --cov=rqg --cov-report=term-missing --cov-fail-under=69
+          pytest tests/ -v --cov=rqg --cov-report=term-missing --cov-fail-under=85
 
       - name: Upload coverage artifact
         if: always()

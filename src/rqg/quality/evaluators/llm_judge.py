@@ -5,9 +5,15 @@ from __future__ import annotations
 import json
 import logging
 import re
-import unicodedata
 from dataclasses import dataclass
 from typing import Any
+
+from ..text_utils import (
+    overlap_f1,
+    overlap_precision,
+    overlap_tokens,
+    split_text_units,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +80,12 @@ def _mock_judge(question: str, answer: str, context: str) -> JudgeResult:
     if not answer.strip():
         return JudgeResult(faithfulness=0.0, relevance=0.0, reasoning="empty answer")
 
-    ctx_words = _overlap_tokens(context)
-    ans_words = _overlap_tokens(answer)
-    q_words = _overlap_tokens(question)
+    ctx_words = overlap_tokens(context)
+    ans_words = overlap_tokens(answer)
+    q_words = overlap_tokens(question)
 
     if ctx_words and ans_words:
-        faithfulness = min(round(_overlap_precision(ctx_words, ans_words), 2), 1.0)
+        faithfulness = min(round(overlap_precision(ctx_words, ans_words), 2), 1.0)
     else:
         faithfulness = 0.0
 
@@ -89,7 +95,7 @@ def _mock_judge(question: str, answer: str, context: str) -> JudgeResult:
             _overlap_f1(q_words, _overlap_tokens(segment)) for segment in answer_segments
         ]
         if not segment_scores:
-            segment_scores = [_overlap_f1(q_words, ans_words)]
+            segment_scores = [overlap_f1(q_words, ans_words)]
         relevance = min(round(max(segment_scores), 2), 1.0)
     else:
         relevance = 0.5
@@ -99,66 +105,6 @@ def _mock_judge(question: str, answer: str, context: str) -> JudgeResult:
         relevance=relevance,
         reasoning="mock judge (multilingual token overlap heuristic)",
     )
-
-
-_TOKEN_RE = re.compile(r"[a-z0-9]+|[ぁ-んァ-ヶー一-龠々〆ヵヶ]+", re.IGNORECASE)
-_ASCII_TOKEN_RE = re.compile(r"^[a-z0-9]+$", re.IGNORECASE)
-
-
-def _normalize_text(text: str) -> str:
-    normalized = unicodedata.normalize("NFKC", text).lower()
-    return re.sub(r"\s+", " ", normalized).strip()
-
-
-def _overlap_tokens(text: str) -> set[str]:
-    normalized = _normalize_text(text)
-    tokens: set[str] = set()
-    for piece in _TOKEN_RE.findall(normalized):
-        if not piece:
-            continue
-        if _ASCII_TOKEN_RE.match(piece):
-            tokens.add(piece)
-            continue
-
-        if len(piece) <= 2:
-            tokens.add(piece)
-            continue
-
-        for n in (2, 3):
-            if len(piece) < n:
-                continue
-            for idx in range(len(piece) - n + 1):
-                tokens.add(piece[idx : idx + n])
-
-        if len(piece) <= 8:
-            tokens.add(piece)
-    return tokens
-
-
-def _split_text_units(text: str) -> list[str]:
-    normalized = unicodedata.normalize("NFKC", text).lower()
-    segments = re.split(r"[。！？.!?]+|\r?\n+", normalized)
-    return [re.sub(r"\s+", " ", segment).strip() for segment in segments if segment.strip()]
-
-
-def _overlap_precision(reference_tokens: set[str], candidate_tokens: set[str]) -> float:
-    if not reference_tokens or not candidate_tokens:
-        return 0.0
-    overlap = len(reference_tokens & candidate_tokens)
-    return overlap / len(candidate_tokens)
-
-
-def _overlap_f1(reference_tokens: set[str], candidate_tokens: set[str]) -> float:
-    if not reference_tokens or not candidate_tokens:
-        return 0.0
-
-    overlap = len(reference_tokens & candidate_tokens)
-    if overlap == 0:
-        return 0.0
-
-    precision = overlap / len(candidate_tokens)
-    recall = overlap / len(reference_tokens)
-    return (2 * precision * recall) / (precision + recall)
 
 
 # ---------------------------------------------------------------------------

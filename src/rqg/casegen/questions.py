@@ -10,14 +10,17 @@ from pathlib import Path
 from openai import APIError
 
 from rqg.casegen.sections import DocumentSection
+from rqg.locales import detect_locale
+from rqg.locales import is_english_text as is_english_text  # re-export
+from rqg.locales import ja as ja_locale
 from rqg.quality.case_schema import infer_question_types, strip_ordinal_prefix
 from rqg.serving.llm_client import OPENAI_MODEL, call_openai_chat
 
 logger = logging.getLogger(__name__)
 
 _SPACE_RE = re.compile(r"\s+")
-_SECTION_PREFIX_RE = re.compile(r"^(?:第[0-9０-９]+[条章]\s*|[0-9０-９]+[.)．]\s*)")
-_TIME_RANGE_RE = re.compile(r"\d{1,2}:\d{2}\s*[〜~\-]\s*\d{1,2}:\d{2}")
+_SECTION_PREFIX_RE = ja_locale.SECTION_PREFIX_RE
+_TIME_RANGE_RE = ja_locale.TIME_RANGE_RE
 _ASCII_LABEL_RE = re.compile(r"^[A-Za-z0-9_\- ]+$")
 _COMPLIANCE_HINT_RE = re.compile(r"禁止|違反|漏洩|懲戒|機密情報|個人情報|施錠|暗号化")
 _ASCII_ALPHA_RE = re.compile(r"[A-Za-z]")
@@ -90,13 +93,13 @@ def _contains_any(text: str, patterns: tuple[str, ...]) -> bool:
 
 def _infer_rule_hint_category(subject: str, content: str, question: str = "") -> str:
     combined = f"{subject}\n{content}\n{question}"
-    if _contains_any(combined, _DEADLINE_HINTS):
+    if _contains_any(combined, ja_locale.DEADLINE_KEYWORDS):
         return "deadline"
-    if _contains_any(combined, _PROCEDURE_HINTS):
+    if _contains_any(combined, ja_locale.APPLICATION_KEYWORDS):
         return "procedure"
-    if _contains_any(combined, _POLICY_HINTS):
+    if _contains_any(combined, ja_locale.CONDITION_KEYWORDS):
         return "policy"
-    if _contains_any(combined, _COMPLIANCE_RULE_HINTS):
+    if _contains_any(combined, ja_locale.PROHIBITION_KEYWORDS):
         return "compliance"
     return "general"
 
@@ -130,7 +133,7 @@ def _document_label(section: DocumentSection) -> str:
 
 def _document_topic(section: DocumentSection) -> str:
     label = _strip_section_prefix(_document_label(section)).replace("_", " ").strip()
-    for suffix in ("ガイドライン", "制度", "規定", "規程", "runbook", "faq", "policy"):
+    for suffix in ja_locale.DOCUMENT_TOPIC_SUFFIXES:
         if label.lower().endswith(suffix.lower()) and len(label) > len(suffix):
             return label[: -len(suffix)].strip()
     return label
@@ -335,8 +338,7 @@ def _is_generic_question(question: str) -> bool:
     normalized = normalize_question_text(question)
     if not normalized:
         return True
-    generic_tokens = ["この内容", "このセクション", "本文", "本セクション"]
-    return any(token in normalized for token in generic_tokens)
+    return any(token in normalized for token in ja_locale.GENERIC_QUESTION_TOKENS)
 
 
 def filter_reviewable_questions(questions: list[str]) -> list[str]:
@@ -596,15 +598,13 @@ def generate_rule_questions(section: DocumentSection, max_questions: int = 1) ->
             return filtered[:max_questions]
         return ["What are the key points of this section?"]
 
-    combined = f"{subject}\n{content}"
-
-    if _contains_any(combined, _DEADLINE_HINTS):
+    if any(keyword in subject + content for keyword in ja_locale.DEADLINE_KEYWORDS):
         templates.append(f"{subject}はいつまでに対応する必要がありますか？")
-    if _contains_any(combined, _PROCEDURE_HINTS):
+    if any(keyword in subject + content for keyword in ja_locale.APPLICATION_KEYWORDS):
         templates.append(f"{subject}の申請方法は何ですか？")
-    if _contains_any(combined, _POLICY_HINTS):
+    if any(keyword in subject + content for keyword in ja_locale.CONDITION_KEYWORDS):
         templates.append(f"{subject}の条件は何ですか？")
-    if _contains_any(combined, _COMPLIANCE_RULE_HINTS):
+    if any(keyword in subject + content for keyword in ja_locale.PROHIBITION_KEYWORDS):
         templates.append(f"{subject}で禁止されていることは何ですか？")
 
     templates.append(f"{subject}の要点は何ですか？")
