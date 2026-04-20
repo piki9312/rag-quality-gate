@@ -90,10 +90,8 @@ def _mock_judge(question: str, answer: str, context: str) -> JudgeResult:
         faithfulness = 0.0
 
     if q_words:
-        answer_segments = _split_text_units(answer)
-        segment_scores = [
-            _overlap_f1(q_words, _overlap_tokens(segment)) for segment in answer_segments
-        ]
+        answer_segments = split_text_units(answer)
+        segment_scores = [overlap_f1(q_words, overlap_tokens(segment)) for segment in answer_segments]
         if not segment_scores:
             segment_scores = [overlap_f1(q_words, ans_words)]
         relevance = min(round(max(segment_scores), 2), 1.0)

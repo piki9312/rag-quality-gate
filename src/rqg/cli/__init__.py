@@ -184,6 +184,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Use LLM question generation in addition to rule generation",
     )
+    p_gen_cases.add_argument(
+        "--use-llm-answer-drafts",
+        action="store_true",
+        help="Opt in to LLM expected_answer drafts when extract-only drafting cannot fill one",
+    )
 
     # --- impact ---
     p_impact = sub.add_parser("impact", help="Analyze impacted eval cases between two snapshots")
