@@ -124,7 +124,7 @@ def _send_notification(
     try:
         with urllib.request.urlopen(request, timeout=target.timeout_sec):
             return
-    except urllib.error.URLError as exc:
+    except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(f"Notification delivery failed for {target.kind}: {exc}") from exc
 
 
@@ -186,7 +186,9 @@ def _normalize_notify_on(value: object) -> set[str]:
     allowed = {"pass", "warn", "fail"}
     if not isinstance(value, list):
         return {"fail"}
-    normalized = {str(item).strip().lower() for item in value if str(item).strip().lower() in allowed}
+    normalized = {
+        str(item).strip().lower() for item in value if str(item).strip().lower() in allowed
+    }
     return normalized or {"fail"}
 
 

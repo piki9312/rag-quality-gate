@@ -19,7 +19,7 @@
 | 製品メッセージ | 運用ハードニング中心 | 社内文書向け縦プロファイル（HR + Wiki/FAQ）を前面化 | 拡張 | README.md, docs/README.md |
 | テンプレート | sample_pack を利用 | sample_pack を社内文書向け最小構成として固定 | 拡張 | templates/sample_pack/README.md, templates/sample_pack/cases.csv, templates/sample_pack/quality-pack.yml |
 | 実pack（見本） | 運用対象pack中心 | HR見本に加え Wiki/FAQ 見本を提供 | 新規（見本拡張） | packs/hr/README.md, packs/wiki/README.md |
-| init-pack プロファイル | 既存プロファイル中心 | demo_cycle/sample/hr/wiki を選択可能に拡張 | 新規（機能拡張） | src/rqg/cli.py |
+| init-pack プロファイル | 既存プロファイル中心 | demo_cycle/sample/hr/wiki を選択可能に拡張 | 新規（機能拡張） | src/rqg/cli/__init__.py, src/rqg/cli/pack.py |
 | Onboardingデモ | quickstartの基本導線 | profile 切替（demo_cycle/hr/wiki）対応 | 拡張 | src/rqg/demo/onboarding_quickstart.py, docs/demo/onboarding-quickstart.md |
 | Onboarding workflow | スモーク実行 | workflow_dispatch で profile 選択可能 | 拡張 | .github/workflows/rqg-onboarding.yml |
 | CI契約チェック | Phase2.5 の exit/risk control 検証 | internal-docs-pack-contract を追加し pack契約を検証 | 新規 | .github/workflows/ci.yml |

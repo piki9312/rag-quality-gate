@@ -17,7 +17,7 @@
 | --- | --- | --- |
 | 0-5分 | [phase2-migration-playbook.md](phase2-migration-playbook.md), [phase2-weekly-metrics-register.md](phase2-weekly-metrics-register.md) | 目的と指標（M1/M2） |
 | 5-12分 | [.github/workflows/phase2-weekly-metrics.yml](../../.github/workflows/phase2-weekly-metrics.yml) | 実行シナリオと fail 条件 |
-| 12-20分 | [src/rqg/cli.py](../../src/rqg/cli.py) | `cmd_migrate_cases` / `cmd_impact` の入口 |
+| 12-20分 | [src/rqg/cli/__init__.py](../../src/rqg/cli/__init__.py), [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py) | `cmd_migrate_cases` / `cmd_impact` の入口 |
 | 20-26分 | [src/rqg/quality/case_migration.py](../../src/rqg/quality/case_migration.py), [src/rqg/quality/impact_analysis.py](../../src/rqg/quality/impact_analysis.py) | 変換ロジックと影響分析ロジック |
 | 26-30分 | [tests/test_case_migration.py](../../tests/test_case_migration.py), [tests/test_impact_analysis.py](../../tests/test_impact_analysis.py) | 仕様として保証している境界条件 |
 
@@ -51,8 +51,8 @@
 
 ## 3. CLI 入口（8分）
 
-- [ ] [src/rqg/cli.py](../../src/rqg/cli.py) の `cmd_migrate_cases` を読んだ
-- [ ] [src/rqg/cli.py](../../src/rqg/cli.py) の `cmd_impact` を読んだ
+- [ ] [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py) の `cmd_migrate_cases` を読んだ
+- [ ] [src/rqg/cli/casegen.py](../../src/rqg/cli/casegen.py) の `cmd_impact` を読んだ
 - [ ] それぞれが呼ぶ core 関数をメモした
 
 確認メモ:

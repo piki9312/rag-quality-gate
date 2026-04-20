@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .helpers import append_jsonl_output, write_json_output
 from ..quality.notifications import send_gate_notifications
+from .helpers import append_jsonl_output, write_json_output
 
 
 def cmd_check(args: argparse.Namespace) -> int:

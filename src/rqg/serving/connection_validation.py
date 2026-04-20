@@ -80,7 +80,9 @@ def validate_http_rag_connection(
         )
 
     latency_ms = round((time.perf_counter() - started) * 1000, 1)
-    sample_chunk_ids = [str(item.get("chunk_id", "")) for item in results[:5] if item.get("chunk_id")]
+    sample_chunk_ids = [
+        str(item.get("chunk_id", "")) for item in results[:5] if item.get("chunk_id")
+    ]
     sample_sources = [str(item.get("source", "")) for item in results[:5] if item.get("source")]
 
     return ConnectionValidationResult(
@@ -118,6 +120,6 @@ def _error_result(
 
 
 def _utcnow():
-    from datetime import timezone, datetime
+    from datetime import datetime, timezone
 
     return datetime.now(timezone.utc)

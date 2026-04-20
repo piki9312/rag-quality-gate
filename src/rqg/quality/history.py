@@ -53,9 +53,7 @@ def render_gate_history_markdown(decisions: list[GateDecision]) -> str:
 
     lines = ["## Gate Decision History", ""]
     lines.append(f"- Entries: {total}")
-    lines.append(
-        f"- Status mix: pass={counts['pass']} warn={counts['warn']} fail={counts['fail']}"
-    )
+    lines.append(f"- Status mix: pass={counts['pass']} warn={counts['warn']} fail={counts['fail']}")
     lines.append("")
     lines.append("| Created At (UTC) | Run ID | Status | Reasons |")
     lines.append("|---|---|---|---|")
@@ -65,6 +63,8 @@ def render_gate_history_markdown(decisions: list[GateDecision]) -> str:
         reasons = "; ".join(decision.reasons[:2]) if decision.reasons else "-"
         if len(decision.reasons) > 2:
             reasons += f" (+{len(decision.reasons) - 2} more)"
-        lines.append(f"| {created_at} | {decision.run_id} | {decision.status.upper()} | {reasons} |")
+        lines.append(
+            f"| {created_at} | {decision.run_id} | {decision.status.upper()} | {reasons} |"
+        )
 
     return "\n".join(lines) + "\n"
