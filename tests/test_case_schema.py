@@ -87,7 +87,9 @@ class TestReviewCaseToFormalRow:
         assert "source_doc未設定" in row["notes"]
 
     def test_mixed_question_note_added(self):
-        rc = ReviewCase(title="t", question="締め日と提出方法はいつまでに対応する必要がありますか？")
+        rc = ReviewCase(
+            title="t", question="締め日と提出方法はいつまでに対応する必要がありますか？"
+        )
         row = review_case_to_formal_row(rc)
         assert "mixed_question:deadline,procedure" in row["notes"]
 
@@ -96,6 +98,35 @@ class TestReviewCaseToFormalRow:
         row = review_case_to_formal_row(rc)
         for field in FORMAL_CASE_FIELDS:
             assert field in row
+
+    def test_auto_expected_answer_draft_keeps_evidence_keyword_mode(self):
+        rc = ReviewCase(
+            title="t",
+            question="有給休暇はいつまでに申請する必要がありますか？",
+            expected_answer="有給休暇は5営業日前までに申請します。",
+            expected_evidence="doc.md#sec-1",
+            expected_keywords="有給;申請",
+            notes="auto_expected_answer:extract; auto_expected_answer_status:draft",
+        )
+
+        row = review_case_to_formal_row(rc)
+
+        assert row["eval_mode"] == "evidence_keyword"
+        assert row["status"] == "draft"
+
+    def test_auto_expected_answer_draft_never_promotes_directly_to_active(self):
+        rc = ReviewCase(
+            title="t",
+            question="有給休暇はいつまでに申請する必要がありますか？",
+            expected_answer="有給休暇は5営業日前までに申請します。",
+            expected_evidence="doc.md#sec-1",
+            expected_keywords="有給;申請",
+            notes="auto_expected_answer:extract; auto_expected_answer_status:draft",
+        )
+
+        row = review_case_to_formal_row(rc, default_status="active")
+
+        assert row["status"] == "draft"
 
 
 class TestReviewRowToReviewCase:
@@ -292,6 +323,22 @@ class TestValidation:
         assert len(ev_errors) == 1
         assert ev_errors[0].level == "warn"
 
+    def test_active_row_rejects_auto_expected_answer_draft(self):
+        row = {
+            "case_id": "V011",
+            "question": "q?",
+            "status": "active",
+            "eval_mode": "evidence_keyword",
+            "expected_answer": "5営業日前です。",
+            "expected_evidence": "doc.md#sec-1",
+            "expected_keywords": "5営業日前;申請",
+            "notes": "auto_expected_answer:extract; auto_expected_answer_status:draft",
+        }
+
+        errors = validate_case_row(row)
+
+        assert any(e.field == "notes" and e.level == "error" for e in errors)
+
 
 class TestExpectedAnswerValidationByStatus:
     """expected_answer 空のバリデーションは status 依存。"""
@@ -374,7 +421,9 @@ class TestClassifyReviewStatus:
         assert classify_review_status(rc) == "draft"
 
     def test_exact_mode_without_answer_returns_needs_review(self):
-        rc = ReviewCase(title="t", question="有給の期限は？", eval_mode="exact", expected_evidence="e")
+        rc = ReviewCase(
+            title="t", question="有給の期限は？", eval_mode="exact", expected_evidence="e"
+        )
         assert classify_review_status(rc) == "needs_review"
 
     def test_evidence_keyword_without_keywords_returns_needs_review(self):

@@ -59,7 +59,9 @@ def render_eval_case_review_markdown(cases: list[EvalCase]) -> str:
         return "\n".join(lines)
 
     mixed_cases = [case for case in cases if _note_marker_value(case.notes, "mixed_question:")]
-    split_cases = [case for case in cases if _note_marker_value(case.notes, "split_candidate_from:")]
+    split_cases = [
+        case for case in cases if _note_marker_value(case.notes, "split_candidate_from:")
+    ]
     review_queue = _manual_review_queue(cases)
 
     lines.extend(
@@ -99,6 +101,10 @@ def render_eval_case_review_markdown(cases: list[EvalCase]) -> str:
             lines.extend(f"  - {_single_line(keyword)}" for keyword in case.expected_keywords)
         else:
             lines.append("  - (none)")
+
+        lines.append(
+            f"- Expected Answer: {_single_line(case.expected_answer) if case.expected_answer else '(none)'}"
+        )
 
         lines.append(f"- Risk Level: {case.risk_level}")
         lines.append(f"- Document Snapshot: {_single_line(case.doc_snapshot_id)}")

@@ -91,7 +91,14 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 @retry_with_backoff()
-def call_openai_chat(model: str, system: str, user_msg: str, max_tokens: int) -> dict[str, Any]:
+def call_openai_chat(
+    model: str,
+    system: str,
+    user_msg: str,
+    max_tokens: int,
+    *,
+    temperature: float = 0.7,
+) -> dict[str, Any]:
     """OpenAI chat.completions を呼び出す。"""
     client = get_openai_client()
     resp = client.chat.completions.create(
@@ -101,7 +108,7 @@ def call_openai_chat(model: str, system: str, user_msg: str, max_tokens: int) ->
             {"role": "user", "content": user_msg},
         ],
         max_tokens=max_tokens,
-        temperature=0.7,
+        temperature=temperature,
     )
     input_tokens = resp.usage.prompt_tokens if resp.usage else 0
     output_tokens = resp.usage.completion_tokens if resp.usage else 0

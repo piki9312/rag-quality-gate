@@ -22,10 +22,60 @@ _ASCII_LABEL_RE = re.compile(r"^[A-Za-z0-9_\- ]+$")
 _COMPLIANCE_HINT_RE = re.compile(r"禁止|違反|漏洩|懲戒|機密情報|個人情報|施錠|暗号化")
 _ASCII_ALPHA_RE = re.compile(r"[A-Za-z]")
 _JAPANESE_TEXT_RE = re.compile(r"[ぁ-んァ-ヶ一-龠々]")
+_SENTENCE_RE = re.compile(r"[^。！？.!?]+(?:[。！？.!?]|$)")
+_ANSWER_FACT_RE = re.compile(
+    r"毎月\s*\d{1,2}\s*日"
+    r"|\d{1,3}(?:,\d{3})*\s*円"
+    r"|\d+\s*営業日前"
+    r"|\d+\s*営業日以内"
+    r"|\d+\s*日以内"
+    r"|\d+\s*日まで"
+    r"|翌営業日"
+    r"|前営業日"
+    r"|\d+\s*business days?"
+    r"|\d+\s*days?",
+    re.IGNORECASE,
+)
+_ANSWER_TOKEN_RE = re.compile(r"[A-Za-z]{2,}|\d[\d,]*|[ぁ-んァ-ヶー一-龠々]{2,}")
+_JAPANESE_AMOUNT_RE = re.compile(r"(?:月額\s*)?\d{1,3}(?:,\d{3})*円")
+_DAY_LIMIT_RE = re.compile(r"通算\s*\d+\s*日まで|最大\s*\d+\s*日|最長\s*\d+\s*日")
+_DEADLINE_SENTENCE_RE = re.compile(
+    r"毎月\s*\d{1,2}\s*日"
+    r"|\d+\s*営業日前"
+    r"|\d+\s*営業日以内"
+    r"|\d+\s*日以内"
+    r"|翌営業日"
+    r"|前営業日"
+    r"|\d+\s*business days?"
+    r"|in advance"
+    r"|within\s+\d+\s+days",
+    re.IGNORECASE,
+)
 _DEADLINE_HINTS = ("期限", "いつまで", "日まで", "期日")
 _PROCEDURE_HINTS = ("申請", "手続", "届け出", "提出")
 _POLICY_HINTS = ("条件", "対象", "要件")
 _COMPLIANCE_RULE_HINTS = ("禁止", "不可", "してはいけない")
+_ANSWER_STOPWORDS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "from",
+    "that",
+    "this",
+    "must",
+    "should",
+    "within",
+    "before",
+    "after",
+    "です",
+    "ます",
+    "こと",
+    "場合",
+    "必要",
+    "まで",
+    "ため",
+}
 
 
 def normalize_question_text(question: str) -> str:
@@ -53,7 +103,9 @@ def _infer_rule_hint_category(subject: str, content: str, question: str = "") ->
 
 def is_english_text(text: str) -> bool:
     normalized = _SPACE_RE.sub(" ", (text or "").strip())
-    return bool(_ASCII_ALPHA_RE.search(normalized)) and not bool(_JAPANESE_TEXT_RE.search(normalized))
+    return bool(_ASCII_ALPHA_RE.search(normalized)) and not bool(
+        _JAPANESE_TEXT_RE.search(normalized)
+    )
 
 
 def _append_question_mark(question: str) -> str:
@@ -133,8 +185,14 @@ def _generate_english_rule_questions(section: DocumentSection) -> list[str]:
     subject, action = _english_subject_from_action_sentence(content)
     templates: list[str] = []
 
-    if subject and action and (
-        "business days" in content_lower or "in advance" in content_lower or "within" in content_lower
+    if (
+        subject
+        and action
+        and (
+            "business days" in content_lower
+            or "in advance" in content_lower
+            or "within" in content_lower
+        )
     ):
         templates.append(f"When should {subject} be {action}")
 
@@ -168,7 +226,9 @@ def naturalize_question(question: str, section: DocumentSection) -> str:
     content = section.content
 
     if normalized.endswith("の申請方法は何ですか"):
-        subject = _strip_section_prefix(normalized[: -len("の申請方法は何ですか")]) or heading_subject
+        subject = (
+            _strip_section_prefix(normalized[: -len("の申請方法は何ですか")]) or heading_subject
+        )
         if subject == "注意事項":
             if topic:
                 return _ensure_question_mark(f"{topic}で注意すべき点は何ですか")
@@ -182,7 +242,10 @@ def naturalize_question(question: str, section: DocumentSection) -> str:
         return _ensure_question_mark(f"{subject}はどのように申請しますか")
 
     if normalized.endswith("はいつまでに対応する必要がありますか"):
-        subject = _strip_section_prefix(normalized[: -len("はいつまでに対応する必要がありますか")]) or heading_subject
+        subject = (
+            _strip_section_prefix(normalized[: -len("はいつまでに対応する必要がありますか")])
+            or heading_subject
+        )
         if subject == "締め日":
             return _ensure_question_mark("締め日はいつですか")
         if subject == "打刻" and "打刻漏れ" in content:
@@ -238,7 +301,9 @@ def infer_case_category(question: str, section: DocumentSection) -> str:
 
     if len(question_types) >= 2:
         return "general"
-    if "how often" in normalized.lower() and ("review" in normalized.lower() or "review cycle" in text.lower()):
+    if "how often" in normalized.lower() and (
+        "review" in normalized.lower() or "review cycle" in text.lower()
+    ):
         return "policy"
     if "延長条件" in normalized or ("延長" in normalized and "最長" in section.content):
         return "exception"
@@ -322,6 +387,200 @@ def suggest_keywords(section: DocumentSection) -> list[str]:
         if len(merged) >= 3:
             break
     return merged
+
+
+def _content_units(content: str) -> list[str]:
+    units: list[str] = []
+    for raw_line in content.splitlines():
+        line = _SPACE_RE.sub(" ", raw_line).strip(" -*\t")
+        if not line:
+            continue
+        parts = [part.strip() for part in _SENTENCE_RE.findall(line) if part.strip()]
+        units.extend(parts or [line])
+    return units
+
+
+def _compact_fact_key(text: str) -> str:
+    return re.sub(r"\s+", "", text).lower()
+
+
+def _answer_tokens(text: str) -> list[str]:
+    tokens: list[str] = []
+    for match in _ANSWER_TOKEN_RE.finditer(_SPACE_RE.sub(" ", text).strip()):
+        token = match.group(0).lower()
+        if token in _ANSWER_STOPWORDS:
+            continue
+        if token not in tokens:
+            tokens.append(token)
+    return tokens
+
+
+def _looks_like_amount_question(question: str) -> bool:
+    lowered = question.lower()
+    return any(token in lowered for token in ("いくら", "何円", "月額", "amount", "cost")) or (
+        "上限" in question
+    )
+
+
+def _looks_like_day_limit_question(question: str) -> bool:
+    lowered = question.lower()
+    if "通算" in question and "日" in question:
+        return True
+    if "何日まで" in question and any(
+        token in question for token in ("取得", "休業", "休暇", "利用")
+    ):
+        return True
+    return "up to" in lowered and "day" in lowered
+
+
+def _extract_deadline_answer(_question: str, section: DocumentSection) -> str:
+    units = _content_units(section.content)
+    matches: list[tuple[int, str]] = []
+    for index, unit in enumerate(units):
+        if _DEADLINE_SENTENCE_RE.search(unit):
+            matches.append((index, unit))
+
+    if not matches:
+        return ""
+
+    first_index, first_unit = matches[0]
+    answer_parts = [first_unit]
+    if (
+        re.search(r"毎月\s*\d{1,2}\s*日", first_unit)
+        and first_index + 1 < len(units)
+        and ("前営業日" in units[first_index + 1] or "休日" in units[first_index + 1])
+    ):
+        answer_parts.append(units[first_index + 1])
+
+    return " ".join(answer_parts).strip()
+
+
+def _extract_amount_answer(question: str, section: DocumentSection) -> str:
+    units = _content_units(section.content)
+    amounts = []
+    for unit in units:
+        amounts.extend(_JAPANESE_AMOUNT_RE.findall(unit))
+
+    unique_amounts: list[str] = []
+    for amount in amounts:
+        normalized = _SPACE_RE.sub(" ", amount).strip()
+        if normalized not in unique_amounts:
+            unique_amounts.append(normalized)
+
+    if len(unique_amounts) != 1:
+        return ""
+
+    for unit in units:
+        if unique_amounts[0] in unit and (
+            "上限" in unit or "月額" in unit or _looks_like_amount_question(question)
+        ):
+            return unit
+    return ""
+
+
+def _extract_day_limit_answer(section: DocumentSection) -> str:
+    for unit in _content_units(section.content):
+        if _DAY_LIMIT_RE.search(unit):
+            return unit
+    return ""
+
+
+def _validate_answer_draft(answer: str, section: DocumentSection) -> str | None:
+    normalized_answer = _SPACE_RE.sub(" ", answer).strip()
+    if len(normalized_answer) < 4:
+        return "too_short"
+    if len(normalized_answer) > 160:
+        return "too_long"
+
+    answer_sentences = [
+        part for part in re.split(r"(?<=[。！？])|(?<=[.!?])\s+", normalized_answer) if part.strip()
+    ]
+    if len(answer_sentences) > 2:
+        return "too_long"
+
+    normalized_content = _SPACE_RE.sub(" ", section.content).strip()
+    if normalized_answer in normalized_content:
+        return None
+
+    content_fact_keys = {
+        _compact_fact_key(match.group(0)) for match in _ANSWER_FACT_RE.finditer(normalized_content)
+    }
+    for match in _ANSWER_FACT_RE.finditer(normalized_answer):
+        if _compact_fact_key(match.group(0)) not in content_fact_keys:
+            return "numeric_mismatch"
+
+    content_tokens = set(_answer_tokens(normalized_content))
+    answer_tokens = _answer_tokens(normalized_answer)
+    if answer_tokens and not any(token in content_tokens for token in answer_tokens):
+        return "low_overlap"
+
+    return None
+
+
+def generate_llm_answer_draft(question: str, section: DocumentSection) -> str:
+    """Generate a review-only answer draft from a single section. Returns empty on SKIP/failure."""
+    system = (
+        "You draft short review-only expected answers from a single policy document section. "
+        "Use only facts explicitly stated in the section. Return at most two short sentences in the "
+        "same language as the question. If the section does not clearly answer the question, return "
+        "exactly SKIP."
+    )
+    user = f"QUESTION:\n{question}\n\nSECTION:\n{section.content}"
+    try:
+        response = call_openai_chat(
+            OPENAI_MODEL,
+            system,
+            user,
+            max_tokens=120,
+            temperature=0.0,
+        )
+    except (APIError, RuntimeError, OSError, TypeError, ValueError) as exc:
+        logger.warning("llm answer draft failed for %s: %s", section.section_id, exc)
+        return ""
+
+    answer = _SPACE_RE.sub(" ", response.get("text", "").strip()).strip('"')
+    if not answer or answer.upper() == "SKIP":
+        return ""
+    return answer
+
+
+def generate_expected_answer_draft(
+    question: str,
+    section: DocumentSection,
+    *,
+    category: str = "",
+    use_llm: bool = False,
+) -> tuple[str, list[str]]:
+    """Return a safe expected_answer draft plus note markers for reviewer workflows."""
+    candidate = ""
+
+    if _looks_like_amount_question(question):
+        candidate = _extract_amount_answer(question, section)
+    elif _looks_like_day_limit_question(question):
+        candidate = _extract_day_limit_answer(section)
+    elif category == "deadline" or "deadline" in infer_question_types(question):
+        candidate = _extract_deadline_answer(question, section)
+
+    if candidate:
+        invalid_reason = _validate_answer_draft(candidate, section)
+        if invalid_reason:
+            return "", [
+                "auto_expected_answer:extract",
+                f"auto_expected_answer_invalid:{invalid_reason}",
+            ]
+        return candidate, ["auto_expected_answer:extract", "auto_expected_answer_status:draft"]
+
+    if not use_llm:
+        return "", []
+
+    candidate = generate_llm_answer_draft(question, section)
+    if not candidate:
+        return "", []
+
+    invalid_reason = _validate_answer_draft(candidate, section)
+    if invalid_reason:
+        return "", ["auto_expected_answer:llm", f"auto_expected_answer_invalid:{invalid_reason}"]
+    return candidate, ["auto_expected_answer:llm", "auto_expected_answer_status:draft"]
 
 
 def generate_rule_questions(section: DocumentSection, max_questions: int = 1) -> list[str]:

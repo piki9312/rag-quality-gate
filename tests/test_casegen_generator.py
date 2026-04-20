@@ -37,6 +37,11 @@ def test_generate_eval_cases_from_snapshot_rule_mode():
     assert bundle.cases[0].doc_snapshot_id == "snapshot-001"
     assert bundle.cases[0].question == "When should paid leave requests be submitted?"
     assert bundle.cases[0].category == "deadline"
+    assert (
+        bundle.cases[0].expected_answer
+        == "Paid leave requests must be submitted 5 business days in advance."
+    )
+    assert "auto_expected_answer:extract" in (bundle.cases[0].notes or "")
 
 
 def test_generate_eval_cases_hybrid_uses_rule_when_llm_fails():
@@ -60,6 +65,56 @@ def test_generate_eval_cases_hybrid_uses_rule_when_llm_fails():
         )
 
     assert len(bundle.cases) == 1
+
+
+def test_generate_eval_cases_does_not_use_llm_answer_drafts_by_default():
+    doc = _tmp_doc("generator-llm-answer-default")
+    doc.write_text("# 概要\n\n申請は勤怠管理システムから行います。", encoding="utf-8")
+    snapshot = DocumentSnapshot(
+        snapshot_id="snapshot-llm-answer-default",
+        doc_id="docs/leave_policy.md",
+        title="Leave Policy",
+        source_path=doc.as_posix(),
+        content_hash="hash",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    with patch("rqg.casegen.questions.generate_llm_answer_draft") as draft_mock:
+        bundle = generate_eval_cases_from_snapshot(
+            snapshot, mode="rule", max_cases=10, use_llm=False
+        )
+
+    draft_mock.assert_not_called()
+    assert bundle.cases[0].expected_answer == ""
+
+
+def test_generate_eval_cases_uses_llm_answer_drafts_only_when_opted_in():
+    doc = _tmp_doc("generator-llm-answer-enabled")
+    doc.write_text("# 概要\n\n申請は勤怠管理システムから行います。", encoding="utf-8")
+    snapshot = DocumentSnapshot(
+        snapshot_id="snapshot-llm-answer-enabled",
+        doc_id="docs/leave_policy.md",
+        title="Leave Policy",
+        source_path=doc.as_posix(),
+        content_hash="hash",
+        created_at="2026-03-23T00:00:00Z",
+    )
+
+    with patch(
+        "rqg.casegen.questions.generate_llm_answer_draft",
+        return_value="申請は勤怠管理システムから行います。",
+    ) as draft_mock:
+        bundle = generate_eval_cases_from_snapshot(
+            snapshot,
+            mode="rule",
+            max_cases=10,
+            use_llm=False,
+            use_llm_answer_drafts=True,
+        )
+
+    draft_mock.assert_called()
+    assert bundle.cases[0].expected_answer == "申請は勤怠管理システムから行います。"
+    assert "auto_expected_answer:llm" in (bundle.cases[0].notes or "")
 
 
 def test_generate_eval_cases_dedupes_semantic_duplicate_questions():
@@ -130,7 +185,9 @@ def test_generate_eval_cases_marks_mixed_question_notes():
         "rqg.casegen.generator.generate_rule_questions",
         return_value=["1. 締め日と提出方法はいつまでに対応する必要がありますか？"],
     ):
-        bundle = generate_eval_cases_from_snapshot(snapshot, mode="rule", max_cases=10, use_llm=False)
+        bundle = generate_eval_cases_from_snapshot(
+            snapshot, mode="rule", max_cases=10, use_llm=False
+        )
 
     assert len(bundle.cases) == 3
     assert bundle.cases[0].notes is not None

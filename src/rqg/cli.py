@@ -288,6 +288,7 @@ def cmd_gen_cases(args: argparse.Namespace) -> int:
         mode=args.mode,
         max_cases=args.max_cases,
         use_llm=args.use_llm,
+        use_llm_answer_drafts=args.use_llm_answer_drafts,
     )
     output_path = _write_json_list_output(args.output, bundle.cases)
     print(f"Saved {len(bundle.cases)} eval cases to {output_path}")
@@ -948,6 +949,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--use-llm",
         action="store_true",
         help="Use LLM question generation in addition to rule generation",
+    )
+    p_gen_cases.add_argument(
+        "--use-llm-answer-drafts",
+        action="store_true",
+        help="Opt in to LLM expected_answer drafts when extract-only drafting cannot fill one",
     )
 
     # --- impact ---

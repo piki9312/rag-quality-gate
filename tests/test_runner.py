@@ -324,7 +324,9 @@ class TestRunCaseEvalMode:
     def test_exact_mode_uses_expected_answer(self):
         class ExactStore:
             def search(self, q, top_k=20):
-                return [{"chunk_id": "chunk_A", "text": "有給休暇は5営業日前までに申請してください。"}]
+                return [
+                    {"chunk_id": "chunk_A", "text": "有給休暇は5営業日前までに申請してください。"}
+                ]
 
         case = QATestCase(
             case_id="EXACT-001",
@@ -347,7 +349,9 @@ class TestRunCaseEvalMode:
     def test_exact_mode_fails_when_expected_answer_differs(self):
         class ExactStore:
             def search(self, q, top_k=20):
-                return [{"chunk_id": "chunk_A", "text": "有給休暇は5営業日前までに申請してください。"}]
+                return [
+                    {"chunk_id": "chunk_A", "text": "有給休暇は5営業日前までに申請してください。"}
+                ]
 
         case = QATestCase(
             case_id="EXACT-002",
@@ -408,7 +412,12 @@ class TestRunCaseEvalMode:
     def test_grounded_judge_mode_requires_citation_and_judge_scores(self):
         class GroundedStore:
             def search(self, q, top_k=20):
-                return [{"chunk_id": "doc#chunk1", "text": "有給休暇は5営業日前までに申請してください。"}]
+                return [
+                    {
+                        "chunk_id": "doc#chunk1",
+                        "text": "有給休暇は5営業日前までに申請してください。",
+                    }
+                ]
 
         case = QATestCase(
             case_id="GJ-001",
@@ -422,7 +431,10 @@ class TestRunCaseEvalMode:
         with (
             patch(
                 "rqg.quality.runner.generate_answer",
-                return_value=("有給休暇は5営業日前までに申請してください。[doc#chunk1]", {"usage": {}}),
+                return_value=(
+                    "有給休暇は5営業日前までに申請してください。[doc#chunk1]",
+                    {"usage": {}},
+                ),
             ),
             patch(
                 "rqg.quality.runner.llm_judge",
@@ -474,7 +486,12 @@ class TestRunCaseEvalMode:
     def test_grounded_judge_mode_fails_without_citation(self):
         class GroundedStore:
             def search(self, q, top_k=20):
-                return [{"chunk_id": "doc#chunk1", "text": "有給休暇は5営業日前までに申請してください。"}]
+                return [
+                    {
+                        "chunk_id": "doc#chunk1",
+                        "text": "有給休暇は5営業日前までに申請してください。",
+                    }
+                ]
 
         case = QATestCase(
             case_id="GJ-002",
@@ -512,7 +529,12 @@ class TestRunCaseEvalMode:
     def test_grounded_judge_uses_rollout_threshold(self):
         class GroundedStore:
             def search(self, q, top_k=20):
-                return [{"chunk_id": "doc#chunk1", "text": "有給休暇は5営業日前までに申請してください。"}]
+                return [
+                    {
+                        "chunk_id": "doc#chunk1",
+                        "text": "有給休暇は5営業日前までに申請してください。",
+                    }
+                ]
 
         case = QATestCase(
             case_id="GJ-004",
@@ -526,7 +548,10 @@ class TestRunCaseEvalMode:
         with (
             patch(
                 "rqg.quality.runner.generate_answer",
-                return_value=("有給休暇は5営業日前までに申請してください。[doc#chunk1]", {"usage": {}}),
+                return_value=(
+                    "有給休暇は5営業日前までに申請してください。[doc#chunk1]",
+                    {"usage": {}},
+                ),
             ),
             patch(
                 "rqg.quality.runner.llm_judge",

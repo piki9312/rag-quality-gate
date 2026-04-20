@@ -26,8 +26,8 @@ from .evaluators.llm_judge import (
     _overlap_precision,
     _overlap_tokens,
     _split_text_units,
-    judge as llm_judge,
 )
+from .evaluators.llm_judge import judge as llm_judge
 from .evaluators.reference import extract_references, reference_accuracy
 from .evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
 from .failure_reason import classify_failure_category
@@ -111,7 +111,11 @@ def _markdown_excerpt_blocks(text: str) -> list[str]:
             current = []
             return
 
-        content_lines = [line for line in candidate.splitlines() if line.strip() and not line.lstrip().startswith("#")]
+        content_lines = [
+            line
+            for line in candidate.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
         if content_lines:
             blocks.append(candidate)
         current = []
@@ -151,11 +155,17 @@ def _question_intent_boost(question: str, excerpt: str) -> float:
     normalized_excerpt = _normalize_text(excerpt)
     boost = 0.0
 
-    if any(term in normalized_question for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")):
+    if any(
+        term in normalized_question
+        for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
+    ):
         if _CONTACT_ANSWER_RE.search(normalized_excerpt) or "人事部" in normalized_excerpt:
             boost += 0.18
 
-    if any(term in normalized_question for term in ("いつ", "期限", "締め日", "何日", "いつまで", "上限")):
+    if any(
+        term in normalized_question
+        for term in ("いつ", "期限", "締め日", "何日", "いつまで", "上限")
+    ):
         if _NUMERIC_ANSWER_RE.search(normalized_excerpt):
             boost += 0.12
 
@@ -252,7 +262,11 @@ def _score_mock_excerpt(question: str, excerpt: str) -> float:
             0.3 * _overlap_precision(question_tokens, excerpt_tokens)
         )
 
-    return lexical_score + _question_intent_boost(question, excerpt) + _question_phrase_boost(question, excerpt)
+    return (
+        lexical_score
+        + _question_intent_boost(question, excerpt)
+        + _question_phrase_boost(question, excerpt)
+    )
 
 
 def _best_mock_excerpt(question: str, text: str) -> str:
@@ -289,14 +303,17 @@ def _best_grounded_mock_excerpt(question: str, text: str) -> str:
 def _format_mock_excerpt(question: str, excerpt: str) -> str:
     normalized_question = _normalize_text(question)
     content_lines = [
-        line.strip() for line in excerpt.splitlines() if line.strip() and not line.lstrip().startswith("#")
+        line.strip()
+        for line in excerpt.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
     ]
     if not content_lines:
         return excerpt
 
     contact_match = _CONTACT_ANSWER_RE.search(excerpt)
     if contact_match and any(
-        term in normalized_question for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
+        term in normalized_question
+        for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
     ):
         return f"問い合わせ先は{contact_match.group(1)}です。\n" + "\n".join(content_lines)
 
@@ -524,16 +541,22 @@ class RAGQualityRunner:
                 passed = evidence_match and citation_match and answer_match and faithfulness_match
                 if not evidence_match:
                     failure_type = "retrieval_miss"
-                    failure_reason = f"Evidence recall {evidence_score:.0%} < {grounded_threshold:.0%}"
+                    failure_reason = (
+                        f"Evidence recall {evidence_score:.0%} < {grounded_threshold:.0%}"
+                    )
                 elif not citation_match:
                     failure_type = "bad_reference"
                     failure_reason = "Citation required for grounded_judge"
                 elif not faithfulness_match:
                     failure_type = "keyword_miss"
-                    failure_reason = f"Faithfulness {faithfulness or 0.0:.0%} < {grounded_threshold:.0%}"
+                    failure_reason = (
+                        f"Faithfulness {faithfulness or 0.0:.0%} < {grounded_threshold:.0%}"
+                    )
                 elif not answer_match:
                     failure_type = "keyword_miss"
-                    failure_reason = f"Judge relevance {judge_relevance or 0.0:.0%} < {grounded_threshold:.0%}"
+                    failure_reason = (
+                        f"Judge relevance {judge_relevance or 0.0:.0%} < {grounded_threshold:.0%}"
+                    )
 
             else:
                 scores: list[float] = []

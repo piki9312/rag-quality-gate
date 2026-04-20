@@ -59,6 +59,7 @@ VALID_EVAL_MODES = {"exact", "evidence_keyword", "grounded_judge"}
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")
 _QUESTION_WHITESPACE_RE = re.compile(r"\s+")
 _ORDINAL_PREFIX_RE = re.compile(r"^\d+\s*[.)．、）]\s*")
+_NOTE_PARTS_RE = re.compile(r"\s*;\s*")
 
 _QUESTION_TYPE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -176,6 +177,44 @@ def _has_value(value: object) -> bool:
     return bool(_clean(value))
 
 
+def _note_parts(notes: object) -> list[str]:
+    cleaned = _clean(notes)
+    if not cleaned:
+        return []
+    return [part for part in _NOTE_PARTS_RE.split(cleaned) if part]
+
+
+def has_note_marker(notes: object, marker: str) -> bool:
+    return marker in _note_parts(notes)
+
+
+def has_note_marker_prefix(notes: object, prefix: str) -> bool:
+    return any(part.startswith(prefix) for part in _note_parts(notes))
+
+
+def is_auto_expected_answer_draft(notes: object) -> bool:
+    return has_note_marker(notes, "auto_expected_answer_status:draft")
+
+
+def infer_review_eval_mode(
+    *,
+    eval_mode: object = "",
+    expected_answer: object = "",
+    expected_evidence: object = "",
+    expected_keywords: object = "",
+    notes: object = "",
+) -> str:
+    normalized_eval_mode = normalize_eval_mode(eval_mode)
+    if normalized_eval_mode in VALID_EVAL_MODES:
+        return normalized_eval_mode
+    inferred_expected_answer = "" if is_auto_expected_answer_draft(notes) else expected_answer
+    return infer_eval_mode(
+        expected_answer=inferred_expected_answer,
+        expected_evidence=expected_evidence,
+        expected_keywords=expected_keywords,
+    )
+
+
 def infer_eval_mode(
     *,
     expected_answer: object = "",
@@ -269,14 +308,12 @@ def classify_review_status(review: ReviewCase) -> str:
     if raw_eval_mode and raw_eval_mode not in VALID_EVAL_MODES:
         reasons.append(f"eval_mode不正({review.eval_mode})")
 
-    effective_eval_mode = (
-        raw_eval_mode
-        if raw_eval_mode in VALID_EVAL_MODES
-        else infer_eval_mode(
-            expected_answer=review.expected_answer,
-            expected_evidence=review.expected_evidence,
-            expected_keywords=review.expected_keywords,
-        )
+    effective_eval_mode = infer_review_eval_mode(
+        eval_mode=review.eval_mode,
+        expected_answer=review.expected_answer,
+        expected_evidence=review.expected_evidence,
+        expected_keywords=review.expected_keywords,
+        notes=review.notes,
     )
 
     if effective_eval_mode == "exact":
@@ -324,18 +361,20 @@ def review_case_to_formal_row(
     if severity not in VALID_SEVERITIES:
         severity = "S2"
 
-    eval_mode = normalize_eval_mode(review.eval_mode)
-    if not eval_mode:
-        eval_mode = infer_eval_mode(
-            expected_answer=review.expected_answer,
-            expected_evidence=review.expected_evidence,
-            expected_keywords=review.expected_keywords,
-        )
+    eval_mode = infer_review_eval_mode(
+        eval_mode=review.eval_mode,
+        expected_answer=review.expected_answer,
+        expected_evidence=review.expected_evidence,
+        expected_keywords=review.expected_keywords,
+        notes=review.notes,
+    )
 
     if default_status is not None:
         status = default_status if default_status in VALID_STATUSES else "draft"
     else:
         status = classify_review_status(review)
+    if is_auto_expected_answer_draft(review.notes) and status == "active":
+        status = "draft"
 
     source_doc = infer_source_doc(
         expected_evidence=review.expected_evidence,
@@ -470,14 +509,13 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
     cid = case_id or "(empty)"
     status = row.get("status", "").strip()
     raw_eval_mode = normalize_eval_mode(row.get("eval_mode", ""))
-    effective_eval_mode = (
-        raw_eval_mode
-        if raw_eval_mode in VALID_EVAL_MODES
-        else infer_eval_mode(
-            expected_answer=row.get("expected_answer", ""),
-            expected_evidence=row.get("expected_evidence", ""),
-            expected_keywords=row.get("expected_keywords", ""),
-        )
+    notes = row.get("notes", "")
+    effective_eval_mode = infer_review_eval_mode(
+        eval_mode=raw_eval_mode,
+        expected_answer=row.get("expected_answer", ""),
+        expected_evidence=row.get("expected_evidence", ""),
+        expected_keywords=row.get("expected_keywords", ""),
+        notes=notes,
     )
 
     # case_id non-empty
@@ -537,6 +575,15 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
 
     if status == "deprecated":
         return errors
+
+    if status == "active" and is_auto_expected_answer_draft(notes):
+        errors.append(
+            ValidationError(
+                cid,
+                "notes",
+                "auto-generated expected_answer draft must be manually reviewed before active",
+            )
+        )
 
     # expected_evidence format
     ev = row.get("expected_evidence", "").strip()

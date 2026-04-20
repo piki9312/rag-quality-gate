@@ -148,11 +148,13 @@ class TestCLIParsing:
                 "--max-cases",
                 "10",
                 "--use-llm",
+                "--use-llm-answer-drafts",
             ]
         )
         assert args.command == "gen-cases"
         assert args.mode == "hybrid"
         assert args.use_llm is True
+        assert args.use_llm_answer_drafts is True
 
     def test_migrate_cases_args(self):
         from rqg.cli import build_parser
@@ -1004,7 +1006,9 @@ def test_merge_cases_skips_high_priority_mixed_review_rows(capsys):
     with open(base_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["case_id", "question", "expected_answer", "status"])
         writer.writeheader()
-        writer.writerow({"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"})
+        writer.writerow(
+            {"case_id": "base_001", "question": "Q?", "expected_answer": "A", "status": "active"}
+        )
 
     with open(review_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(

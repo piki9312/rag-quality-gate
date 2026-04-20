@@ -9,6 +9,7 @@ from pathlib import Path
 
 from rqg.casegen.questions import (
     filter_reviewable_questions,
+    generate_expected_answer_draft,
     generate_llm_questions,
     generate_rule_questions,
     infer_case_category,
@@ -72,16 +73,27 @@ def _build_eval_case(
     question: str,
     ordinal: int,
     notes: str,
+    *,
+    use_llm_answer_drafts: bool = False,
 ) -> EvalCase:
+    category = infer_case_category(question, section)
+    expected_answer, answer_notes = generate_expected_answer_draft(
+        question,
+        section,
+        category=category,
+        use_llm=use_llm_answer_drafts,
+    )
+    notes_parts = [notes, *answer_notes]
     return EvalCase(
         case_id=_make_case_id(snapshot, section, ordinal),
         question=question,
+        expected_answer=expected_answer,
         expected_evidence=[section.section_id],
         expected_keywords=suggest_keywords(section),
         risk_level="S2",
         doc_snapshot_id=snapshot.snapshot_id,
-        category=infer_case_category(question, section),
-        notes=notes,
+        category=category,
+        notes="; ".join(part for part in notes_parts if part),
     )
 
 
@@ -120,7 +132,9 @@ def _strip_question_subject(question: str) -> str:
 
 def _split_subject_fragments(subject: str) -> list[str]:
     cleaned = _QUESTION_PREFIX_RE.sub("", subject.strip())
-    fragments = [fragment.strip() for fragment in _SUBJECT_SPLIT_RE.split(cleaned) if fragment.strip()]
+    fragments = [
+        fragment.strip() for fragment in _SUBJECT_SPLIT_RE.split(cleaned) if fragment.strip()
+    ]
     if len(fragments) > 1:
         return fragments
 
@@ -188,7 +202,9 @@ def _split_candidate_questions(question: str) -> list[str]:
 
     subject = _strip_question_subject(question)
     fragments = _split_subject_fragments(subject)
-    english = bool(_ENGLISH_RE.search(question)) and not bool(re.search(r"[ぁ-んァ-ヶ一-龠々]", question))
+    english = bool(_ENGLISH_RE.search(question)) and not bool(
+        re.search(r"[ぁ-んァ-ヶ一-龠々]", question)
+    )
 
     candidates: list[str] = []
     seen: set[str] = set()
@@ -233,6 +249,7 @@ def generate_eval_cases_from_snapshot(
     mode: str = "rule",
     max_cases: int = 50,
     use_llm: bool = False,
+    use_llm_answer_drafts: bool = False,
 ) -> GeneratedCaseBundle:
     """Generate EvalCase candidates from a document snapshot."""
     sections = extract_sections_from_snapshot(snapshot, snapshot_path=snapshot_path)
@@ -245,7 +262,9 @@ def generate_eval_cases_from_snapshot(
 
         questions: list[tuple[str, str]] = []
 
-        for question in generate_rule_questions(section, max_questions=_rule_question_limit(section)):
+        for question in generate_rule_questions(
+            section, max_questions=_rule_question_limit(section)
+        ):
             question = naturalize_question(question, section)
             questions.append(
                 (
@@ -312,7 +331,16 @@ def generate_eval_cases_from_snapshot(
 
         for question, note in deduped_questions:
             ordinal += 1
-            cases.append(_build_eval_case(snapshot, section, question, ordinal, note))
+            cases.append(
+                _build_eval_case(
+                    snapshot,
+                    section,
+                    question,
+                    ordinal,
+                    note,
+                    use_llm_answer_drafts=use_llm_answer_drafts,
+                )
+            )
             if len(cases) >= max_cases:
                 return GeneratedCaseBundle(snapshot=snapshot, sections=sections, cases=cases)
 
