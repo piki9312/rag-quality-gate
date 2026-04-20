@@ -80,7 +80,7 @@ rqg init-snapshot / create-sample-case / create-sample-gate  scaffold 用
 rqg migrate-cases  レガシー参照の移行
 ```
 
-GitHub Actions 向けの導入テンプレートは `/home/runner/work/rag-quality-gate/rag-quality-gate/templates/github/` に同梱しています。
+GitHub Actions 向けの導入テンプレートは `templates/github/` に同梱しています。
 
 **日常で使うのは `gate` (+ `gen-cases` / `merge-cases`) の 2-3 コマンドです。**
 
