@@ -102,6 +102,10 @@ def render_eval_case_review_markdown(cases: list[EvalCase]) -> str:
         else:
             lines.append("  - (none)")
 
+        lines.append(
+            f"- Expected Answer: {_single_line(case.expected_answer) if case.expected_answer else '(none)'}"
+        )
+
         lines.append(f"- Risk Level: {case.risk_level}")
         lines.append(f"- Document Snapshot: {_single_line(case.doc_snapshot_id)}")
         lines.append(f"- Notes: {_single_line(case.notes) if case.notes else '(none)'}")

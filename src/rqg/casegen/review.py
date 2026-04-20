@@ -34,7 +34,7 @@ def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
                         "title": case.case_id,
                         "question": case.question,
                         "eval_mode": "evidence_keyword",
-                        "expected_answer": "",
+                        "expected_answer": case.expected_answer,
                         "expected_evidence": ";".join(case.expected_evidence),
                         "expected_keywords": ";".join(case.expected_keywords),
                         "source_doc": infer_source_doc(

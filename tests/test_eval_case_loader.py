@@ -68,6 +68,7 @@ def test_load_eval_cases_reads_existing_csv_shape(eval_cases_csv):
     assert cases[0].risk_level == "S1"
     assert cases[0].expected_evidence == ["chunk_A", "chunk_B"]
     assert cases[0].category == "policy"
+    assert cases[0].expected_answer == ""
     assert cases[1].risk_level == "S2"
     assert cases[1].category == "procedure"
     assert cases[1].doc_snapshot_id == "unlinked-snapshot"
@@ -128,6 +129,7 @@ def test_qa_test_case_to_eval_case_maps_fields():
         name="Leave policy",
         question="What is the leave policy?",
         severity="S2",
+        expected_answer="Apply 5 business days in advance.",
         expected_keywords=["leave"],
         expected_evidence=["chunk_A"],
         category="procedure",
@@ -137,5 +139,6 @@ def test_qa_test_case_to_eval_case_maps_fields():
 
     assert eval_case.case_id == "QA001"
     assert eval_case.risk_level == "S2"
+    assert eval_case.expected_answer == "Apply 5 business days in advance."
     assert eval_case.expected_evidence == ["chunk_A"]
     assert eval_case.category == "procedure"

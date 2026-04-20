@@ -134,11 +134,17 @@ def _question_intent_boost(question: str, excerpt: str) -> float:
     normalized_excerpt = normalize_text(excerpt)
     boost = 0.0
 
-    if any(term in normalized_question for term in ja_locale.CONTACT_QUESTION_TERMS):
+    if any(
+        term in normalized_question
+        for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
+    ):
         if _CONTACT_ANSWER_RE.search(normalized_excerpt) or "人事部" in normalized_excerpt:
             boost += 0.18
 
-    if any(term in normalized_question for term in ja_locale.DEADLINE_QUESTION_TERMS):
+    if any(
+        term in normalized_question
+        for term in ("いつ", "期限", "締め日", "何日", "いつまで", "上限")
+    ):
         if _NUMERIC_ANSWER_RE.search(normalized_excerpt):
             boost += 0.12
 
@@ -270,7 +276,8 @@ def _format_mock_excerpt(question: str, excerpt: str) -> str:
 
     contact_match = _CONTACT_ANSWER_RE.search(excerpt)
     if contact_match and any(
-        term in normalized_question for term in ja_locale.CONTACT_QUESTION_TERMS
+        term in normalized_question
+        for term in ("問い合わせ先", "どこ", "窓口", "連絡先", "エスカレーション")
     ):
         return (
             ja_locale.CONTACT_ANSWER_TEMPLATE.format(contact=contact_match.group(1))

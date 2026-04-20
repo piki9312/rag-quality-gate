@@ -37,6 +37,12 @@
 
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
 - [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
+- [ADR: external RAG integration contract](adr/0003-external-rag-integration-contract.md)
+- [ADR: evaluation status taxonomy](adr/0004-evaluation-status-taxonomy.md)
+- [ADR: quality asset governance](adr/0005-quality-asset-governance.md)
+- [ADR: responsibility boundary for external systems](adr/0006-responsibility-boundary-for-external-systems.md)
+- [ADR: auto-generated review and merge policy](adr/0007-auto-generated-review-and-merge-policy.md)
+- [ADR: RQG scope and non-goals](adr/0008-rqg-scope-and-non-goals.md)
 
 ## 用語集
 
@@ -95,6 +101,12 @@ Architecture rationale:
 
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
 - [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
+- [ADR: external RAG integration contract](adr/0003-external-rag-integration-contract.md)
+- [ADR: evaluation status taxonomy](adr/0004-evaluation-status-taxonomy.md)
+- [ADR: quality asset governance](adr/0005-quality-asset-governance.md)
+- [ADR: responsibility boundary for external systems](adr/0006-responsibility-boundary-for-external-systems.md)
+- [ADR: auto-generated review and merge policy](adr/0007-auto-generated-review-and-merge-policy.md)
+- [ADR: RQG scope and non-goals](adr/0008-rqg-scope-and-non-goals.md)
 
 ### Glossary
 
