@@ -6,7 +6,7 @@ import argparse
 from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
-from .helpers import append_jsonl_output, write_json_output
+from .helpers import append_jsonl_output, write_json_output, write_text_output
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -71,8 +71,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     report_path = (
         Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
     )
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(md, encoding="utf-8")
+    report_path = write_text_output(report_path, md)
     print(f"Saved report to {report_path}")
 
     decision_output = (

@@ -10,6 +10,7 @@ from ..quality.history import (
     load_gate_decision_history,
     render_gate_history_markdown,
 )
+from .helpers import write_text_output
 
 
 def cmd_history(args: argparse.Namespace) -> int:
@@ -29,9 +30,7 @@ def cmd_history(args: argparse.Namespace) -> int:
     print(md)
 
     if args.output_file:
-        output_path = Path(args.output_file)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text(md, encoding="utf-8")
+        output_path = write_text_output(args.output_file, md)
         print(f"Saved history report to {output_path}")
 
     return 0

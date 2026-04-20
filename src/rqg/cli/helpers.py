@@ -24,6 +24,13 @@ def write_json_output(path: str | Path, model: object) -> Path:
     return output_path
 
 
+def write_json_data_output(path: str | Path, payload: Any) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return output_path
+
+
 def write_json_list_output(path: str | Path, models: list[object]) -> Path:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -37,6 +44,13 @@ def append_jsonl_output(path: str | Path, model: object) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "a", encoding="utf-8") as f:
         f.write(model.model_dump_json() + "\n")
+    return output_path
+
+
+def write_text_output(path: str | Path, content: str) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(content, encoding="utf-8")
     return output_path
 
 

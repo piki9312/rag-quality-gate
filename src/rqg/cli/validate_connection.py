@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from .helpers import write_json_output
+from .helpers import write_json_output, write_text_output
 
 
 def cmd_validate_connection(args: argparse.Namespace) -> int:
@@ -35,8 +35,7 @@ def cmd_validate_connection(args: argparse.Namespace) -> int:
             saved_path = write_json_output(output_path, result)
             print(f"Saved validation JSON to {saved_path}")
         else:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(_render_markdown(result), encoding="utf-8")
+            output_path = write_text_output(output_path, _render_markdown(result))
             print(f"Saved validation report to {output_path}")
 
     return 0 if result.ok else 1
