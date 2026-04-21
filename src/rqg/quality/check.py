@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -13,6 +14,7 @@ from rqg.domain import GateDecision, GateNextAction
 
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
 from .models import QARunRecord
+from .staleness import CaseStalenessItem, summarize_case_staleness
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,8 @@ class GateConfig:
     max_cost_per_query_usd: float = 0.0
     max_overall_drop_pct: float = 0.0
     max_s1_drop_pct: float = 0.0
+    case_staleness_days: int = 0
+    min_fresh_case_review_rate: float = 0.0
 
     # Warn thresholds (0 = disabled).  When a metric passes the fail threshold
     # but misses the warn threshold the gate status becomes "warn" instead of
@@ -61,8 +65,17 @@ class GateConfig:
     # reports and gate-decision.json so operators notice degradation early.
     s1_pass_rate_warn: float = 0.0
     overall_pass_rate_warn: float = 0.0
+    fresh_case_review_rate_warn: float = 0.0
     judge_relevance_warn: float = 0.0  # 0 = 警告しない
     aggregation_policy: str = "latest_run"  # latest_run | window
+
+    @property
+    def staleness_policy_enabled(self) -> bool:
+        return (
+            self.case_staleness_days > 0
+            or self.min_fresh_case_review_rate > 0
+            or self.fresh_case_review_rate_warn > 0
+        )
 
     @classmethod
     def from_yaml(cls, path: str) -> GateConfig:
@@ -81,15 +94,18 @@ class GateConfig:
             max_cost_per_query_usd=th.get("max_cost_per_query_usd", 0.0),
             max_overall_drop_pct=th.get("max_overall_drop_pct", 0.0),
             max_s1_drop_pct=th.get("max_s1_drop_pct", 0.0),
+            case_staleness_days=int(th.get("case_staleness_days", 0) or 0),
+            min_fresh_case_review_rate=th.get("min_fresh_case_review_rate", 0.0),
             s1_pass_rate_warn=th.get("s1_pass_rate_warn", 0.0),
             overall_pass_rate_warn=th.get("overall_pass_rate_warn", 0.0),
+            fresh_case_review_rate_warn=th.get("fresh_case_review_rate_warn", 0.0),
             judge_relevance_warn=th.get("judge_relevance_warn", 0.0),
             aggregation_policy=normalize_aggregation_policy(th.get("aggregation_policy")),
         )
 
 
-def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
-    """Load failure category -> next action hints from quality-pack.yml."""
+def load_quality_pack_payload(path: str | Path) -> dict[str, Any]:
+    """Load quality-pack.yml as a mapping, returning {} on error."""
     import yaml
 
     file_path = Path(path)
@@ -101,6 +117,17 @@ def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
             data = yaml.safe_load(f) or {}
     except (OSError, yaml.YAMLError) as exc:
         logger.warning("failed to load quality-pack %s: %s", file_path, exc)
+        return {}
+
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
+def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
+    """Load failure category -> next action hints from quality-pack.yml."""
+    data = load_quality_pack_payload(path)
+    if not data:
         return {}
 
     patterns = data.get("common_failure_patterns", [])
@@ -122,6 +149,20 @@ def load_failure_actions_from_quality_pack(path: str | Path) -> dict[str, str]:
 
         actions[name.strip()] = action.strip()
     return actions
+
+
+def load_review_steward_from_quality_pack(path: str | Path) -> str | None:
+    """Load the fixed weekly review steward from quality-pack.yml."""
+    data = load_quality_pack_payload(path)
+    if not data:
+        return None
+
+    pack_meta = data.get("pack", {})
+    if not isinstance(pack_meta, dict):
+        return None
+
+    review_steward = str(pack_meta.get("review_steward", "")).strip()
+    return review_steward or None
 
 
 DEFAULT_NEXT_ACTION_HINT = "Define next action in weekly review issue"
@@ -167,6 +208,11 @@ class CheckResult:
     judge_relevance_scored: int = 0
     avg_evidence_recall: float | None = None
     evidence_recall_scored: int = 0
+    stale_after_days: int = 0
+    fresh_case_review_rate: float | None = None
+    fresh_case_count: int = 0
+    fresh_case_total: int = 0
+    stale_cases: list[CaseStalenessItem] = field(default_factory=list)
 
     @property
     def gate_passed(self) -> bool:
@@ -298,11 +344,18 @@ def run_check(
             baseline = load_records(baseline_dir or log_dir, since=baseline_since)
 
     active_cases = None
+    staleness_summary = None
     if cases_file:
         from .loader import filter_cases_by_status, load_cases
 
         loaded_cases = load_cases(cases_file)
         active_cases = filter_cases_by_status(loaded_cases, allowed_statuses={"active"})
+        if config.case_staleness_days > 0:
+            staleness_summary = summarize_case_staleness(
+                active_cases,
+                stale_after_days=config.case_staleness_days,
+                now=now,
+            )
         active_case_ids = {case.case_id for case in active_cases}
         current = [record for record in current if record.case_id in active_case_ids]
         baseline = [record for record in baseline if record.case_id in active_case_ids]
@@ -497,6 +550,38 @@ def run_check(
                 )
             )
 
+    if staleness_summary is not None:
+        freshness_threshold = config.min_fresh_case_review_rate
+        freshness_warn_threshold = config.fresh_case_review_rate_warn
+        freshness_actual = staleness_summary.fresh_rate
+        freshness_passed = True
+        freshness_warned = False
+        if freshness_threshold > 0:
+            freshness_passed = freshness_actual >= freshness_threshold
+            freshness_warned = _should_warn(
+                freshness_actual,
+                freshness_threshold,
+                freshness_warn_threshold,
+            )
+        elif freshness_warn_threshold > 0:
+            freshness_warned = freshness_actual < freshness_warn_threshold
+
+        if freshness_threshold > 0 or freshness_warn_threshold > 0:
+            checks.append(
+                ThresholdResult(
+                    name="Fresh case review rate",
+                    threshold=freshness_threshold or freshness_warn_threshold,
+                    actual=freshness_actual,
+                    passed=freshness_passed,
+                    detail=(
+                        f"{staleness_summary.fresh_cases}/{staleness_summary.total_cases} "
+                        f"fresh within {staleness_summary.stale_after_days} days"
+                    ),
+                    warn_threshold=freshness_warn_threshold,
+                    warned=freshness_warned,
+                )
+            )
+
     # Per-case min_pass_rate (from CSV)
     case_checks: list[ThresholdResult] = []
     if active_cases is not None:
@@ -537,6 +622,11 @@ def run_check(
         judge_relevance_scored=judge_relevance_scored,
         avg_evidence_recall=avg_evidence_recall,
         evidence_recall_scored=evidence_recall_scored,
+        stale_after_days=staleness_summary.stale_after_days if staleness_summary else 0,
+        fresh_case_review_rate=staleness_summary.fresh_rate if staleness_summary else None,
+        fresh_case_count=staleness_summary.fresh_cases if staleness_summary else 0,
+        fresh_case_total=staleness_summary.total_cases if staleness_summary else 0,
+        stale_cases=staleness_summary.stale_cases if staleness_summary else [],
     )
 
 
@@ -625,6 +715,9 @@ def build_gate_decision(
         metrics["overall_pass_rate_drop"] = result.overall_drop
     if result.s1_drop is not None:
         metrics["s1_pass_rate_drop"] = result.s1_drop
+    if result.fresh_case_review_rate is not None:
+        metrics["fresh_case_review_rate"] = result.fresh_case_review_rate
+        metrics["stale_case_count"] = float(len(result.stale_cases))
     next_actions = _build_structured_next_actions(
         result.failure_categories, failure_actions, result.failure_case_ids
     )
@@ -647,11 +740,27 @@ def build_gate_decision(
 def render_gate_markdown(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
+    *,
+    history_decisions: list[GateDecision] | None = None,
+    compare_offset: int = 1,
+    trend_window: int = 5,
 ) -> str:
     """Render a gate check result as Markdown."""
     status = result.gate_status.upper()
     lines = [f"## RAG Quality Gate: {status}\n"]
     lines.append(f"- Aggregation Policy: {result.aggregation_policy}")
+
+    if history_decisions:
+        from .history import build_gate_history_summary_lines
+
+        history_lines = build_gate_history_summary_lines(
+            history_decisions,
+            compare_offset=compare_offset,
+            trend_window=trend_window,
+        )
+        if history_lines:
+            lines.append("\n### Recent History Summary")
+            lines.extend(history_lines)
 
     lines.append("| Metric | Actual | Threshold | Status |")
     lines.append("|--------|--------|-----------|--------|")
@@ -684,6 +793,30 @@ def render_gate_markdown(
         lines.append("|--------|---------|-------------|")
         for name, actual, scored in observed_metrics:
             lines.append(f"| {name} | {actual:.1f}% | {scored} |")
+
+    if result.fresh_case_review_rate is not None and result.stale_after_days > 0:
+        lines.append("\n### Case Staleness")
+        lines.append(
+            "- Fresh review rate: "
+            f"{result.fresh_case_review_rate:.1f}% "
+            f"({result.fresh_case_count}/{result.fresh_case_total}) "
+            f"within {result.stale_after_days} days"
+        )
+        if result.stale_cases:
+            lines.append("| Case | Severity | Owner | Reference | Age Days | Issue |")
+            lines.append("|------|----------|-------|-----------|----------|-------|")
+            for item in result.stale_cases:
+                owner = item.owner or "-"
+                reference = item.reference_field
+                if item.reference_value:
+                    reference = f"{reference}={item.reference_value}".strip("=")
+                age_days = str(item.age_days) if item.age_days is not None else "-"
+                issue = item.issue.replace("|", "\\|")
+                lines.append(
+                    f"| {item.case_id} | {item.severity} | {owner} | {reference or '-'} | {age_days} | {issue} |"
+                )
+        else:
+            lines.append("- No stale active cases detected.")
 
     if result.case_thresholds:
         failed = [t for t in result.case_thresholds if not t.passed]

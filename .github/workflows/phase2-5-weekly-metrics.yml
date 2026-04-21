@@ -312,6 +312,12 @@ jobs:
                   `selected latest created_at: ${selectedIssue.html_url}`
                 );
               }
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: selectedIssue.number,
+                labels: ['phase2-5', 'weekly-review', 'ops'],
+              });
               core.info(`Existing weekly review issue found: ${selectedIssue.html_url}`);
             } else {
               const body = [
@@ -341,6 +347,7 @@ jobs:
                 repo,
                 title,
                 body,
+                labels: ['phase2-5', 'weekly-review', 'ops'],
               });
               selectedIssue = created.data;
               core.info(`Created weekly review issue: ${selectedIssue.html_url}`);
@@ -348,6 +355,7 @@ jobs:
 
             core.setOutput('issue_number', String(selectedIssue.number));
             core.setOutput('issue_url', selectedIssue.html_url);
+            core.setOutput('issue_node_id', selectedIssue.node_id || '');
             core.setOutput('week_start', weekStart);
             return selectedIssue.html_url;
 

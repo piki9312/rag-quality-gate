@@ -25,11 +25,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install -e . --retries 10 --timeout 120 --progress-bar off
+          python -m pip install "faiss-cpu>=1.7.4" --retries 10 --timeout 120 --progress-bar off
+
+      - name: Validate pack configuration
+        shell: bash
+        run: |
+          profile="demo_cycle"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.profile }}" ]; then
+            profile="${{ github.event.inputs.profile }}"
+          fi
+
+          rqg validate-pack --pack-dir "packs/$profile"
 
       - name: Run onboarding quickstart flow
         id: run_onboarding

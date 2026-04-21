@@ -1,0 +1,307 @@
+name: RQG Gate Weekly Review
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  rqg-gate:
+    uses: ./.github/workflows/rqg-reusable-gate.yml
+    with:
+      # Replace with your package source. If the caller repo vendors RQG itself,
+      # use: python -m pip install -e .
+      rqg_install_command: python -m pip install "git+https://github.com/OWNER/rag-quality-gate.git@TAG"
+      cases_path: packs/hr/cases.csv
+      run_pack_validation: true
+      pack_validation_preset: external
+      pack_dir: packs/hr
+      log_dir: runs/quality
+      quality_pack_path: packs/hr/quality-pack.yml
+      run_connection_validation: true
+      artifact_name: rqg-gate-artifacts
+    secrets:
+      rag_api_endpoint: ${{ secrets.RAG_API_ENDPOINT }}
+      rag_api_key: ${{ secrets.RAG_API_KEY }}
+
+  weekly-review-followup:
+    runs-on: ubuntu-latest
+    needs: rqg-gate
+    if: ${{ always() && needs.rqg-gate.outputs.gate_history_summary_path != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install RQG
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install "git+https://github.com/OWNER/rag-quality-gate.git@TAG"
+
+      - name: Download gate artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rqg-gate-artifacts
+          path: .
+
+      - name: Resolve history summary path
+        id: resolve_summary
+        shell: bash
+        run: |
+          summary_path="${{ needs.rqg-gate.outputs.gate_history_summary_path }}"
+          if [ ! -f "$summary_path" ]; then
+            summary_path="$(find . -name gate-history-summary.json -print -quit)"
+          fi
+          if [ -z "$summary_path" ] || [ ! -f "$summary_path" ]; then
+            echo "gate-history-summary.json not found after artifact download" >&2
+            exit 1
+          fi
+          echo "summary_path=$summary_path" >> "$GITHUB_OUTPUT"
+
+      - name: Export weekly review issue payload
+        shell: bash
+        run: |
+          rqg export-weekly-review \
+            --summary-file "${{ steps.resolve_summary.outputs.summary_path }}" \
+            --output weekly-review-issue.json
+
+      - name: Upload weekly review payload
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-review-payload
+          path: weekly-review-issue.json
+
+      - name: Upsert weekly review issue
+        id: issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const payload = JSON.parse(fs.readFileSync('weekly-review-issue.json', 'utf8'));
+            if (!payload.issue_needed) {
+              core.info('No uncovered categories. Skipping issue creation.');
+              core.setOutput('created', 'false');
+              return;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const matched = existing.find((issue) => !issue.pull_request && issue.title === payload.title);
+            if (matched) {
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: matched.number,
+                body: payload.body,
+                labels: payload.labels,
+              });
+              core.setOutput('created', 'false');
+              core.setOutput('issue_url', matched.html_url);
+              core.setOutput('issue_node_id', matched.node_id);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner,
+              repo,
+              title: payload.title,
+              body: payload.body,
+              labels: payload.labels,
+            });
+            core.setOutput('created', 'true');
+            core.setOutput('issue_url', created.data.html_url);
+            core.setOutput('issue_node_id', created.data.node_id);
+
+      - name: Add issue to triage board
+        if: ${{ always() && steps.issue.outputs.issue_node_id != '' }}
+        uses: actions/github-script@v7
+        env:
+          TRIAGE_PROJECT_ID: ${{ secrets['RQG_TRIAGE_PROJECT_ID'] }}
+          TRIAGE_STATUS_FIELD_ID: ${{ secrets['RQG_TRIAGE_STATUS_FIELD_ID'] }}
+          TRIAGE_STATUS_OPTION_ID: ${{ secrets['RQG_TRIAGE_STATUS_OPTION_ID'] }}
+        with:
+          script: |
+            const issueNodeId = `${{ steps.issue.outputs.issue_node_id }}`.trim();
+            const projectId = (process.env.TRIAGE_PROJECT_ID || '').trim();
+            const statusFieldId = (process.env.TRIAGE_STATUS_FIELD_ID || '').trim();
+            const statusOptionId = (process.env.TRIAGE_STATUS_OPTION_ID || '').trim();
+            if (!projectId || !issueNodeId) {
+              core.info('Triage project is not configured. Skipping project link.');
+              return;
+            }
+
+            let itemId = '';
+            try {
+              const added = await github.graphql(
+                `
+                  mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+                      item {
+                        id
+                      }
+                    }
+                  }
+                `,
+                {
+                  projectId,
+                  contentId: issueNodeId,
+                }
+              );
+              itemId = added.addProjectV2ItemById.item.id;
+              core.info(`Added weekly review issue to triage project ${projectId}`);
+            } catch (error) {
+              const message = String(error.message || '');
+              if (message.includes('already') || message.includes('exists')) {
+                core.info(`Issue already linked to triage project: ${message}`);
+              } else {
+                throw error;
+              }
+            }
+
+            if (itemId && statusFieldId && statusOptionId) {
+              await github.graphql(
+                `
+                  mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                    updateProjectV2ItemFieldValue(
+                      input: {
+                        projectId: $projectId,
+                        itemId: $itemId,
+                        fieldId: $fieldId,
+                        value: { singleSelectOptionId: $optionId }
+                      }
+                    ) {
+                      projectV2Item {
+                        id
+                      }
+                    }
+                  }
+                `,
+                {
+                  projectId,
+                  itemId,
+                  fieldId: statusFieldId,
+                  optionId: statusOptionId,
+                }
+              );
+              core.info('Updated triage board status field.');
+            }
+
+      - name: Send optional Slack summary (Block Kit)
+        if: ${{ always() && secrets.RQG_WEEKLY_REVIEW_SLACK_WEBHOOK_URL != '' }}
+        shell: python
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RQG_WEEKLY_REVIEW_SLACK_WEBHOOK_URL }}
+          ISSUE_URL: ${{ steps.issue.outputs.issue_url }}
+        run: |
+          import json
+          import os
+          import urllib.request
+
+          payload = json.loads(open("weekly-review-issue.json", "r", encoding="utf-8").read())
+          summary = payload.get("summary", {})
+          uncovered = payload.get("uncovered_categories", [])[:5]
+          text_lines = [payload.get("title", "[Phase2.5][Weekly Review]")]
+          text_lines.append(
+              f"Latest run: {summary.get('latest_run_id', '-')} / status: {summary.get('latest_status', '-')}"
+          )
+          text_lines.append(
+              f"Coverage: {summary.get('coverage_rate', 0.0):.1f}% / uncovered: {summary.get('uncovered_categories_count', 0)}"
+          )
+          uncovered_text = []
+          if uncovered:
+              for item in uncovered:
+                  uncovered_text.append(
+                      f"• *{item.get('failure_category', '-')}*  {item.get('total_count', 0)} cases  run {item.get('last_seen_run_id', '-')}"
+                  )
+          issue_url = os.environ.get("ISSUE_URL", "").strip()
+          if issue_url:
+              text_lines.append(f"Issue: {issue_url}")
+
+          blocks = [
+              {
+                  "type": "header",
+                  "text": {
+                      "type": "plain_text",
+                      "text": payload.get("title", "Phase2.5 Weekly Review"),
+                  },
+              },
+              {
+                  "type": "section",
+                  "fields": [
+                      {
+                          "type": "mrkdwn",
+                          "text": f"*Week Start*\n{summary.get('week_start', '-')}",
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": f"*Latest Status*\n{summary.get('latest_status', '-')}",
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": f"*Latest Run*\n{summary.get('latest_run_id', '-')}",
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": f"*Coverage*\n{summary.get('coverage_rate', 0.0):.1f}%",
+                      },
+                  ],
+              },
+          ]
+          if uncovered_text:
+              blocks.extend(
+                  [
+                      {"type": "divider"},
+                      {
+                          "type": "section",
+                          "text": {
+                              "type": "mrkdwn",
+                              "text": "*Uncovered Categories*\n" + "\n".join(uncovered_text),
+                          },
+                      },
+                  ]
+              )
+          if issue_url:
+              blocks.extend(
+                  [
+                      {"type": "divider"},
+                      {
+                          "type": "actions",
+                          "elements": [
+                              {
+                                  "type": "button",
+                                  "text": {
+                                      "type": "plain_text",
+                                      "text": "Open Weekly Review Issue",
+                                  },
+                                  "url": issue_url,
+                              }
+                          ],
+                      },
+                  ]
+              )
+
+          request = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK_URL"],
+              data=json.dumps({"text": "\n".join(text_lines), "blocks": blocks}).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(request) as response:
+              if response.status >= 300:
+                  raise SystemExit(f"Slack webhook returned {response.status}")

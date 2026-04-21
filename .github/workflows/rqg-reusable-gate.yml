@@ -1,0 +1,615 @@
+name: RQG Reusable Gate
+
+on:
+  workflow_call:
+    inputs:
+      python_version:
+        description: Python version for the gate job
+        required: false
+        default: "3.11"
+        type: string
+      rqg_install_command:
+        description: Command used to install RQG into the runner
+        required: false
+        default: python -m pip install "git+https://github.com/OWNER/rag-quality-gate.git@TAG"
+        type: string
+      cases_path:
+        description: Path to cases.csv in the caller repository
+        required: true
+        type: string
+      docs_dir:
+        description: Optional local documents directory for ingest/eval mode
+        required: false
+        default: ""
+        type: string
+      run_pack_validation:
+        description: Validate pack onboarding inputs before running the gate
+        required: false
+        default: false
+        type: boolean
+      pack_validation_preset:
+        description: Preset for pack validation env requirements (none, local_docs, external, external_notify)
+        required: false
+        default: none
+        type: string
+      pack_dir:
+        description: Optional pack root used by rqg validate-pack
+        required: false
+        default: ""
+        type: string
+      index_dir:
+        description: Index directory used for local ingest/eval mode
+        required: false
+        default: index
+        type: string
+      log_dir:
+        description: Directory where gate artifacts are written
+        required: false
+        default: runs/quality
+        type: string
+      quality_pack_path:
+        description: Optional path to quality-pack.yml
+        required: false
+        default: ""
+        type: string
+      pack_gate_config_path:
+        description: Optional gate.yml override passed to rqg validate-pack
+        required: false
+        default: ""
+        type: string
+      pack_required_env:
+        description: Comma-separated env var names required during pack validation
+        required: false
+        default: ""
+        type: string
+      config_path:
+        description: Optional path to .rqg.yml
+        required: false
+        default: ""
+        type: string
+      context_k:
+        description: Retrieval context size passed to rqg gate
+        required: false
+        default: 3
+        type: number
+      mock:
+        description: Run rqg gate in mock mode
+        required: false
+        default: false
+        type: boolean
+      reset_log_dir:
+        description: Remove existing gate artifacts before running
+        required: false
+        default: true
+        type: boolean
+      install_embedding_deps:
+        description: Install faiss-cpu for local document evaluation
+        required: false
+        default: false
+        type: boolean
+      run_connection_validation:
+        description: Validate external HTTP RAG before running the gate
+        required: false
+        default: false
+        type: boolean
+      connection_query:
+        description: Probe query for external connection validation
+        required: false
+        default: healthcheck
+        type: string
+      connection_top_k:
+        description: top_k for external connection validation
+        required: false
+        default: 3
+        type: number
+      connection_timeout_sec:
+        description: Timeout in seconds for external connection validation
+        required: false
+        default: 10
+        type: number
+      notification_kind:
+        description: Optional notification type when no config_path is supplied
+        required: false
+        default: ""
+        type: string
+      notify_on:
+        description: Comma-separated gate statuses that should notify
+        required: false
+        default: warn,fail
+        type: string
+      artifact_name:
+        description: Name of uploaded gate artifacts
+        required: false
+        default: rqg-gate-artifacts
+        type: string
+      warn_exit_code:
+        description: Exit code to use when gate status is warn
+        required: false
+        default: 0
+        type: number
+    secrets:
+      rag_api_endpoint:
+        required: false
+      rag_api_key:
+        required: false
+      openai_api_key:
+        required: false
+      notification_webhook_url:
+        required: false
+    outputs:
+      gate_status:
+        description: pass, warn, fail, or not_run
+        value: ${{ jobs.rqg_gate.outputs.gate_status }}
+      gate_run_id:
+        description: Gate run_id extracted from gate-decision.json
+        value: ${{ jobs.rqg_gate.outputs.gate_run_id }}
+      gate_decision_path:
+        description: Path to gate-decision.json inside the caller workspace
+        value: ${{ jobs.rqg_gate.outputs.gate_decision_path }}
+      gate_report_path:
+        description: Path to gate-report.md inside the caller workspace
+        value: ${{ jobs.rqg_gate.outputs.gate_report_path }}
+      pack_validation_ok:
+        description: true, false, or skipped
+        value: ${{ jobs.rqg_gate.outputs.pack_validation_ok }}
+      pack_validation_path:
+        description: Path to pack-validation.json when produced
+        value: ${{ jobs.rqg_gate.outputs.pack_validation_path }}
+      connection_ok:
+        description: true, false, or skipped
+        value: ${{ jobs.rqg_gate.outputs.connection_ok }}
+      connection_validation_path:
+        description: Path to connection-validation.json when produced
+        value: ${{ jobs.rqg_gate.outputs.connection_validation_path }}
+      gate_history_summary_path:
+        description: Path to gate-history-summary.json when produced
+        value: ${{ jobs.rqg_gate.outputs.gate_history_summary_path }}
+
+jobs:
+  rqg_gate:
+    name: RQG Gate
+    runs-on: ubuntu-latest
+    outputs:
+      gate_status: ${{ steps.collect.outputs.gate_status }}
+      gate_run_id: ${{ steps.collect.outputs.gate_run_id }}
+      gate_decision_path: ${{ steps.collect.outputs.gate_decision_path }}
+      gate_report_path: ${{ steps.collect.outputs.gate_report_path }}
+      pack_validation_ok: ${{ steps.collect.outputs.pack_validation_ok }}
+      pack_validation_path: ${{ steps.collect.outputs.pack_validation_path }}
+      connection_ok: ${{ steps.collect.outputs.connection_ok }}
+      connection_validation_path: ${{ steps.collect.outputs.connection_validation_path }}
+      gate_history_summary_path: ${{ steps.collect.outputs.gate_history_summary_path }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      RQG_RAG_API_ENDPOINT: ${{ secrets.rag_api_endpoint }}
+      RQG_RAG_API_KEY: ${{ secrets.rag_api_key }}
+      OPENAI_API_KEY: ${{ secrets.openai_api_key }}
+      RQG_NOTIFICATION_WEBHOOK_URL: ${{ secrets.notification_webhook_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python_version }}
+          cache: pip
+
+      - name: Preflight configuration
+        shell: bash
+        run: |
+          if [ "${{ inputs.mock }}" != "true" ] && [ -z "${{ inputs.docs_dir }}" ] && [ -z "$RQG_RAG_API_ENDPOINT" ]; then
+            echo "Provide docs_dir for local gate runs, or rag_api_endpoint secret for external runs." >&2
+            exit 1
+          fi
+
+          if [ "${{ inputs.run_connection_validation }}" = "true" ] && [ -z "$RQG_RAG_API_ENDPOINT" ]; then
+            echo "run_connection_validation=true requires rag_api_endpoint secret." >&2
+            exit 1
+          fi
+
+      - name: Install RQG
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          eval "${{ inputs.rqg_install_command }}"
+
+          if [ "${{ inputs.install_embedding_deps }}" = "true" ] || [ -n "${{ inputs.docs_dir }}" ]; then
+            python -m pip install "faiss-cpu>=1.7.4" --retries 10 --timeout 120 --progress-bar off
+          fi
+
+      - name: Validate pack onboarding
+        id: validate_pack
+        if: ${{ inputs.run_pack_validation }}
+        continue-on-error: true
+        shell: python
+        env:
+          CASES_PATH: ${{ inputs.cases_path }}
+          DOCS_DIR: ${{ inputs.docs_dir }}
+          LOG_DIR: ${{ inputs.log_dir }}
+          QUALITY_PACK_PATH: ${{ inputs.quality_pack_path }}
+          PACK_DIR: ${{ inputs.pack_dir }}
+          PACK_GATE_CONFIG_PATH: ${{ inputs.pack_gate_config_path || inputs.config_path }}
+          PACK_VALIDATION_PRESET: ${{ inputs.pack_validation_preset }}
+          PACK_REQUIRED_ENV: ${{ inputs.pack_required_env }}
+          CONNECTION_QUERY: ${{ inputs.connection_query }}
+          CONNECTION_TOP_K: ${{ inputs.connection_top_k }}
+          CONNECTION_TIMEOUT_SEC: ${{ inputs.connection_timeout_sec }}
+          RQG_RAG_API_ENDPOINT: ${{ secrets.rag_api_endpoint }}
+          RQG_RAG_API_KEY: ${{ secrets.rag_api_key }}
+        run: |
+          import os
+          import shlex
+          import subprocess
+          from pathlib import Path
+
+          def trimmed(name: str) -> str:
+              return os.environ.get(name, "").strip()
+
+          def normalize_pack_override(name: str, pack_dir: str) -> str:
+              value = trimmed(name)
+              if not value or not pack_dir:
+                  return value
+              candidate = Path(value)
+              if candidate.is_absolute():
+                  return value
+              try:
+                  return candidate.relative_to(Path(pack_dir)).as_posix()
+              except ValueError:
+                  return value
+
+          pack_dir = trimmed("PACK_DIR")
+          if not pack_dir:
+              source_path = trimmed("QUALITY_PACK_PATH") or trimmed("CASES_PATH")
+              pack_dir = str(Path(source_path).parent)
+
+          cases_path = normalize_pack_override("CASES_PATH", pack_dir)
+          gate_config_path = normalize_pack_override("PACK_GATE_CONFIG_PATH", pack_dir)
+          quality_pack_path = normalize_pack_override("QUALITY_PACK_PATH", pack_dir)
+          docs_dir = normalize_pack_override("DOCS_DIR", pack_dir)
+
+          preset_name = trimmed("PACK_VALIDATION_PRESET").lower() or "none"
+          preset_map = {
+              "none": [],
+              "local_docs": [],
+              "external": ["RQG_RAG_API_KEY"],
+              "external_notify": ["RQG_RAG_API_KEY", "RQG_NOTIFICATION_WEBHOOK_URL"],
+          }
+          if preset_name not in preset_map:
+              raise SystemExit(
+                  "Unsupported pack_validation_preset: "
+                  f"{preset_name} (expected one of: {', '.join(sorted(preset_map))})"
+              )
+
+          required_env_names = list(preset_map[preset_name])
+          for env_name in [item.strip() for item in trimmed("PACK_REQUIRED_ENV").split(",") if item.strip()]:
+              if env_name not in required_env_names:
+                  required_env_names.append(env_name)
+
+          cmd = [
+              "rqg",
+              "validate-pack",
+              "--pack-dir",
+              pack_dir,
+              "--output",
+              f"{trimmed('LOG_DIR')}/pack-validation.json",
+              "--connection-query",
+              trimmed("CONNECTION_QUERY") or "healthcheck",
+              "--connection-top-k",
+              trimmed("CONNECTION_TOP_K") or "3",
+              "--connection-timeout-sec",
+              trimmed("CONNECTION_TIMEOUT_SEC") or "10",
+          ]
+
+          if cases_path:
+              cmd.extend(["--cases", cases_path])
+
+          if gate_config_path:
+              cmd.extend(["--gate-config", gate_config_path])
+
+          if quality_pack_path:
+              cmd.extend(["--quality-pack", quality_pack_path])
+
+          if docs_dir:
+              cmd.extend(["--docs-dir", docs_dir])
+
+          rag_endpoint = trimmed("RQG_RAG_API_ENDPOINT")
+          if rag_endpoint:
+              cmd.extend(["--endpoint", rag_endpoint])
+
+          if trimmed("RQG_RAG_API_KEY"):
+              cmd.extend(["--api-key-env", "RQG_RAG_API_KEY"])
+
+          for env_name in required_env_names:
+              cmd.extend(["--required-env", env_name])
+
+          print(f"Running: {shlex.join(cmd)}")
+          raise SystemExit(subprocess.run(cmd, check=False).returncode)
+
+      - name: Resolve gate config
+        id: resolve_config
+        shell: python
+        env:
+          INPUT_CONFIG_PATH: ${{ inputs.config_path }}
+          INPUT_PACK_DIR: ${{ inputs.pack_dir }}
+          INPUT_PACK_GATE_CONFIG_PATH: ${{ inputs.pack_gate_config_path }}
+          INPUT_QUALITY_PACK_PATH: ${{ inputs.quality_pack_path }}
+          NOTIFICATION_KIND: ${{ inputs.notification_kind }}
+          NOTIFY_ON: ${{ inputs.notify_on }}
+          WEBHOOK_URL: ${{ secrets.notification_webhook_url }}
+        run: |
+          import os
+          from pathlib import Path
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+          config_path = os.environ.get("INPUT_CONFIG_PATH", "").strip()
+          if not config_path:
+              pack_gate_config_path = os.environ.get("INPUT_PACK_GATE_CONFIG_PATH", "").strip()
+              quality_pack_path = os.environ.get("INPUT_QUALITY_PACK_PATH", "").strip()
+              pack_dir = os.environ.get("INPUT_PACK_DIR", "").strip()
+
+              for candidate_value in [
+                  pack_gate_config_path,
+                  str(Path(quality_pack_path).with_name("gate.yml")) if quality_pack_path else "",
+                  str(Path(pack_dir) / "gate.yml") if pack_dir else "",
+              ]:
+                  if candidate_value and Path(candidate_value).exists():
+                      config_path = candidate_value
+                      break
+
+          if config_path:
+              with output_path.open("a", encoding="utf-8") as handle:
+                  handle.write(f"config_path={config_path}\n")
+              raise SystemExit(0)
+
+          kind = os.environ.get("NOTIFICATION_KIND", "").strip().lower()
+          webhook_url = os.environ.get("WEBHOOK_URL", "").strip()
+          if not kind or not webhook_url:
+              with output_path.open("a", encoding="utf-8") as handle:
+                  handle.write("config_path=\n")
+              raise SystemExit(0)
+
+          if kind not in {"webhook", "slack", "teams"}:
+              raise SystemExit(f"Unsupported notification_kind: {kind}")
+
+          notify_on = [
+              item.strip().lower()
+              for item in os.environ.get("NOTIFY_ON", "warn,fail").split(",")
+              if item.strip()
+          ]
+          notify_on = [item for item in notify_on if item in {"pass", "warn", "fail"}] or ["fail"]
+
+          path = Path(".rqg.workflow.yml")
+          lines = [
+              "notifications:",
+              f"  - type: {kind}",
+              "    webhook_url_env: RQG_NOTIFICATION_WEBHOOK_URL",
+              f"    notify_on: [{', '.join(notify_on)}]",
+          ]
+          path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+          with output_path.open("a", encoding="utf-8") as handle:
+              handle.write(f"config_path={path.as_posix()}\n")
+
+      - name: Validate external RAG connection
+        id: validate_connection
+        if: ${{ (!inputs.run_pack_validation || steps.validate_pack.outcome == 'success') && inputs.run_connection_validation }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          cmd=(
+            rqg validate-connection
+            --endpoint "$RQG_RAG_API_ENDPOINT"
+            --query "${{ inputs.connection_query }}"
+            --top-k "${{ inputs.connection_top_k }}"
+            --timeout-sec "${{ inputs.connection_timeout_sec }}"
+            --output "${{ inputs.log_dir }}/connection-validation.json"
+          )
+
+          if [ -n "$RQG_RAG_API_KEY" ]; then
+            cmd+=(--api-key-env RQG_RAG_API_KEY)
+          fi
+
+          printf 'Running:'
+          printf ' %q' "${cmd[@]}"
+          printf '\n'
+          "${cmd[@]}"
+
+      - name: Run gate
+        id: run_gate
+        if: ${{ (!inputs.run_pack_validation || steps.validate_pack.outcome == 'success') && (!inputs.run_connection_validation || steps.validate_connection.outcome == 'success') }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          cmd=(
+            rqg gate "${{ inputs.cases_path }}"
+            --log-dir "${{ inputs.log_dir }}"
+            --index-dir "${{ inputs.index_dir }}"
+            --context-k "${{ inputs.context_k }}"
+            --warn-exit-code "${{ inputs.warn_exit_code }}"
+          )
+
+          if [ "${{ inputs.reset_log_dir }}" = "true" ]; then
+            cmd+=(--reset-log-dir)
+          fi
+
+          if [ -n "${{ inputs.docs_dir }}" ]; then
+            cmd+=(--docs "${{ inputs.docs_dir }}")
+          fi
+
+          if [ "${{ inputs.mock }}" = "true" ]; then
+            cmd+=(--mock)
+          fi
+
+          if [ -n "$RQG_RAG_API_ENDPOINT" ]; then
+            cmd+=(--rag-endpoint "$RQG_RAG_API_ENDPOINT")
+          fi
+
+          if [ -n "$RQG_RAG_API_KEY" ]; then
+            cmd+=(--rag-api-key-env RQG_RAG_API_KEY)
+          fi
+
+          if [ -n "${{ inputs.quality_pack_path }}" ]; then
+            cmd+=(--quality-pack "${{ inputs.quality_pack_path }}")
+          fi
+
+          if [ -n "${{ steps.resolve_config.outputs.config_path }}" ]; then
+            cmd+=(--config "${{ steps.resolve_config.outputs.config_path }}")
+          fi
+
+          printf 'Running:'
+          printf ' %q' "${cmd[@]}"
+          printf '\n'
+          "${cmd[@]}"
+
+      - name: Collect gate outputs
+        id: collect
+        if: always()
+        shell: python
+        env:
+          LOG_DIR: ${{ inputs.log_dir }}
+          VALIDATE_PACK_STEP_OUTCOME: ${{ steps.validate_pack.outcome }}
+          CONNECTION_STEP_OUTCOME: ${{ steps.validate_connection.outcome }}
+        run: |
+          import json
+          import os
+          from pathlib import Path
+
+          log_dir = Path(os.environ["LOG_DIR"])
+          gate_path = log_dir / "gate-decision.json"
+          report_path = log_dir / "gate-report.md"
+          pack_validation_path = log_dir / "pack-validation.json"
+          connection_path = log_dir / "connection-validation.json"
+          history_summary_path = log_dir / "gate-history-summary.json"
+
+          gate_status = "not_run"
+          gate_run_id = ""
+          gate_reasons = []
+          history_summary_lines = []
+          pack_validation_ok = "skipped"
+          pack_validation_summary = ""
+          pack_validation_findings = []
+
+          if pack_validation_path.exists():
+              pack_validation_payload = json.loads(pack_validation_path.read_text(encoding="utf-8"))
+              pack_validation_ok = "true" if bool(pack_validation_payload.get("ok")) else "false"
+              finding_counts = pack_validation_payload.get("finding_counts", {})
+              pack_validation_summary = (
+                  f"{int(finding_counts.get('error', 0) or 0)} error(s), "
+                  f"{int(finding_counts.get('warn', 0) or 0)} warning(s)"
+              )
+              pack_validation_findings = [
+                  f"{str(item.get('area', 'pack'))}: {str(item.get('message', '')).strip()}".strip()
+                  for item in pack_validation_payload.get("findings", [])[:3]
+                  if str(item.get("message", "")).strip()
+              ]
+          elif os.environ.get("VALIDATE_PACK_STEP_OUTCOME"):
+              pack_validation_ok = (
+                  "false"
+                  if os.environ["VALIDATE_PACK_STEP_OUTCOME"] == "failure"
+                  else "skipped"
+              )
+
+          if gate_path.exists():
+              payload = json.loads(gate_path.read_text(encoding="utf-8"))
+              gate_status = str(payload.get("status", "unknown"))
+              gate_run_id = str(payload.get("run_id", ""))
+              gate_reasons = [
+                  str(item)
+                  for item in payload.get("reasons", [])
+                  if str(item).strip()
+              ]
+
+              if history_summary_path.exists():
+                  history_summary_payload = json.loads(history_summary_path.read_text(encoding="utf-8"))
+                  history_summary_lines = [
+                      str(item)
+                      for item in history_summary_payload.get("summary_lines", [])
+                      if str(item).strip() or item == ""
+                  ]
+
+          if connection_path.exists():
+              connection_payload = json.loads(connection_path.read_text(encoding="utf-8"))
+              connection_ok = "true" if bool(connection_payload.get("ok")) else "false"
+          elif os.environ.get("CONNECTION_STEP_OUTCOME"):
+              connection_ok = (
+                  "false" if os.environ["CONNECTION_STEP_OUTCOME"] == "failure" else "skipped"
+              )
+          else:
+              connection_ok = "skipped"
+
+          outputs = {
+              "gate_status": gate_status,
+              "gate_run_id": gate_run_id,
+              "gate_decision_path": gate_path.as_posix() if gate_path.exists() else "",
+              "gate_report_path": report_path.as_posix() if report_path.exists() else "",
+              "pack_validation_ok": pack_validation_ok,
+              "pack_validation_path": pack_validation_path.as_posix() if pack_validation_path.exists() else "",
+              "connection_ok": connection_ok,
+              "connection_validation_path": connection_path.as_posix() if connection_path.exists() else "",
+              "gate_history_summary_path": history_summary_path.as_posix() if history_summary_path.exists() else "",
+          }
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              for name, value in outputs.items():
+                  handle.write(f"{name}={value}\n")
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_path:
+              lines = [
+                  "## RQG Gate Summary",
+                  "",
+                  f"- Gate status: {gate_status}",
+                  f"- Pack validation: {pack_validation_ok}",
+                  f"- Connection validation: {connection_ok}",
+              ]
+              if gate_run_id:
+                  lines.append(f"- Run ID: {gate_run_id}")
+              if pack_validation_path.exists():
+                  lines.append(f"- Pack validation path: {pack_validation_path.as_posix()}")
+              if pack_validation_summary:
+                  lines.append(f"- Pack validation findings: {pack_validation_summary}")
+              if report_path.exists():
+                  lines.append(f"- Report path: {report_path.as_posix()}")
+              if gate_path.exists():
+                  lines.append(f"- Decision path: {gate_path.as_posix()}")
+              if history_summary_path.exists():
+                  lines.append(f"- History summary path: {history_summary_path.as_posix()}")
+              if pack_validation_findings:
+                  lines.append("")
+                  lines.append("### Pack Validation Findings")
+                  for finding in pack_validation_findings:
+                      lines.append(f"- {finding}")
+              if history_summary_lines:
+                  lines.append("")
+                  lines.append("### Recent History Summary")
+                  lines.extend(history_summary_lines)
+              elif gate_reasons:
+                  lines.append("- Top reasons:")
+                  for reason in gate_reasons[:3]:
+                      lines.append(f"  - {reason}")
+
+              with Path(summary_path).open("a", encoding="utf-8") as handle:
+                  handle.write("\n".join(lines) + "\n")
+
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: |
+            ${{ inputs.log_dir }}/
+
+      - name: Fail when connection validation failed
+        if: ${{ always() && inputs.run_connection_validation && steps.validate_connection.outcome == 'failure' }}
+        shell: bash
+        run: exit 1
+
+      - name: Fail when pack validation failed
+        if: ${{ always() && inputs.run_pack_validation && steps.validate_pack.outcome == 'failure' }}
+        shell: bash
+        run: exit 1
+
+      - name: Fail when gate failed
+        if: ${{ always() && steps.run_gate.outcome == 'failure' }}
+        shell: bash
+        run: exit 1

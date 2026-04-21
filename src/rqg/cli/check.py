@@ -6,7 +6,6 @@ import argparse
 from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
-from .helpers import append_jsonl_output, write_json_output, write_text_output
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -15,9 +14,19 @@ def cmd_check(args: argparse.Namespace) -> int:
         GateConfig,
         build_gate_decision,
         load_failure_actions_from_quality_pack,
+        load_review_steward_from_quality_pack,
         normalize_aggregation_policy,
         render_gate_markdown,
         run_check,
+    )
+    from ..quality.history import build_gate_history_summary_payload, load_gate_decision_history
+    from ..quality.reporting import (
+        BundleJsonReportAdapter,
+        DecisionHistoryJsonlReportAdapter,
+        DecisionJsonReportAdapter,
+        GateReportArtifacts,
+        HistorySummaryJsonReportAdapter,
+        MarkdownFileReportAdapter,
     )
 
     try:
@@ -61,37 +70,89 @@ def cmd_check(args: argparse.Namespace) -> int:
             quality_pack_path = str(inferred_quality_pack)
 
     failure_actions: dict[str, str] = {}
+    review_steward: str | None = None
     if quality_pack_path:
         failure_actions = load_failure_actions_from_quality_pack(quality_pack_path)
+        review_steward = load_review_steward_from_quality_pack(quality_pack_path)
 
-    md = render_gate_markdown(result, failure_actions=failure_actions)
-    print(md)
+    decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
+    append_history = getattr(args, "append_history", True)
+    notifications_enabled = getattr(args, "notifications_enabled", True)
     decision = build_gate_decision(result, failure_actions=failure_actions)
+    history_decisions = [*load_gate_decision_history(decision_history_path), decision]
+    history_summary_payload = build_gate_history_summary_payload(
+        history_decisions,
+        stale_cases=result.stale_cases,
+        stale_after_days=result.stale_after_days,
+        fresh_case_review_rate=result.fresh_case_review_rate,
+        fresh_case_count=result.fresh_case_count,
+        fresh_case_total=result.fresh_case_total,
+        review_steward=review_steward,
+    )
+
+    md = render_gate_markdown(
+        result,
+        failure_actions=failure_actions,
+        history_decisions=history_decisions,
+    )
+    print(md)
 
     report_path = (
         Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
     )
-    report_path = write_text_output(report_path, md)
-    print(f"Saved report to {report_path}")
-
-    decision_output = (
+    history_summary_path = Path(args.log_dir) / "gate-history-summary.json"
+    decision_path = (
         Path(args.decision_file)
         if args.decision_file
         else Path(args.log_dir) / "gate-decision.json"
     )
-    decision_path = write_json_output(decision_output, decision)
-    print(f"Saved gate decision JSON to {decision_path}")
-
-    decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
-    appended_history = append_jsonl_output(decision_history_path, decision)
-    print(f"Appended gate decision JSONL to {appended_history}")
-
-    warnings = send_gate_notifications(
-        decision,
-        config_path=args.config,
+    bundle_path = (
+        Path(args.bundle_file)
+        if getattr(args, "bundle_file", None)
+        else Path(args.log_dir) / "gate-report.json"
+    )
+    artifacts = GateReportArtifacts(
+        markdown=md,
+        decision=decision,
+        history_summary=history_summary_payload,
         report_path=report_path,
         decision_path=decision_path,
+        history_summary_path=history_summary_path,
+        history_path=decision_history_path,
+        bundle_path=bundle_path,
     )
+
+    report_path = MarkdownFileReportAdapter(report_path).emit(artifacts)
+    print(f"Saved report to {report_path}")
+
+    history_summary_path = HistorySummaryJsonReportAdapter(history_summary_path).emit(artifacts)
+    print(f"Saved history summary JSON to {history_summary_path}")
+
+    decision_path = DecisionJsonReportAdapter(decision_path).emit(artifacts)
+    print(f"Saved gate decision JSON to {decision_path}")
+
+    bundle_path = BundleJsonReportAdapter(bundle_path).emit(artifacts)
+    print(f"Saved report bundle JSON to {bundle_path}")
+
+    appended_history = DecisionHistoryJsonlReportAdapter(
+        decision_history_path,
+        enabled=append_history,
+    ).emit(artifacts)
+    if appended_history is not None:
+        print(f"Appended gate decision JSONL to {appended_history}")
+    else:
+        print("Skipped gate decision JSONL append")
+
+    warnings = []
+    if notifications_enabled:
+        warnings = send_gate_notifications(
+            decision,
+            config_path=args.config,
+            report_path=report_path,
+            decision_path=decision_path,
+        )
+    else:
+        print("Skipped notifications")
     for warning in warnings:
         print(f"[WARN] {warning}")
 

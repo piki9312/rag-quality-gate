@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from rqg.domain import GateDecision, GateNextAction
 from rqg.quality.check import (
     CheckResult,
     GateConfig,
@@ -93,6 +94,9 @@ class TestGateConfig:
                 "  overall_pass_rate: 75.0\n"
                 "  max_overall_drop_pct: 10.0\n"
                 "  max_s1_drop_pct: 5.0\n"
+                "  case_staleness_days: 30\n"
+                "  min_fresh_case_review_rate: 90.0\n"
+                "  fresh_case_review_rate_warn: 100.0\n"
                 "  min_evidence_recall: 90.0\n"
                 "  aggregation_policy: window\n"
             ),
@@ -103,6 +107,9 @@ class TestGateConfig:
         assert cfg.overall_pass_rate == 75.0
         assert cfg.max_overall_drop_pct == 10.0
         assert cfg.max_s1_drop_pct == 5.0
+        assert cfg.case_staleness_days == 30
+        assert cfg.min_fresh_case_review_rate == 90.0
+        assert cfg.fresh_case_review_rate_warn == 100.0
         assert cfg.min_evidence_recall == 90.0
         assert cfg.aggregation_policy == "window"
 
@@ -169,6 +176,62 @@ class TestRunCheck:
         # 66.7% < 80%
         assert result.gate_passed is False
         assert result.failure_categories.get("synthesis") == 1
+
+
+def test_render_gate_markdown_includes_recent_history_summary_and_coverage() -> None:
+    previous_decision = GateDecision(
+        run_id="run-001",
+        status="warn",
+        reasons=["WARN Overall pass rate: 75.0 < warn threshold 85.0"],
+        metrics={
+            "overall_pass_rate": 75.0,
+            "s1_pass_rate": 100.0,
+            "current_runs": 4.0,
+        },
+        next_actions=[
+            GateNextAction(
+                failure_category="retrieval_miss",
+                count=1,
+                action="Review retrieval settings",
+                owner="T.B.D.",
+                due="T.B.D.",
+                affected_case_ids=["QA-1"],
+            )
+        ],
+        created_at=datetime(2026, 4, 20, 0, 0, tzinfo=timezone.utc),
+    )
+    result = CheckResult(
+        run_id="run-002",
+        current_runs=5,
+        baseline_runs=0,
+        overall_rate=40.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 40.0, False, "2/5"),
+            ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1"),
+        ],
+        failure_categories={"retrieval_miss": 2, "unknown": 1},
+        failure_case_ids={"retrieval_miss": ["QA-2", "QA-3"], "unknown": ["QA-4"]},
+    )
+
+    markdown = render_gate_markdown(
+        result,
+        failure_actions={"retrieval_miss": "Review retrieval settings"},
+        history_decisions=[
+            previous_decision,
+            build_gate_decision(
+                result,
+                failure_actions={"retrieval_miss": "Review retrieval settings"},
+            ),
+        ],
+    )
+
+    assert "### Recent History Summary" in markdown
+    assert "Compared runs: run-001 -> run-002" in markdown
+    assert "Failure action coverage (last 2): 1/2 categories (50.0%)" in markdown
+    assert "Uncovered categories: unknown (1 case)" in markdown
 
     def test_latest_run_policy_uses_only_newest_run(self, tmp_path):
         log_dir = tmp_path / "logs"

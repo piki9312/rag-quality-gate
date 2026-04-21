@@ -12,6 +12,9 @@ permissions:
   contents: read
   issues: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   create-weekly-review-issue:
     runs-on: ubuntu-latest
@@ -50,8 +53,15 @@ jobs:
                   `selected latest created_at: ${selectedIssue.html_url}`
                 );
               }
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: selectedIssue.number,
+                labels: ['phase2-5', 'weekly-review', 'ops'],
+              });
               core.setOutput('issue_number', String(selectedIssue.number));
               core.setOutput('issue_url', selectedIssue.html_url);
+              core.setOutput('issue_node_id', selectedIssue.node_id || '');
               core.setOutput('week_start', weekStart);
               core.info(`Existing weekly review issue found: ${selectedIssue.html_url}`);
               return selectedIssue.html_url;
@@ -84,9 +94,11 @@ jobs:
               repo,
               title,
               body,
+              labels: ['phase2-5', 'weekly-review', 'ops'],
             });
             core.setOutput('issue_number', String(created.data.number));
             core.setOutput('issue_url', created.data.html_url);
+            core.setOutput('issue_node_id', created.data.node_id);
             core.setOutput('week_start', weekStart);
             core.info(`Created weekly review issue: ${created.data.html_url}`);
             return created.data.html_url;

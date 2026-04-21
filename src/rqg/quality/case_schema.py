@@ -502,7 +502,11 @@ def _append_required_field_error(
     )
 
 
-def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
+def validate_case_row(
+    row: dict[str, str],
+    *,
+    require_active_owner: bool = False,
+) -> list[ValidationError]:
     """Validate a formal case row dict. Returns empty list if valid."""
     errors: list[ValidationError] = []
     case_id = row.get("case_id", "").strip()
@@ -575,6 +579,15 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
 
     if status == "deprecated":
         return errors
+
+    if require_active_owner and status == "active" and not row.get("owner", "").strip():
+        errors.append(
+            ValidationError(
+                cid,
+                "owner",
+                "active case owner is required when staleness policy is enabled",
+            )
+        )
 
     if status == "active" and is_auto_expected_answer_draft(notes):
         errors.append(
@@ -649,13 +662,17 @@ def validate_case_row(row: dict[str, str]) -> list[ValidationError]:
     return errors
 
 
-def validate_case_rows(rows: list[dict[str, str]]) -> list[ValidationError]:
+def validate_case_rows(
+    rows: list[dict[str, str]],
+    *,
+    require_active_owner: bool = False,
+) -> list[ValidationError]:
     """Validate a list of formal case rows including duplicates check."""
     errors: list[ValidationError] = []
     seen_ids: set[str] = set()
 
     for row in rows:
-        errors.extend(validate_case_row(row))
+        errors.extend(validate_case_row(row, require_active_owner=require_active_owner))
         cid = row.get("case_id", "").strip()
         if cid:
             if cid in seen_ids:

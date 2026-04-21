@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from rqg.cli import main
 from rqg.quality.check import CheckResult, ThresholdResult, build_gate_decision
+from rqg.quality.staleness import CaseStalenessItem
 
 
 def test_build_gate_decision_from_check_result_pass() -> None:
@@ -97,6 +98,7 @@ def test_check_command_writes_gate_decision_json() -> None:
     assert exit_code == 1
     assert output.exists()
     assert (log_dir / "gate-report.md").exists()
+    assert (log_dir / "gate-report.json").exists()
     assert (log_dir / "gate-decisions.jsonl").exists()
     payload = output.read_text(encoding="utf-8")
     assert '"run_id": "run-003"' in payload
@@ -125,15 +127,25 @@ def test_check_command_writes_default_artifacts_to_log_dir() -> None:
 
     assert exit_code == 1
     report_path = log_dir / "gate-report.md"
+    bundle_path = log_dir / "gate-report.json"
     decision_path = log_dir / "gate-decision.json"
+    summary_path = log_dir / "gate-history-summary.json"
     assert report_path.exists()
+    assert bundle_path.exists()
     assert decision_path.exists()
+    assert summary_path.exists()
     history_path = log_dir / "gate-decisions.jsonl"
     assert history_path.exists()
     assert report_path.read_text(encoding="utf-8") == "md-default"
+    bundle_payload = json.loads(bundle_path.read_text(encoding="utf-8"))
     payload = decision_path.read_text(encoding="utf-8")
     assert '"run_id": "run-004"' in payload
     assert '"status": "fail"' in payload
+    assert bundle_payload["decision"]["run_id"] == "run-004"
+    assert bundle_payload["report_markdown"] == "md-default"
+    summary_payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary_payload["entries"] == 1
+    assert summary_payload["trend"]["latest_run_id"] == "run-004"
     history_lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line]
     assert len(history_lines) == 1
     assert json.loads(history_lines[0])["run_id"] == "run-004"
@@ -210,3 +222,134 @@ def test_check_command_appends_gate_decision_history_jsonl() -> None:
     lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line]
     assert len(lines) == 2
     assert [json.loads(line)["run_id"] for line in lines] == ["run-101", "run-102"]
+
+
+def test_check_command_gate_report_includes_recent_history_summary() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-report-history"
+    quality_pack = log_dir.parent / f"{uuid.uuid4()}-quality-pack.yml"
+    quality_pack.write_text(
+        """
+common_failure_patterns:
+  - name: retrieval_miss
+    first_action: Review retrieval settings
+""".strip(),
+        encoding="utf-8",
+    )
+    first_result = CheckResult(
+        run_id="run-201",
+        current_runs=4,
+        baseline_runs=0,
+        overall_rate=75.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 75.0, False, "3/4"),
+        ],
+        failure_categories={"retrieval_miss": 1},
+        failure_case_ids={"retrieval_miss": ["QA-1"]},
+    )
+    second_result = CheckResult(
+        run_id="run-202",
+        current_runs=5,
+        baseline_runs=0,
+        overall_rate=40.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 40.0, False, "2/5"),
+            ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1"),
+        ],
+        failure_categories={"retrieval_miss": 2, "unknown": 1},
+        failure_case_ids={"retrieval_miss": ["QA-2", "QA-3"], "unknown": ["QA-4"]},
+    )
+
+    with patch("rqg.quality.check.run_check", side_effect=[first_result, second_result]):
+        first_exit = main(["check", "--log-dir", str(log_dir), "--quality-pack", str(quality_pack)])
+        second_exit = main(
+            ["check", "--log-dir", str(log_dir), "--quality-pack", str(quality_pack)]
+        )
+
+    assert first_exit == 1
+    assert second_exit == 1
+    report = (log_dir / "gate-report.md").read_text(encoding="utf-8")
+    summary_payload = json.loads(
+        (log_dir / "gate-history-summary.json").read_text(encoding="utf-8")
+    )
+    assert "### Recent History Summary" in report
+    assert "Compared runs: run-201 -> run-202" in report
+    assert "Failure action coverage (last 2): 1/2 categories (50.0%)" in report
+    assert "Uncovered categories: unknown (1 case)" in report
+    assert summary_payload["comparison"]["previous_run_id"] == "run-201"
+    assert summary_payload["failure_action_coverage"]["coverage_rate"] == 50.0
+    assert summary_payload["uncovered_categories"][0]["failure_category"] == "unknown"
+    assert summary_payload["uncovered_categories"][0]["affected_case_ids"] == ["QA-4"]
+
+
+def test_check_command_summary_includes_review_steward_and_stale_owner_rollup() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-stale-owner-summary"
+    quality_pack = log_dir.parent / f"{uuid.uuid4()}-quality-pack.yml"
+    quality_pack.write_text(
+        "\n".join(
+            [
+                "pack:",
+                "  name: sample-pack",
+                "  review_steward: ops-team",
+                "common_failure_patterns:",
+                "  - name: stale_case_definition",
+                '    first_action: "Refresh stale case"',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    fake_result = CheckResult(
+        run_id="run-stale-summary",
+        current_runs=2,
+        baseline_runs=0,
+        overall_rate=100.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 100.0, True, "2/2"),
+        ],
+        stale_after_days=30,
+        fresh_case_review_rate=50.0,
+        fresh_case_count=1,
+        fresh_case_total=2,
+        stale_cases=[
+            CaseStalenessItem(
+                case_id="QA-stale-1",
+                name="stale",
+                severity="S1",
+                owner="hr-team",
+                reference_field="last_reviewed_at",
+                reference_value="2026-03-01",
+                age_days=51,
+                issue="older than 30 days",
+            )
+        ],
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        with patch("rqg.quality.check.render_gate_markdown", return_value="md-stale"):
+            exit_code = main(
+                [
+                    "check",
+                    "--log-dir",
+                    str(log_dir),
+                    "--quality-pack",
+                    str(quality_pack),
+                ]
+            )
+
+    assert exit_code == 0
+    summary_payload = json.loads(
+        (log_dir / "gate-history-summary.json").read_text(encoding="utf-8")
+    )
+    assert summary_payload["review_steward"] == "ops-team"
+    assert summary_payload["stale_case_review"]["stale_cases_count"] == 1
+    assert summary_payload["stale_case_review"]["owners"][0]["owner"] == "hr-team"
+    assert summary_payload["stale_case_review"]["owners"][0]["case_ids"] == ["QA-stale-1"]

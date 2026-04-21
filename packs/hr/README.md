@@ -55,6 +55,12 @@
 - last_reviewed_at 基準の stale case
 - owner/due 未設定 fail の有無
 
+## Staleness Policy
+
+- `case_staleness_days: 30` を有効化済み。active case は 30 日以内に review されていることを前提にする。
+- `min_fresh_case_review_rate: 90.0` と `fresh_case_review_rate_warn: 100.0` を採用。現行 12 active case では 1 件 stale で warn、2 件以上 stale で fail。
+- 週次 review では stale case を owner 単位で戻し、月次の review 漏れを gate で止める。
+
 ## Common Failure Patterns
 
 - retrieval_miss

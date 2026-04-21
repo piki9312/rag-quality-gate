@@ -4,6 +4,7 @@ pack:
   version: "1.1"
   domain: "Internal Documents"
   profile: "HR/Policy"
+  review_steward: hr-team
   description: >
     社内文書を知識源にする業務支援 AI の品質ゲート向けパック。
     このプロファイルは人事・就業規則・経費関連の文書で最初の導入価値を示す。

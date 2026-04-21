@@ -6,35 +6,18 @@ on:
 
 jobs:
   rqg-gate:
-    runs-on: ubuntu-latest
-    env:
-      RAG_API_ENDPOINT: ${{ secrets.RAG_API_ENDPOINT }}
-      RAG_API_KEY: ${{ secrets.RAG_API_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install RQG
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Validate external RAG connection
-        run: |
-          rqg validate-connection \
-            --endpoint "$RAG_API_ENDPOINT" \
-            --api-key-env RAG_API_KEY \
-            --query "healthcheck" \
-            --output runs/quality/connection-validation.json
-
-      - name: Run gate against external RAG
-        run: |
-          rqg gate packs/hr/cases.csv \
-            --log-dir runs/quality \
-            --reset-log-dir \
-            --rag-endpoint "$RAG_API_ENDPOINT" \
-            --rag-api-key-env RAG_API_KEY \
-            --quality-pack packs/hr/quality-pack.yml
+    uses: ./.github/workflows/rqg-reusable-gate.yml
+    with:
+      # Replace with your package source. If the caller repo vendors RQG itself,
+      # use: python -m pip install -e .
+      rqg_install_command: python -m pip install "git+https://github.com/OWNER/rag-quality-gate.git@TAG"
+      cases_path: packs/hr/cases.csv
+      run_pack_validation: true
+      pack_validation_preset: external
+      pack_dir: packs/hr
+      log_dir: runs/quality
+      quality_pack_path: packs/hr/quality-pack.yml
+      run_connection_validation: true
+    secrets:
+      rag_api_endpoint: ${{ secrets.RAG_API_ENDPOINT }}
+      rag_api_key: ${{ secrets.RAG_API_KEY }}

@@ -6,24 +6,17 @@ on:
 
 jobs:
   rqg-gate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install RQG
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Run mock gate
-        run: |
-          rqg gate packs/hr/cases.csv \
-            --docs packs/hr/documents \
-            --log-dir runs/quality \
-            --reset-log-dir \
-            --mock \
-            --quality-pack packs/hr/quality-pack.yml
+    uses: ./.github/workflows/rqg-reusable-gate.yml
+    with:
+      # Replace with your package source. If the caller repo vendors RQG itself,
+      # use: python -m pip install -e .
+      rqg_install_command: python -m pip install "git+https://github.com/OWNER/rag-quality-gate.git@TAG"
+      cases_path: packs/hr/cases.csv
+      docs_dir: packs/hr/documents
+      run_pack_validation: true
+      pack_validation_preset: local_docs
+      pack_dir: packs/hr
+      log_dir: runs/quality
+      quality_pack_path: packs/hr/quality-pack.yml
+      mock: true
+      install_embedding_deps: true

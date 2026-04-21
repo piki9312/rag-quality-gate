@@ -1,0 +1,20 @@
+name: RQG Gate (Repo Mock)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  rqg-gate:
+    uses: ./.github/workflows/rqg-reusable-gate.yml
+    with:
+      rqg_install_command: python -m pip install -e ".[dev]"
+      cases_path: packs/hr/cases.csv
+      docs_dir: packs/hr/documents
+      run_pack_validation: true
+      pack_validation_preset: local_docs
+      pack_dir: packs/hr
+      log_dir: runs/quality
+      quality_pack_path: packs/hr/quality-pack.yml
+      mock: true
+      install_embedding_deps: true
