@@ -219,7 +219,7 @@ jobs:
               f"Run ID: {os.environ.get('RUN_ID', '-')}",
               f"Workflow: {os.environ.get('WORKFLOW_URL', '-')}",
           ]
-            if os.environ.get("FORCE_SLACK_TEST", "false").strip().lower() == "true":
+          if os.environ.get("FORCE_SLACK_TEST", "false").strip().lower() == "true":
               lines.insert(1, "Slack test mode: forced notification from workflow_dispatch")
           payload = {"text": "\n".join(lines)}
 
