@@ -151,8 +151,8 @@ def cmd_migrate_cases(args: argparse.Namespace) -> int:
 
 def cmd_validate_cases(args: argparse.Namespace) -> int:
     from ..quality.case_merge import load_csv_rows
-    from ..quality.check import GateConfig
     from ..quality.case_schema import validate_case_rows
+    from ..quality.check import GateConfig
 
     try:
         rows = load_csv_rows(args.cases)

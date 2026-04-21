@@ -10,7 +10,6 @@ from ..quality.notifications import send_gate_notifications
 
 def cmd_check(args: argparse.Namespace) -> int:
     """Run the quality gate check and emit stable ASCII output."""
-    from ..quality.history import build_gate_history_summary_payload, load_gate_decision_history
     from ..quality.check import (
         GateConfig,
         build_gate_decision,
@@ -20,6 +19,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         render_gate_markdown,
         run_check,
     )
+    from ..quality.history import build_gate_history_summary_payload, load_gate_decision_history
     from ..quality.reporting import (
         BundleJsonReportAdapter,
         DecisionHistoryJsonlReportAdapter,
