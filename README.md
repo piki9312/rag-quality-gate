@@ -69,7 +69,9 @@ rqg gate     ← 最初はこれだけ（eval + check のワンコマンド）
  └── ingest      文書の FAISS インデックス作成
 
 rqg validate-connection  外部RAG endpoint の接続/契約検証
-rqg history             gate decision の時系列確認
+rqg validate-pack       pack 導入前の設定ミス検証
+rqg history             gate decision の時系列比較と差分要約
+rqg export-weekly-review  uncovered category から GitHub issue payload を生成
 rqg gen-cases    ケース草案を文書から自動生成
 rqg merge-cases  生成ケースを cases.csv に安全マージ
 rqg validate-cases  cases.csv のバリデーション
@@ -81,6 +83,8 @@ rqg migrate-cases  レガシー参照の移行
 ```
 
 GitHub Actions 向けの導入テンプレートは `templates/github/` に同梱しています。
+Reusable workflow は `templates/github/workflows/rqg-reusable-gate.yml`、caller 例は `templates/github/rqg-gate-*.yml` を使います。caller 側は `run_pack_validation` と `pack_validation_preset` を使うと、導入前 preflight を profile 別に揃えられます。
+`rqg gate --dry-run` を使うと、isolated な `log_dir/dry-run/...` にだけ artifacts を書き、通知送信と gate history append を止めたまま gate 判定を確認できます。
 
 **日常で使うのは `gate` (+ `gen-cases` / `merge-cases`) の 2-3 コマンドです。**
 
@@ -142,20 +146,36 @@ python -m rqg.demo.onboarding_quickstart --profile wiki
 # 1. テンプレート配置
 rqg init-pack packs/my_pack
 
-# 2. eval + check をワンコマンドで
+# 2. 導入前チェック
+rqg validate-pack --pack-dir packs/my_pack
+
+# 3. eval + check をワンコマンドで
 rqg gate packs/my_pack/cases.csv \
   --docs packs/my_pack/documents \
   --mock --index-dir index --log-dir runs/quality \
   --config .rqg.yml
 
-# 3. 出力を確認
+# 4. 出力を確認
 cat runs/quality/gate-report.md
 cat runs/quality/gate-decision.json
+cat runs/quality/gate-report.json
 
-# 4. ケースを育てる（任意）
+# 5. ケースを育てる（任意）
 rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.json --review-output runs/casegen/review.csv
 rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
 ```
+
+Dry-run で本番用 history や通知を汚さずに gate 判定だけ見たい場合:
+
+```bash
+rqg gate packs/my_pack/cases.csv \
+    --docs packs/my_pack/documents \
+    --mock --index-dir index --log-dir runs/quality \
+    --config packs/my_pack/gate.yml \
+    --dry-run
+```
+
+`gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。
 
 ## ドキュメント案内
 
@@ -266,7 +286,10 @@ rqg impact       identify impacted cases from document changes
 rqg init-pack    scaffold a pack from bundled templates
 rqg init-snapshot / create-sample-case / create-sample-gate  scaffolding
 rqg migrate-cases  migrate legacy evidence references
+rqg export-weekly-review  export weekly review issue payload JSON
 ```
+
+GitHub Actions templates live in `templates/github/`. Copy `templates/github/workflows/rqg-reusable-gate.yml` plus one caller example from `templates/github/rqg-gate-*.yml`. Use `pack_validation_preset` for common caller profiles (`local_docs`, `external`, `external_notify`).
 
 **Day-to-day you only need `gate` (+ `gen-cases` / `merge-cases`) — 2-3 commands.**
 

@@ -37,7 +37,9 @@ class TestCLIHelp:
         assert "migrate-cases" in result.stdout
         assert "merge-cases" in result.stdout
         assert "validate-cases" in result.stdout
+        assert "validate-pack" in result.stdout
         assert "history" in result.stdout
+        assert "export-weekly-review" in result.stdout
         assert "validate-connection" in result.stdout
 
     def test_eval_help(self):
@@ -78,6 +80,7 @@ class TestCLIParsing:
         args = parser.parse_args(["check"])
         assert args.command == "check"
         assert args.quality_pack is None
+        assert args.bundle_file is None
         assert args.max_overall_drop_pct is None
         assert args.max_s1_drop_pct is None
 
@@ -89,6 +92,32 @@ class TestCLIParsing:
         assert args.command == "history"
         assert args.log_dir == "runs/quality"
         assert args.last == 10
+        assert args.compare_offset == 1
+        assert args.trend_window == 5
+
+    def test_history_custom_compare_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["history", "--compare-offset", "2", "--trend-window", "7"]
+        )
+        assert args.command == "history"
+        assert args.compare_offset == 2
+        assert args.trend_window == 7
+
+    def test_export_weekly_review_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["export-weekly-review"])
+        assert args.command == "export-weekly-review"
+        assert args.summary_file is None
+        assert args.log_dir == "runs/quality"
+        assert args.title_prefix == "[Phase2.5][Weekly Review]"
+        assert args.title_suffix == ""
+        assert args.week_start is None
+        assert args.label is None
 
     def test_validate_connection_args(self):
         from rqg.cli import build_parser
@@ -101,6 +130,22 @@ class TestCLIParsing:
         assert args.endpoint == "https://rag.example.com/search"
         assert args.query == "healthcheck"
 
+    def test_validate_pack_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["validate-pack", "--pack-dir", "packs/hr"])
+        assert args.command == "validate-pack"
+        assert args.pack_dir == "packs/hr"
+        assert args.cases is None
+        assert args.gate_config is None
+        assert args.quality_pack is None
+        assert args.docs_dir is None
+        assert args.endpoint is None
+        assert args.api_key_env is None
+        assert args.required_env is None
+        assert args.connection_query == "healthcheck"
+
     def test_gate_defaults(self):
         from rqg.cli import build_parser
 
@@ -110,6 +155,8 @@ class TestCLIParsing:
         assert args.cases == "packs/hr/cases.csv"
         assert args.log_dir == "runs/quality"
         assert args.cases_file is None
+        assert args.bundle_file is None
+        assert args.dry_run is False
         assert args.max_overall_drop_pct is None
         assert args.max_s1_drop_pct is None
         assert args.reset_log_dir is False
@@ -371,13 +418,30 @@ class TestPhase1CLI:
         eval_args = eval_mock.call_args.args[0]
         assert eval_args.reset_log_dir is True
 
+    def test_gate_dry_run_uses_isolated_log_dir_and_disables_history_append(self):
+        with patch("rqg.cli.gate.cmd_eval", return_value=0) as eval_mock:
+            with patch("rqg.cli.gate.cmd_check", return_value=0) as check_mock:
+                exit_code = main(["gate", "packs/hr/cases.csv", "--dry-run", "--mock"])
+
+        assert exit_code == 0
+        eval_args = eval_mock.call_args.args[0]
+        check_args = check_mock.call_args.args[0]
+        assert "dry-run" in eval_args.log_dir
+        assert eval_args.log_dir == check_args.log_dir
+        assert check_args.append_history is False
+        assert check_args.notifications_enabled is False
+
     def test_eval_with_reset_log_dir_cleans_previous_artifacts(self):
         log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-reset-logs"
         log_dir.mkdir(parents=True, exist_ok=True)
+        dry_run_dir = log_dir / "dry-run" / "old-run"
+        dry_run_dir.mkdir(parents=True, exist_ok=True)
         (log_dir / "20260101.jsonl").write_text("{}\n", encoding="utf-8")
         (log_dir / "gate-report.md").write_text("old", encoding="utf-8")
+        (log_dir / "gate-report.json").write_text("{}", encoding="utf-8")
         (log_dir / "gate-decision.json").write_text("{}", encoding="utf-8")
         (log_dir / "gate-decisions.jsonl").write_text("{}\n", encoding="utf-8")
+        (dry_run_dir / "gate-report.md").write_text("old", encoding="utf-8")
         (log_dir / "keep.txt").write_text("keep", encoding="utf-8")
 
         fake_run = SimpleNamespace(
@@ -410,8 +474,10 @@ class TestPhase1CLI:
         assert exit_code == 0
         assert not (log_dir / "20260101.jsonl").exists()
         assert not (log_dir / "gate-report.md").exists()
+        assert not (log_dir / "gate-report.json").exists()
         assert not (log_dir / "gate-decision.json").exists()
         assert not (log_dir / "gate-decisions.jsonl").exists()
+        assert not (log_dir / "dry-run").exists()
         assert (log_dir / "keep.txt").exists()
 
     def test_eval_runs_only_active_cases(self):
@@ -858,6 +924,17 @@ class TestValidateCasesCLI:
         args = parser.parse_args(["validate-cases", "--cases", "packs/hr/cases.csv"])
         assert args.command == "validate-cases"
         assert args.cases == "packs/hr/cases.csv"
+        assert args.gate_config is None
+
+    def test_validate_cases_parse_gate_config_arg(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            ["validate-cases", "--cases", "packs/hr/cases.csv", "--gate-config", "packs/hr/gate.yml"]
+        )
+        assert args.command == "validate-cases"
+        assert args.gate_config == "packs/hr/gate.yml"
 
     def test_validate_cases_valid_csv_returns_0(self):
         csv_path = Path("tests/.tmp") / f"{uuid.uuid4()}-valid.csv"
@@ -907,6 +984,30 @@ class TestValidateCasesCLI:
 
     def test_validate_cases_missing_file_returns_1(self):
         assert main(["validate-cases", "--cases", "nonexistent.csv"]) == 1
+
+    def test_validate_cases_infers_gate_config_and_requires_owner_for_staleness_enabled_pack(self):
+        tmp_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-validate-cases-stale"
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        csv_path = tmp_dir / "cases.csv"
+        self._write_csv(
+            csv_path,
+            [
+                {
+                    "case_id": "c001",
+                    "question": "What is X?",
+                    "expected_answer": "X is Y.",
+                    "status": "active",
+                    "severity": "S1",
+                    "owner": "",
+                }
+            ],
+        )
+        (tmp_dir / "gate.yml").write_text(
+            "thresholds:\n  case_staleness_days: 30\n  min_fresh_case_review_rate: 100.0\n",
+            encoding="utf-8",
+        )
+
+        assert main(["validate-cases", "--cases", str(csv_path)]) == 1
 
 
 class TestMergeCasesValidation:

@@ -151,6 +151,7 @@ def cmd_migrate_cases(args: argparse.Namespace) -> int:
 
 def cmd_validate_cases(args: argparse.Namespace) -> int:
     from ..quality.case_merge import load_csv_rows
+    from ..quality.check import GateConfig
     from ..quality.case_schema import validate_case_rows
 
     try:
@@ -159,7 +160,20 @@ def cmd_validate_cases(args: argparse.Namespace) -> int:
         print(f"[ERROR] Failed to load cases CSV: {exc}", file=sys.stderr)
         return 1
 
-    errors = validate_case_rows(rows)
+    gate_config_path = _resolve_validate_cases_gate_config(
+        args.cases,
+        getattr(args, "gate_config", None),
+    )
+    require_active_owner = False
+    if gate_config_path is not None:
+        try:
+            gate_config = GateConfig.from_yaml(str(gate_config_path))
+        except ValueError as exc:
+            print(f"[ERROR] Failed to load gate config: {exc}", file=sys.stderr)
+            return 1
+        require_active_owner = gate_config.staleness_policy_enabled
+
+    errors = validate_case_rows(rows, require_active_owner=require_active_owner)
     if not errors:
         print(f"OK: {len(rows)} cases validated with no issues.")
         return 0
@@ -176,6 +190,19 @@ def cmd_validate_cases(args: argparse.Namespace) -> int:
         file=sys.stderr,
     )
     return 1 if err_msgs else 0
+
+
+def _resolve_validate_cases_gate_config(
+    cases_path: str | Path,
+    gate_config_path: str | Path | None,
+) -> Path | None:
+    if gate_config_path:
+        return Path(gate_config_path)
+
+    candidate = Path(cases_path).with_name("gate.yml")
+    if candidate.exists():
+        return candidate
+    return None
 
 
 def cmd_merge_cases(args: argparse.Namespace) -> int:

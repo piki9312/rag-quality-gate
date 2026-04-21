@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -72,13 +74,31 @@ def reset_eval_log_dir(log_dir: str | Path) -> list[Path]:
             jsonl_path.unlink(missing_ok=True)
             removed.append(jsonl_path)
 
-    for filename in ("gate-report.md", "gate-decision.json", "gate-decisions.jsonl"):
+    for filename in (
+        "gate-report.md",
+        "gate-report.json",
+        "gate-decision.json",
+        "gate-decisions.jsonl",
+        "gate-history-summary.json",
+    ):
         artifact_path = path / filename
         if artifact_path.exists() and artifact_path.is_file():
             artifact_path.unlink(missing_ok=True)
             removed.append(artifact_path)
 
+    dry_run_dir = path / "dry-run"
+    if dry_run_dir.exists() and dry_run_dir.is_dir():
+        shutil.rmtree(dry_run_dir, ignore_errors=True)
+        removed.append(dry_run_dir)
+
     return removed
+
+
+def build_dry_run_log_dir(log_dir: str | Path) -> Path:
+    """Return an isolated artifact directory for a gate dry run."""
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_token = uuid.uuid4().hex[:8]
+    return Path(log_dir) / "dry-run" / f"{stamp}-{run_token}"
 
 
 def index_dir_is_under_runs(index_dir: str | Path) -> bool:
