@@ -10,6 +10,11 @@ on:
         description: "Pack directory (relative to repo root)"
         required: false
         default: "packs/hr"
+      force_slack_test:
+        description: "Force Slack summary on workflow_dispatch even when gate status is pass"
+        required: false
+        type: boolean
+        default: false
       use_real_llm:
         description: "Use real LLM judge (requires OPENAI_API_KEY secret)"
         required: false
@@ -180,7 +185,7 @@ jobs:
             }
 
       - name: Send optional Slack summary
-        if: ${{ always() && env.HAS_SLACK_WEBHOOK == 'true' && steps.decision.outputs.status != 'pass' }}
+        if: ${{ always() && env.HAS_SLACK_WEBHOOK == 'true' && (steps.decision.outputs.status != 'pass' || github.event.inputs.force_slack_test == 'true') }}
         shell: python
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.RQG_SLACK_WEBHOOK_URL }}
@@ -190,6 +195,7 @@ jobs:
           RUN_ID: ${{ steps.decision.outputs.run_id }}
           PACK_DIR: ${{ steps.pack.outputs.pack_dir }}
           LLM_MODE: ${{ steps.llm_mode.outputs.mode }}
+          FORCE_SLACK_TEST: ${{ github.event.inputs.force_slack_test || 'false' }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           import json
@@ -213,6 +219,8 @@ jobs:
               f"Run ID: {os.environ.get('RUN_ID', '-')}",
               f"Workflow: {os.environ.get('WORKFLOW_URL', '-')}",
           ]
+            if os.environ.get("FORCE_SLACK_TEST", "false").strip().lower() == "true":
+              lines.insert(1, "Slack test mode: forced notification from workflow_dispatch")
           payload = {"text": "\n".join(lines)}
 
           request = urllib.request.Request(

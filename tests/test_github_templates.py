@@ -151,11 +151,19 @@ def test_repo_mock_workflow_uses_reusable_gate_workflow() -> None:
 def test_phase4_weekly_gate_repo_workflow_has_optional_slack_summary() -> None:
     payload = _load_yaml(Path(".github/workflows/phase4-weekly-gate.yml"))
 
+    workflow_dispatch_inputs = payload["on"]["workflow_dispatch"]["inputs"]
+    assert workflow_dispatch_inputs["force_slack_test"]["type"] == "boolean"
+    assert workflow_dispatch_inputs["force_slack_test"]["default"] == "false"
+
     step_names = [step.get("name", "") for step in payload["jobs"]["weekly-gate"]["steps"]]
     assert "Send optional Slack summary" in step_names
 
     slack_step = _find_step(payload, "weekly-gate", "Send optional Slack summary")
     assert slack_step["env"]["SLACK_WEBHOOK_URL"] == "${{ secrets.RQG_SLACK_WEBHOOK_URL }}"
+    assert (
+        slack_step["env"]["FORCE_SLACK_TEST"]
+        == "${{ github.event.inputs.force_slack_test || 'false' }}"
+    )
     compile(
         slack_step["run"],
         ".github/workflows/phase4-weekly-gate.yml::weekly-gate::Send optional Slack summary",
