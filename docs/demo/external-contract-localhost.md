@@ -169,6 +169,24 @@ rqg history --log-dir runs/external-http-proof/gate --last 5 --compare-offset 1 
 
 `gate-report.json` は downstream consumer 向けの single bundle です。ここから weekly review issue payload を 1 コマンドで作れます。
 
+downstream consumer が安定して参照するフィールド:
+
+- `schema_version`: bundle schema version。現在は `1.0`
+- `bundle_type`: `rqg.gate_report_bundle`
+- `contract`: contract name, version, stable fields, compatibility rule
+- `run`: `run_id`, `status`, `created_at` の軽量 summary
+- `decision`: gate 判定の machine-readable 本体
+- `history_summary`: recent history / stale / uncovered category の運用 summary
+- `report_markdown`: 人が読む gate report
+- `artifact_paths`: 同じ run で生成された artifact path
+
+互換性方針:
+
+- minor change は additive とし、既存 stable field の意味を壊さない
+- downstream はまず `bundle_type` と `schema_version` を確認する
+- weekly review, GitHub issue, Slack 要約などの後続連携は `decision` と `history_summary` を主に読む
+- `report_markdown` は表示用であり、判定ロジックの入力にはしない
+
 ```powershell
 rqg export-weekly-review `
   --bundle-file runs/external-http-proof/gate/gate-report.json `
