@@ -14,6 +14,7 @@ The reusable workflow exposes these job outputs for downstream jobs and deploy g
 - `gate_run_id`
 - `gate_decision_path`
 - `gate_report_path`
+- `gate_report_json_path`
 - `pack_validation_ok`
 - `pack_validation_path`
 - `connection_ok`
@@ -34,7 +35,7 @@ When `run_pack_validation` is enabled, the reusable workflow runs `rqg validate-
 
 The reusable workflow uploads the full `log_dir/` artifact set, including `pack-validation.json`, `gate-report.md`, `gate-report.json`, `gate-decision.json`, and `gate-history-summary.json`. The report bundle JSON contains the markdown report, decision payload, and recent-history summary in one machine-readable file. The history summary JSON contains the same recent-history summary shown in the gate report and GitHub job summary, plus structured `uncovered_categories`, `stale_case_review`, and `review_steward` data for weekly review automation and issue creation.
 
-The weekly review example downloads the uploaded gate artifacts, runs `rqg export-weekly-review`, and shows how to upsert a GitHub issue plus send an optional Slack Block Kit summary based on the exported payload.
+The weekly review example downloads the uploaded gate artifacts, prefers `gate-report.json` via `gate_report_json_path`, falls back to `gate-history-summary.json` when needed, and shows how to upsert a GitHub issue plus send an optional Slack Block Kit summary based on the exported payload.
 
 For triage board linking, set these repository secrets when you use a GitHub Project v2 board:
 

@@ -149,6 +149,9 @@ on:
       gate_report_path:
         description: Path to gate-report.md inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_report_path }}
+      gate_report_json_path:
+        description: Path to gate-report.json inside the caller workspace
+        value: ${{ jobs.rqg_gate.outputs.gate_report_json_path }}
       pack_validation_ok:
         description: true, false, or skipped
         value: ${{ jobs.rqg_gate.outputs.pack_validation_ok }}
@@ -174,6 +177,7 @@ jobs:
       gate_run_id: ${{ steps.collect.outputs.gate_run_id }}
       gate_decision_path: ${{ steps.collect.outputs.gate_decision_path }}
       gate_report_path: ${{ steps.collect.outputs.gate_report_path }}
+      gate_report_json_path: ${{ steps.collect.outputs.gate_report_json_path }}
       pack_validation_ok: ${{ steps.collect.outputs.pack_validation_ok }}
       pack_validation_path: ${{ steps.collect.outputs.pack_validation_path }}
       connection_ok: ${{ steps.collect.outputs.connection_ok }}
@@ -477,6 +481,7 @@ jobs:
           log_dir = Path(os.environ["LOG_DIR"])
           gate_path = log_dir / "gate-decision.json"
           report_path = log_dir / "gate-report.md"
+          report_bundle_path = log_dir / "gate-report.json"
           pack_validation_path = log_dir / "pack-validation.json"
           connection_path = log_dir / "connection-validation.json"
           history_summary_path = log_dir / "gate-history-summary.json"
@@ -542,6 +547,7 @@ jobs:
               "gate_run_id": gate_run_id,
               "gate_decision_path": gate_path.as_posix() if gate_path.exists() else "",
               "gate_report_path": report_path.as_posix() if report_path.exists() else "",
+              "gate_report_json_path": report_bundle_path.as_posix() if report_bundle_path.exists() else "",
               "pack_validation_ok": pack_validation_ok,
               "pack_validation_path": pack_validation_path.as_posix() if pack_validation_path.exists() else "",
               "connection_ok": connection_ok,
@@ -570,6 +576,8 @@ jobs:
                   lines.append(f"- Pack validation findings: {pack_validation_summary}")
               if report_path.exists():
                   lines.append(f"- Report path: {report_path.as_posix()}")
+              if report_bundle_path.exists():
+                  lines.append(f"- Report bundle path: {report_bundle_path.as_posix()}")
               if gate_path.exists():
                   lines.append(f"- Decision path: {gate_path.as_posix()}")
               if history_summary_path.exists():

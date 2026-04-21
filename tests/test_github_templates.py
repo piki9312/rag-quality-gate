@@ -39,6 +39,7 @@ def test_reusable_gate_template_declares_workflow_call_contract() -> None:
     assert "gate_run_id" in outputs
     assert "gate_decision_path" in outputs
     assert "gate_report_path" in outputs
+    assert "gate_report_json_path" in outputs
     assert "pack_validation_ok" in outputs
     assert "pack_validation_path" in outputs
     assert "connection_ok" in outputs
@@ -120,10 +121,16 @@ def test_weekly_review_template_downloads_artifact_and_exports_issue_payload() -
     followup_job = payload["jobs"]["weekly-review-followup"]
     step_names = [step.get("name", "") for step in followup_job["steps"]]
     assert "Download gate artifacts" in step_names
+    assert "Resolve weekly review source" in step_names
     assert "Export weekly review issue payload" in step_names
     assert "Upsert weekly review issue" in step_names
     assert "Add issue to triage board" in step_names
     assert "Send optional Slack summary (Block Kit)" in step_names
+
+    resolve_step = _find_step(payload, "weekly-review-followup", "Resolve weekly review source")
+    assert "gate_report_json_path" in resolve_step["run"]
+    assert "--bundle-file" in resolve_step["run"]
+    assert "--summary-file" in resolve_step["run"]
 
 
 def test_repo_reusable_gate_workflow_matches_template() -> None:
@@ -210,6 +217,7 @@ def test_template_readme_mentions_reusable_workflow_outputs() -> None:
     assert "pack_validation_ok" in readme
     assert "pack-validation.json" in readme
     assert "connection_ok" in readme
+    assert "gate_report_json_path" in readme
     assert "gate-report.json" in readme
     assert "gate_history_summary_path" in readme
     assert "gate-history-summary.json" in readme

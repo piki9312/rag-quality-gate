@@ -34,7 +34,7 @@ jobs:
   weekly-review-followup:
     runs-on: ubuntu-latest
     needs: rqg-gate
-    if: ${{ always() && needs.rqg-gate.outputs.gate_history_summary_path != '' }}
+    if: ${{ always() && (needs.rqg-gate.outputs.gate_report_json_path != '' || needs.rqg-gate.outputs.gate_history_summary_path != '') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,25 +55,41 @@ jobs:
           name: rqg-gate-artifacts
           path: .
 
-      - name: Resolve history summary path
-        id: resolve_summary
+      - name: Resolve weekly review source
+        id: resolve_source
         shell: bash
         run: |
+          bundle_path="${{ needs.rqg-gate.outputs.gate_report_json_path }}"
+          if [ -n "$bundle_path" ] && [ -f "$bundle_path" ]; then
+            echo "source_flag=--bundle-file" >> "$GITHUB_OUTPUT"
+            echo "source_path=$bundle_path" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          bundle_path="$(find . -name gate-report.json -print -quit)"
+          if [ -n "$bundle_path" ] && [ -f "$bundle_path" ]; then
+            echo "source_flag=--bundle-file" >> "$GITHUB_OUTPUT"
+            echo "source_path=$bundle_path" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           summary_path="${{ needs.rqg-gate.outputs.gate_history_summary_path }}"
-          if [ ! -f "$summary_path" ]; then
+          if [ -z "$summary_path" ] || [ ! -f "$summary_path" ]; then
             summary_path="$(find . -name gate-history-summary.json -print -quit)"
           fi
           if [ -z "$summary_path" ] || [ ! -f "$summary_path" ]; then
-            echo "gate-history-summary.json not found after artifact download" >&2
+            echo "Neither gate-report.json nor gate-history-summary.json was found after artifact download" >&2
             exit 1
           fi
-          echo "summary_path=$summary_path" >> "$GITHUB_OUTPUT"
+          echo "source_flag=--summary-file" >> "$GITHUB_OUTPUT"
+          echo "source_path=$summary_path" >> "$GITHUB_OUTPUT"
 
       - name: Export weekly review issue payload
         shell: bash
         run: |
           rqg export-weekly-review \
-            --summary-file "${{ steps.resolve_summary.outputs.summary_path }}" \
+            "${{ steps.resolve_source.outputs.source_flag }}" \
+            "${{ steps.resolve_source.outputs.source_path }}" \
             --output weekly-review-issue.json
 
       - name: Upload weekly review payload
