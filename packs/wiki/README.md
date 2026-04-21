@@ -48,6 +48,12 @@ Principles:
 - stale cases based on last_reviewed_at
 - unresolved investigate items
 
+## Staleness Policy
+
+- `case_staleness_days: 30` is enabled. Active wiki/FAQ cases are expected to be reviewed within a monthly cadence.
+- `min_fresh_case_review_rate: 75.0` and `fresh_case_review_rate_warn: 100.0` are chosen for the current 4 active cases. One stale case produces warn, two or more stale cases fail.
+- Weekly review should clear stale cases before they accumulate into a multi-case freshness failure.
+
 ## Common Failure Patterns
 
 - retrieval_miss

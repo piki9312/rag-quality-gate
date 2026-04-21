@@ -5,6 +5,9 @@ thresholds:
   min_evidence_recall: 90.0  # require >=90% avg evidence recall on latest_run
   judge_relevance_warn: 30.0  # warn when avg judge relevance drops below 30%
   aggregation_policy: latest_run
+  case_staleness_days: 30  # monthly review cadence for active wiki/FAQ cases
+  min_fresh_case_review_rate: 75.0  # 1 stale case warns, 2+ stale cases fail at current pack size
+  fresh_case_review_rate_warn: 100.0
   # Warn thresholds — gate emits "warn" (not "fail") when above fail
   # threshold but below warn threshold.  Set to 0 to disable.
   # s1_pass_rate_warn: 100.0

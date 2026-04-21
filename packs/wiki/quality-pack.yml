@@ -4,6 +4,7 @@ pack:
   version: "1.0"
   domain: "Internal Documents"
   profile: "Wiki/FAQ"
+  review_steward: knowledge-team
   description: >
     Internal knowledge-base and FAQ profile for assistant AI quality gating.
     Focuses on access guidance, security escalation, and runbook operation accuracy.

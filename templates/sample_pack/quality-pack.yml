@@ -4,6 +4,7 @@ pack:
   version: "1.0"
   domain: "Internal Documents"
   profile: "HR-first"
+  review_steward: ops-team
   description: >
     Starter quality pack for assistant AI that relies on internal policy,
     procedure, FAQ, and knowledge-base documents.
