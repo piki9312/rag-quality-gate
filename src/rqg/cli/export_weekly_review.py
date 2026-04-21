@@ -45,7 +45,9 @@ def _load_weekly_review_source(args: argparse.Namespace) -> tuple[dict[str, Any]
         payload = _read_json_payload(bundle_path, missing_label="gate report bundle")
         if payload is None:
             return None
-        summary_payload = _extract_history_summary(payload, source_path=bundle_path, require_bundle=True)
+        summary_payload = _extract_history_summary(
+            payload, source_path=bundle_path, require_bundle=True
+        )
         if summary_payload is None:
             return None
         return summary_payload, bundle_path
@@ -59,7 +61,9 @@ def _load_weekly_review_source(args: argparse.Namespace) -> tuple[dict[str, Any]
     if payload is None:
         return None
 
-    summary_payload = _extract_history_summary(payload, source_path=summary_path, require_bundle=False)
+    summary_payload = _extract_history_summary(
+        payload, source_path=summary_path, require_bundle=False
+    )
     if summary_payload is None:
         return None
     return summary_payload, summary_path

@@ -5,11 +5,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-
-pytest.importorskip("fastapi")
 pytest.importorskip("faiss")
 
-from fastapi.testclient import TestClient
+TestClient = pytest.importorskip("fastapi.testclient").TestClient
 
 
 def _write(path: Path, text: str) -> None:
@@ -115,7 +113,9 @@ def test_local_http_rag_rebuilds_index_when_embedding_model_changes(
         "_embed",
         lambda texts: np.ones((len(texts), 3), dtype=np.float32),
     )
-    original_store.add_text(source="policy.md", text=(docs_dir / "policy.md").read_text(encoding="utf-8"))
+    original_store.add_text(
+        source="policy.md", text=(docs_dir / "policy.md").read_text(encoding="utf-8")
+    )
 
     monkeypatch.setattr("rqg.serving.rag.SentenceTransformer", None)
 
