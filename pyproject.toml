@@ -41,7 +41,7 @@ dev = [
     "pytest-cov>=4.0.0",
     "httpx>=0.25.0",
     "fastapi>=0.115.0",
-    "black>=23.0.0",
+    "black==26.3.0",
     "isort>=5.12.0",
     "faiss-cpu>=1.7.4",
     "sentence-transformers>=2.2.0",
@@ -56,6 +56,7 @@ addopts = "-v --tb=short --cov=src/rqg --cov-fail-under=85"
 [tool.black]
 line-length = 100
 target-version = ["py311"]
+required-version = "26.3.0"
 
 [tool.isort]
 profile = "black"
