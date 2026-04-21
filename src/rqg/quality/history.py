@@ -274,9 +274,11 @@ def build_gate_history_summary_payload(
         trend_window=trend_window,
     )
 
-    uncovered_categories = [] if coverage is None else [
-        _serialize_action_coverage_item(item) for item in coverage.uncovered_categories
-    ]
+    uncovered_categories = (
+        []
+        if coverage is None
+        else [_serialize_action_coverage_item(item) for item in coverage.uncovered_categories]
+    )
     stale_case_review = _build_stale_case_review_payload(
         stale_cases or [],
         stale_after_days=stale_after_days,
@@ -359,9 +361,7 @@ def build_gate_history_summary_lines(
             lines.append("- Metric deltas: no tracked metric changes")
 
         if comparison.new_reasons:
-            lines.append(
-                f"- New reasons: {_summarize_items(comparison.new_reasons, limit=3)}"
-            )
+            lines.append(f"- New reasons: {_summarize_items(comparison.new_reasons, limit=3)}")
         if comparison.resolved_reasons:
             lines.append(
                 f"- Resolved reasons: {_summarize_items(comparison.resolved_reasons, limit=3)}"
@@ -537,14 +537,11 @@ def _serialize_history_comparison(
         "previous_run_id": comparison.previous_run_id,
         "current_status": comparison.current_status,
         "previous_status": comparison.previous_status,
-        "metric_deltas": [
-            _serialize_metric_delta(metric) for metric in comparison.metric_deltas
-        ],
+        "metric_deltas": [_serialize_metric_delta(metric) for metric in comparison.metric_deltas],
         "new_reasons": comparison.new_reasons,
         "resolved_reasons": comparison.resolved_reasons,
         "action_deltas": [
-            _serialize_action_delta(action_delta)
-            for action_delta in comparison.action_deltas
+            _serialize_action_delta(action_delta) for action_delta in comparison.action_deltas
         ],
     }
 
@@ -560,9 +557,7 @@ def _serialize_history_trend(trend: GateHistoryTrend | None) -> dict[str, object
         "latest_status": trend.latest_status,
         "streak_count": trend.streak_count,
         "status_sequence": trend.status_sequence,
-        "metric_deltas": [
-            _serialize_metric_delta(metric) for metric in trend.metric_deltas
-        ],
+        "metric_deltas": [_serialize_metric_delta(metric) for metric in trend.metric_deltas],
         "window_size": trend.window_size,
     }
 

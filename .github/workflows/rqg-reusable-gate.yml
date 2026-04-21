@@ -245,10 +245,27 @@ jobs:
           def trimmed(name: str) -> str:
               return os.environ.get(name, "").strip()
 
+          def normalize_pack_override(name: str, pack_dir: str) -> str:
+              value = trimmed(name)
+              if not value or not pack_dir:
+                  return value
+              candidate = Path(value)
+              if candidate.is_absolute():
+                  return value
+              try:
+                  return candidate.relative_to(Path(pack_dir)).as_posix()
+              except ValueError:
+                  return value
+
           pack_dir = trimmed("PACK_DIR")
           if not pack_dir:
               source_path = trimmed("QUALITY_PACK_PATH") or trimmed("CASES_PATH")
               pack_dir = str(Path(source_path).parent)
+
+          cases_path = normalize_pack_override("CASES_PATH", pack_dir)
+          gate_config_path = normalize_pack_override("PACK_GATE_CONFIG_PATH", pack_dir)
+          quality_pack_path = normalize_pack_override("QUALITY_PACK_PATH", pack_dir)
+          docs_dir = normalize_pack_override("DOCS_DIR", pack_dir)
 
           preset_name = trimmed("PACK_VALIDATION_PRESET").lower() or "none"
           preset_map = {
@@ -273,8 +290,6 @@ jobs:
               "validate-pack",
               "--pack-dir",
               pack_dir,
-              "--cases",
-              trimmed("CASES_PATH"),
               "--output",
               f"{trimmed('LOG_DIR')}/pack-validation.json",
               "--connection-query",
@@ -285,15 +300,15 @@ jobs:
               trimmed("CONNECTION_TIMEOUT_SEC") or "10",
           ]
 
-          gate_config_path = trimmed("PACK_GATE_CONFIG_PATH")
+          if cases_path:
+              cmd.extend(["--cases", cases_path])
+
           if gate_config_path:
               cmd.extend(["--gate-config", gate_config_path])
 
-          quality_pack_path = trimmed("QUALITY_PACK_PATH")
           if quality_pack_path:
               cmd.extend(["--quality-pack", quality_pack_path])
 
-          docs_dir = trimmed("DOCS_DIR")
           if docs_dir:
               cmd.extend(["--docs-dir", docs_dir])
 

@@ -137,7 +137,9 @@ def validate_pack_onboarding(
         else:
             if isinstance(loaded_quality_pack, dict):
                 quality_pack_data = loaded_quality_pack
-                failure_pattern_count = _validate_quality_pack(findings, quality_pack_target, quality_pack_data)
+                failure_pattern_count = _validate_quality_pack(
+                    findings, quality_pack_target, quality_pack_data
+                )
             else:
                 findings.append(
                     OnboardingFinding(
@@ -200,11 +202,15 @@ def validate_pack_onboarding(
             rows = load_csv_rows(cases_target)
         except (FileNotFoundError, ValueError) as exc:
             findings.append(
-                OnboardingFinding("error", "cases", f"failed to load cases.csv: {exc}", str(cases_target))
+                OnboardingFinding(
+                    "error", "cases", f"failed to load cases.csv: {exc}", str(cases_target)
+                )
             )
         else:
             case_count = len(rows)
-            active_case_count = sum(1 for row in rows if (row.get("status") or "active").strip() == "active")
+            active_case_count = sum(
+                1 for row in rows if (row.get("status") or "active").strip() == "active"
+            )
             require_active_owner = bool(gate_config and gate_config.staleness_policy_enabled)
             for issue in validate_case_rows(rows, require_active_owner=require_active_owner):
                 findings.append(
@@ -317,9 +323,7 @@ def render_pack_onboarding_summary(result: PackOnboardingValidationResult) -> st
     if result.env_checks:
         present_count = sum(1 for item in result.env_checks if item.get("present"))
         lines.append(f"- Required env: {present_count}/{len(result.env_checks)} present")
-    lines.append(
-        f"- Findings: {result.error_count} error(s), {result.warning_count} warning(s)"
-    )
+    lines.append(f"- Findings: {result.error_count} error(s), {result.warning_count} warning(s)")
     if result.findings:
         lines.append("")
         lines.append("Findings:")

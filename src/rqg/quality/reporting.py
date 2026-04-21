@@ -23,8 +23,7 @@ class GateReportArtifacts:
 
 
 class GateReportAdapter(Protocol):
-    def emit(self, artifacts: GateReportArtifacts) -> Path | None:
-        ...
+    def emit(self, artifacts: GateReportArtifacts) -> Path | None: ...
 
 
 class MarkdownFileReportAdapter:

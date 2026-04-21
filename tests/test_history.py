@@ -57,7 +57,10 @@ def test_history_command_renders_trend_and_latest_diff_summary(capsys) -> None:
     assert "Status change: WARN -> FAIL" in captured.out
     assert "Overall pass rate: 78.0% -> 40.0% (-38.0 pts)" in captured.out
     assert "S1 pass rate: 100.0% -> 0.0% (-100.0 pts)" in captured.out
-    assert "New reasons: S1 pass rate: 0.0 < 100.0 (0/1); Overall pass rate: 40.0 < 80.0 (4/10)" in captured.out
+    assert (
+        "New reasons: S1 pass rate: 0.0 < 100.0 (0/1); Overall pass rate: 40.0 < 80.0 (4/10)"
+        in captured.out
+    )
     assert "Resolved reasons: WARN Overall pass rate: 78.0 < warn threshold 85.0" in captured.out
     assert "Failure action coverage (last 3): 2/3 categories (66.7%)" in captured.out
     assert "Uncovered categories: unknown (2 cases)" in captured.out

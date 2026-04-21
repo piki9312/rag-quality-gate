@@ -169,7 +169,9 @@ def test_export_weekly_review_command_writes_issue_payload(capsys) -> None:
     assert "## Required Actions" in payload["body"]
 
 
-def test_build_weekly_review_issue_payload_is_needed_for_stale_cases_even_without_uncovered_categories() -> None:
+def test_build_weekly_review_issue_payload_is_needed_for_stale_cases_even_without_uncovered_categories() -> (
+    None
+):
     payload = build_weekly_review_issue_payload(
         {
             "entries": 1,
@@ -188,8 +190,25 @@ def test_build_weekly_review_issue_payload_is_needed_for_stale_cases_even_withou
                 "fresh_case_count": 1,
                 "total_cases": 2,
                 "stale_cases_count": 1,
-                "owners": [{"owner": "hr-team", "stale_count": 1, "case_ids": ["QA-1"], "highest_age_days": 40}],
-                "stale_cases": [{"case_id": "QA-1", "owner": "hr-team", "severity": "S1", "age_days": 40, "reference_field": "last_reviewed_at", "reference_value": "2026-03-11", "issue": "older than 30 days"}],
+                "owners": [
+                    {
+                        "owner": "hr-team",
+                        "stale_count": 1,
+                        "case_ids": ["QA-1"],
+                        "highest_age_days": 40,
+                    }
+                ],
+                "stale_cases": [
+                    {
+                        "case_id": "QA-1",
+                        "owner": "hr-team",
+                        "severity": "S1",
+                        "age_days": 40,
+                        "reference_field": "last_reviewed_at",
+                        "reference_value": "2026-03-11",
+                        "issue": "older than 30 days",
+                    }
+                ],
             },
             "uncovered_categories": [],
         }
@@ -212,8 +231,13 @@ def test_build_weekly_review_issue_payload_formats_no_action_state() -> None:
     )
 
     assert payload["issue_needed"] is False
-    assert "Action required: no immediate owner action (0 uncovered categories, 0 stale active cases)" in payload["body"]
-    assert "Review the recent history summary below and close or archive this issue" in payload["body"]
+    assert (
+        "Action required: no immediate owner action (0 uncovered categories, 0 stale active cases)"
+        in payload["body"]
+    )
+    assert (
+        "Review the recent history summary below and close or archive this issue" in payload["body"]
+    )
 
 
 def test_export_weekly_review_command_returns_error_when_summary_missing(capsys) -> None:

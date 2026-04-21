@@ -99,9 +99,7 @@ class TestCLIParsing:
         from rqg.cli import build_parser
 
         parser = build_parser()
-        args = parser.parse_args(
-            ["history", "--compare-offset", "2", "--trend-window", "7"]
-        )
+        args = parser.parse_args(["history", "--compare-offset", "2", "--trend-window", "7"])
         assert args.command == "history"
         assert args.compare_offset == 2
         assert args.trend_window == 7
@@ -931,7 +929,13 @@ class TestValidateCasesCLI:
 
         parser = build_parser()
         args = parser.parse_args(
-            ["validate-cases", "--cases", "packs/hr/cases.csv", "--gate-config", "packs/hr/gate.yml"]
+            [
+                "validate-cases",
+                "--cases",
+                "packs/hr/cases.csv",
+                "--gate-config",
+                "packs/hr/gate.yml",
+            ]
         )
         assert args.command == "validate-cases"
         assert args.gate_config == "packs/hr/gate.yml"

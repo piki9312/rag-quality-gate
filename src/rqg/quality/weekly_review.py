@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
-
 DEFAULT_WEEKLY_REVIEW_TITLE_PREFIX = "[Phase2.5][Weekly Review]"
 DEFAULT_WEEKLY_REVIEW_LABELS = ["phase2-5", "weekly-review", "ops"]
 
@@ -36,15 +35,9 @@ def build_weekly_review_issue_payload(
     )
 
     latest_run_id = str(
-        trend.get("latest_run_id")
-        or comparison.get("current_run_id")
-        or "unknown-run"
+        trend.get("latest_run_id") or comparison.get("current_run_id") or "unknown-run"
     )
-    latest_status = str(
-        trend.get("latest_status")
-        or comparison.get("current_status")
-        or "UNKNOWN"
-    )
+    latest_status = str(trend.get("latest_status") or comparison.get("current_status") or "UNKNOWN")
     uncovered_count = len(uncovered_categories)
     stale_case_count = len(stale_cases)
     issue_needed = uncovered_count > 0 or stale_case_count > 0

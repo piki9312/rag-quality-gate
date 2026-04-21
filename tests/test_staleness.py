@@ -66,7 +66,9 @@ def test_run_check_surfaces_stale_cases_in_gate_output(tmp_path) -> None:
             passed=True,
         ),
     ]
-    log_path.write_text("\n".join(record.model_dump_json() for record in records) + "\n", encoding="utf-8")
+    log_path.write_text(
+        "\n".join(record.model_dump_json() for record in records) + "\n", encoding="utf-8"
+    )
 
     cases_path = tmp_path / "cases.csv"
     fresh_date = (today - timedelta(days=5)).date().isoformat()

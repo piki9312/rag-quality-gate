@@ -9,6 +9,13 @@ def _load_yaml(path: Path) -> dict:
     return yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
 
 
+def _find_step(payload: dict, job_name: str, step_name: str) -> dict:
+    for step in payload["jobs"][job_name]["steps"]:
+        if step.get("name", "") == step_name:
+            return step
+    raise AssertionError(f"step not found: {job_name}/{step_name}")
+
+
 def test_reusable_gate_template_declares_workflow_call_contract() -> None:
     path = Path("templates/github/workflows/rqg-reusable-gate.yml")
     payload = _load_yaml(path)
@@ -65,6 +72,24 @@ def test_python_shell_steps_in_templates_compile() -> None:
                     f"{workflow_path.as_posix()}::{job_name}::{step.get('name', '<unnamed>')}",
                     "exec",
                 )
+
+
+def test_reusable_gate_template_normalizes_pack_relative_overrides() -> None:
+    payload = _load_yaml(Path("templates/github/workflows/rqg-reusable-gate.yml"))
+
+    validate_pack_step = _find_step(payload, "rqg_gate", "Validate pack onboarding")
+    run_script = validate_pack_step["run"]
+
+    assert "def normalize_pack_override" in run_script
+    assert 'cases_path = normalize_pack_override("CASES_PATH", pack_dir)' in run_script
+    assert (
+        'gate_config_path = normalize_pack_override("PACK_GATE_CONFIG_PATH", pack_dir)'
+        in run_script
+    )
+    assert (
+        'quality_pack_path = normalize_pack_override("QUALITY_PACK_PATH", pack_dir)' in run_script
+    )
+    assert 'docs_dir = normalize_pack_override("DOCS_DIR", pack_dir)' in run_script
 
 
 def test_template_callers_use_reusable_gate_workflow() -> None:

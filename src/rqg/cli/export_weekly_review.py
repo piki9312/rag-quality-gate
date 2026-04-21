@@ -40,9 +40,7 @@ def cmd_export_weekly_review(args: argparse.Namespace) -> int:
     )
 
     output_path = (
-        Path(args.output)
-        if args.output
-        else summary_path.with_name("weekly-review-issue.json")
+        Path(args.output) if args.output else summary_path.with_name("weekly-review-issue.json")
     )
     saved_path = write_json_data_output(output_path, issue_payload)
     print(f"Saved weekly review issue payload to {saved_path}")

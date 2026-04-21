@@ -266,9 +266,7 @@ common_failure_patterns:
     )
 
     with patch("rqg.quality.check.run_check", side_effect=[first_result, second_result]):
-        first_exit = main(
-            ["check", "--log-dir", str(log_dir), "--quality-pack", str(quality_pack)]
-        )
+        first_exit = main(["check", "--log-dir", str(log_dir), "--quality-pack", str(quality_pack)])
         second_exit = main(
             ["check", "--log-dir", str(log_dir), "--quality-pack", str(quality_pack)]
         )
@@ -276,7 +274,9 @@ common_failure_patterns:
     assert first_exit == 1
     assert second_exit == 1
     report = (log_dir / "gate-report.md").read_text(encoding="utf-8")
-    summary_payload = json.loads((log_dir / "gate-history-summary.json").read_text(encoding="utf-8"))
+    summary_payload = json.loads(
+        (log_dir / "gate-history-summary.json").read_text(encoding="utf-8")
+    )
     assert "### Recent History Summary" in report
     assert "Compared runs: run-201 -> run-202" in report
     assert "Failure action coverage (last 2): 1/2 categories (50.0%)" in report
@@ -346,7 +346,9 @@ def test_check_command_summary_includes_review_steward_and_stale_owner_rollup() 
             )
 
     assert exit_code == 0
-    summary_payload = json.loads((log_dir / "gate-history-summary.json").read_text(encoding="utf-8"))
+    summary_payload = json.loads(
+        (log_dir / "gate-history-summary.json").read_text(encoding="utf-8")
+    )
     assert summary_payload["review_steward"] == "ops-team"
     assert summary_payload["stale_case_review"]["stale_cases_count"] == 1
     assert summary_payload["stale_case_review"]["owners"][0]["owner"] == "hr-team"
