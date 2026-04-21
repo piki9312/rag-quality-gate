@@ -21,6 +21,8 @@ permissions:
 jobs:
   phase2-5-weekly-metrics:
     runs-on: ubuntu-latest
+    env:
+      HAS_SLACK_WEBHOOK: ${{ secrets.RQG_SLACK_WEBHOOK_URL != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -606,6 +608,83 @@ jobs:
       - name: Print investigate issue URL
         if: always() && (steps.collect.outputs.collector_exit_code != '0' || steps.risk_closure.outputs.risk_closure_exit_code != '0')
         run: echo "investigate_issue_url=${{ steps.investigate_issue.outputs.result }}"
+
+      - name: Send optional weekly review Slack summary
+        if: ${{ always() && env.HAS_SLACK_WEBHOOK == 'true' }}
+        shell: python
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RQG_SLACK_WEBHOOK_URL }}
+          COLLECTOR_EXIT_CODE: ${{ steps.collect.outputs.collector_exit_code }}
+          EXIT_GATE_EXIT_CODE: ${{ steps.exit_gate.outputs.exit_gate_exit_code }}
+          RISK_CLOSURE_EXIT_CODE: ${{ steps.risk_closure.outputs.risk_closure_exit_code }}
+          WEEKLY_REVIEW_ISSUE_URL: ${{ steps.weekly_review_issue.outputs.issue_url }}
+          LINKED_WEEKLY_REVIEW_URL: ${{ steps.link_weekly_metrics.outputs.result }}
+          INVESTIGATE_ISSUE_URL: ${{ steps.investigate_issue.outputs.result }}
+        run: |
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          def text(name: str) -> str:
+              return os.environ.get(name, "").strip()
+
+          summary = {}
+          summary_path = Path("runs/phase2-5-weekly/summary.json")
+          if summary_path.exists():
+              summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+          next_actions = summary.get("next_actions")
+          if not isinstance(next_actions, list):
+              next_actions = []
+
+          non_technical_summary = summary.get("non_technical_summary")
+          if not isinstance(non_technical_summary, list):
+              non_technical_summary = []
+
+          collector_exit_code = text("COLLECTOR_EXIT_CODE") or "0"
+          exit_gate_exit_code = text("EXIT_GATE_EXIT_CODE") or "0"
+          risk_closure_exit_code = text("RISK_CLOSURE_EXIT_CODE") or "0"
+          notify_needed = (
+              collector_exit_code != "0"
+              or exit_gate_exit_code != "0"
+              or risk_closure_exit_code != "0"
+              or bool(next_actions)
+          )
+          if not notify_needed:
+              print("No weekly review Slack notification needed.")
+              raise SystemExit(0)
+
+          week_start = str(summary.get("week_start") or "unknown")
+          decision = str(summary.get("decision") or "unknown").upper()
+          weekly_review_issue_url = (
+              text("LINKED_WEEKLY_REVIEW_URL") or text("WEEKLY_REVIEW_ISSUE_URL")
+          )
+          investigate_issue_url = text("INVESTIGATE_ISSUE_URL")
+          title = f":warning: [Phase2.5][Weekly Review] {week_start}"
+          lines = [
+              title,
+              f"Decision: {decision}",
+              f"Next actions: {len(next_actions)}",
+              f"Exit gate exit code: {exit_gate_exit_code}",
+              f"Risk closure exit code: {risk_closure_exit_code}",
+          ]
+          if weekly_review_issue_url:
+              lines.append(f"Weekly review issue: {weekly_review_issue_url}")
+          if investigate_issue_url:
+              lines.append(f"Investigate issue: {investigate_issue_url}")
+
+          for line in non_technical_summary[:3]:
+              lines.append(f"- {line}")
+
+          request = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK_URL"],
+              data=json.dumps({"text": "\n".join(lines)}).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(request) as response:
+              if response.status >= 300:
+                  raise SystemExit(f"Slack webhook returned {response.status}")
 
       - name: Upload phase2.5 weekly metrics
         if: always()
