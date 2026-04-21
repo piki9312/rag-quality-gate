@@ -20,3 +20,7 @@ jobs:
       quality_pack_path: packs/hr/quality-pack.yml
       mock: true
       install_embedding_deps: true
+      notification_kind: slack
+      notify_on: fail
+    secrets:
+      notification_webhook_url: ${{ secrets.RQG_SLACK_WEBHOOK_URL }}

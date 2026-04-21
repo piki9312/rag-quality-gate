@@ -26,6 +26,8 @@ permissions:
 jobs:
   weekly-gate:
     runs-on: ubuntu-latest
+    env:
+      HAS_SLACK_WEBHOOK: ${{ secrets.RQG_SLACK_WEBHOOK_URL != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -176,3 +178,48 @@ jobs:
               });
               core.info(`Created issue #${issue.data.number}: ${issue.data.html_url}`);
             }
+
+      - name: Send optional Slack summary
+        if: ${{ always() && env.HAS_SLACK_WEBHOOK == 'true' && steps.decision.outputs.status != 'pass' }}
+        shell: python
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.RQG_SLACK_WEBHOOK_URL }}
+          GATE_STATUS: ${{ steps.decision.outputs.status }}
+          OVERALL_PASS_RATE: ${{ steps.decision.outputs.overall }}
+          S1_PASS_RATE: ${{ steps.decision.outputs.s1 }}
+          RUN_ID: ${{ steps.decision.outputs.run_id }}
+          PACK_DIR: ${{ steps.pack.outputs.pack_dir }}
+          LLM_MODE: ${{ steps.llm_mode.outputs.mode }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          import json
+          import os
+          import urllib.request
+
+          status = os.environ.get("GATE_STATUS", "unknown").strip() or "unknown"
+          labels = {
+              "fail": ":x: FAIL",
+              "warn": ":warning: WARN",
+              "error": ":warning: ERROR",
+              "unknown": ":warning: UNKNOWN",
+          }
+          title = f"{labels.get(status, ':warning: ' + status.upper())} Phase4 weekly gate"
+          lines = [
+              title,
+              f"Pack: {os.environ.get('PACK_DIR', '-')}",
+              f"LLM mode: {os.environ.get('LLM_MODE', '-')}",
+              f"Overall pass rate: {os.environ.get('OVERALL_PASS_RATE', 'N/A')}%",
+              f"S1 pass rate: {os.environ.get('S1_PASS_RATE', 'N/A')}%",
+              f"Run ID: {os.environ.get('RUN_ID', '-')}",
+              f"Workflow: {os.environ.get('WORKFLOW_URL', '-')}",
+          ]
+          payload = {"text": "\n".join(lines)}
+
+          request = urllib.request.Request(
+              os.environ["SLACK_WEBHOOK_URL"],
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+          )
+          with urllib.request.urlopen(request) as response:
+              if response.status >= 300:
+                  raise SystemExit(f"Slack webhook returned {response.status}")

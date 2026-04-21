@@ -143,6 +143,24 @@ def test_repo_mock_workflow_uses_reusable_gate_workflow() -> None:
     assert job["with"]["run_pack_validation"] == "true"
     assert job["with"]["pack_validation_preset"] == "local_docs"
     assert job["with"]["pack_dir"] == "packs/hr"
+    assert job["with"]["notification_kind"] == "slack"
+    assert job["with"]["notify_on"] == "fail"
+    assert job["secrets"]["notification_webhook_url"] == "${{ secrets.RQG_SLACK_WEBHOOK_URL }}"
+
+
+def test_phase4_weekly_gate_repo_workflow_has_optional_slack_summary() -> None:
+    payload = _load_yaml(Path(".github/workflows/phase4-weekly-gate.yml"))
+
+    step_names = [step.get("name", "") for step in payload["jobs"]["weekly-gate"]["steps"]]
+    assert "Send optional Slack summary" in step_names
+
+    slack_step = _find_step(payload, "weekly-gate", "Send optional Slack summary")
+    assert slack_step["env"]["SLACK_WEBHOOK_URL"] == "${{ secrets.RQG_SLACK_WEBHOOK_URL }}"
+    compile(
+        slack_step["run"],
+        ".github/workflows/phase4-weekly-gate.yml::weekly-gate::Send optional Slack summary",
+        "exec",
+    )
 
 
 def test_phase2_5_weekly_review_repo_workflows_use_fixed_title_and_labels() -> None:
