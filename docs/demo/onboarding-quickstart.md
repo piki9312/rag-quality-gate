@@ -2,6 +2,8 @@
 
 This is the shortest first-time onboarding path for Phase 3 profile-based onboarding.
 
+If your retriever already sits behind an external HTTP contract, use [external-contract-localhost](external-contract-localhost.md) instead. That path shows `serve-http-rag -> validate-connection -> gate --dry-run -> gate -> notify -> history -> export-weekly-review` as one connected story.
+
 ## Goal
 
 Run a single flow end-to-end:
@@ -14,6 +16,8 @@ Run a single flow end-to-end:
 6. review output
 
 This flow is the baseline for internal-documents assistant AI where document updates can change answers silently.
+
+Use this guide when the documents and retrieval pipeline are local to the pack. Use the external-contract guide when you want to prove the RQG-to-endpoint boundary first.
 
 ## Command
 

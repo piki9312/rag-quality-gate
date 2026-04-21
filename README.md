@@ -69,6 +69,7 @@ rqg gate     ← 最初はこれだけ（eval + check のワンコマンド）
  └── ingest      文書の FAISS インデックス作成
 
 rqg validate-connection  外部RAG endpoint の接続/契約検証
+rqg serve-http-rag      内蔵RAG を localhost の /search contract で公開
 rqg validate-pack       pack 導入前の設定ミス検証
 rqg history             gate decision の時系列比較と差分要約
 rqg export-weekly-review  uncovered category から GitHub issue payload を生成
@@ -140,6 +141,14 @@ python -m rqg.demo.onboarding_quickstart --profile wiki
 
 出力: `demo_runs/onboarding_quickstart/<run-id>/` 配下に summary.json, review.md, impact_review.md
 
+### パターン D: 外部 RAG contract を 1 本通す（10分）
+
+外部 endpoint 境界を先に固めたい場合は、`serve-http-rag -> validate-connection -> gate --dry-run -> gate -> notify -> history -> export-weekly-review` を 1 本で確認します。
+
+- localhost quickstart: `docs/demo/external-contract-localhost.md`
+- `gate-report.json` から weekly review payload までつなぐ downstream 例を含みます
+- 最後に tunnel 越しで次段へ進む準備も載せています
+
 ### パターン C: 段階的に導入
 
 ```bash
@@ -175,7 +184,7 @@ rqg gate packs/my_pack/cases.csv \
     --dry-run
 ```
 
-`gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。
+`gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。たとえば `rqg export-weekly-review --bundle-file runs/quality/gate-report.json` で weekly review issue payload を直接生成できます。
 
 ## ドキュメント案内
 
@@ -188,6 +197,7 @@ README は製品概要と導入に絞っています。技術仕様・運用設�
 - docs/demo/onboarding-quickstart.md
 - docs/demo/fail-fix-cycle.md
 - docs/demo/impact-cycle.md
+- docs/demo/external-contract-localhost.md
 - packs/hr/README.md
 
 技術設計:
@@ -286,6 +296,8 @@ rqg impact       identify impacted cases from document changes
 rqg init-pack    scaffold a pack from bundled templates
 rqg init-snapshot / create-sample-case / create-sample-gate  scaffolding
 rqg migrate-cases  migrate legacy evidence references
+rqg validate-connection  validate an external HTTP RAG endpoint
+rqg serve-http-rag      expose the built-in RAG behind localhost /search
 rqg export-weekly-review  export weekly review issue payload JSON
 ```
 
@@ -345,6 +357,14 @@ python -m rqg.demo.onboarding_quickstart --profile wiki
 
 Outputs: `demo_runs/onboarding_quickstart/<run-id>/` with summary.json, review.md, impact_review.md
 
+### Pattern D: External RAG contract proof (10 minutes)
+
+If you want to prove the external endpoint boundary first, use the `serve-http-rag -> validate-connection -> gate --dry-run -> gate -> notify -> history -> export-weekly-review` story.
+
+- localhost quickstart: `docs/demo/external-contract-localhost.md`
+- includes one downstream example from `gate-report.json` to weekly review payload
+- ends with tunnel-ready prep for the next external-like hop
+
 ### Pattern C: Gradual Adoption
 
 ```bash
@@ -377,6 +397,7 @@ Getting started and demos:
 - docs/demo/onboarding-quickstart.md
 - docs/demo/fail-fix-cycle.md
 - docs/demo/impact-cycle.md
+- docs/demo/external-contract-localhost.md
 - packs/hr/README.md
 
 Architecture:

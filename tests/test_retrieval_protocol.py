@@ -666,8 +666,9 @@ class TestCmdEvalExternalRAGE2E:
             verbose=False,
         )
 
-        with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
+        with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp) as mock_post:
             exit_code = cmd_eval(args)
 
         # Should complete successfully (mock LLM always produces an answer)
         assert exit_code in (0, 1)  # 0=all pass, 1=some fail — both are valid non-crash
+        assert mock_post.called

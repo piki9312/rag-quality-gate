@@ -242,7 +242,9 @@ class FaissRAGStore:
     def save(self) -> None:
         os.makedirs(self.index_dir, exist_ok=True)
         if self.index is not None:
-            faiss.write_index(self.index, self.index_path)
+            payload = faiss.serialize_index(self.index)
+            with open(self.index_path, "wb") as f:
+                f.write(payload.tobytes())
         with open(self.meta_path, "w", encoding="utf-8") as f:
             json.dump(
                 {
@@ -258,9 +260,20 @@ class FaissRAGStore:
     def _load(self) -> None:
         if os.path.exists(self.index_path) and os.path.exists(self.meta_path):
             try:
-                self.index = faiss.read_index(self.index_path)
+                with open(self.index_path, "rb") as f:
+                    index_bytes = f.read()
+                self.index = faiss.deserialize_index(np.frombuffer(index_bytes, dtype=np.uint8))
                 with open(self.meta_path, "r", encoding="utf-8") as f:
                     d = json.load(f)
+                stored_emb_model = d.get("emb_model")
+                if stored_emb_model and stored_emb_model != self.emb_model_name:
+                    logger.warning(
+                        "embedding model changed (%s -> %s) — resetting loaded index state",
+                        stored_emb_model,
+                        self.emb_model_name,
+                    )
+                    self._clear_loaded_state()
+                    return
                 self.metas = d.get("metas", [])
                 self.next_id = d.get("next_id", len(self.metas))
                 self.doc_ids = set(d.get("doc_ids", []))
@@ -270,21 +283,20 @@ class FaissRAGStore:
                         self.index.ntotal,
                         len(self.metas),
                     )
-                    self.index = None
-                    self.metas = []
-                    self.next_id = 0
+                    self._clear_loaded_state()
             except (OSError, RuntimeError, json.JSONDecodeError, ValueError):
                 logger.exception("failed to load index — starting fresh")
-                self.index = None
-                self.metas = []
-                self.next_id = 0
+                self._clear_loaded_state()
 
-    def reset(self) -> None:
-        """メモリ状態を初期化し、永続ファイルを削除する。"""
+    def _clear_loaded_state(self) -> None:
         self.index = None
         self.metas = []
         self.doc_ids = set()
         self.next_id = 0
+
+    def reset(self) -> None:
+        """メモリ状態を初期化し、永続ファイルを削除する。"""
+        self._clear_loaded_state()
         for p in [self.index_path, self.meta_path]:
             if os.path.exists(p):
                 os.remove(p)

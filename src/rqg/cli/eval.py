@@ -84,8 +84,8 @@ def cmd_eval(args: argparse.Namespace) -> int:
             rag_endpoint = cfg["endpoint"]
             rag_api_key_env = rag_api_key_env or cfg.get("api_key_env")
 
-    if rag_endpoint and not getattr(args, "mock", False):
-        # External RAG mode — skip index-dir validation
+    if rag_endpoint:
+        # External RAG mode — retrieval stays external even when --mock is used for the LLM.
         from ..serving.external_adapter import HTTPRAGAdapter
 
         store = HTTPRAGAdapter(

@@ -41,6 +41,7 @@ class TestCLIHelp:
         assert "history" in result.stdout
         assert "export-weekly-review" in result.stdout
         assert "validate-connection" in result.stdout
+        assert "serve-http-rag" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -110,6 +111,7 @@ class TestCLIParsing:
         parser = build_parser()
         args = parser.parse_args(["export-weekly-review"])
         assert args.command == "export-weekly-review"
+        assert args.bundle_file is None
         assert args.summary_file is None
         assert args.log_dir == "runs/quality"
         assert args.title_prefix == "[Phase2.5][Weekly Review]"
@@ -127,6 +129,18 @@ class TestCLIParsing:
         assert args.command == "validate-connection"
         assert args.endpoint == "https://rag.example.com/search"
         assert args.query == "healthcheck"
+
+    def test_serve_http_rag_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["serve-http-rag"])
+        assert args.command == "serve-http-rag"
+        assert args.docs_dir is None
+        assert args.index_dir == "index/external-http"
+        assert args.host == "127.0.0.1"
+        assert args.port == 8011
+        assert args.api_key_env is None
 
     def test_validate_pack_defaults(self):
         from rqg.cli import build_parser

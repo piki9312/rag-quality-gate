@@ -11,6 +11,7 @@
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
+- [external-contract-localhost](demo/external-contract-localhost.md) — localhost から weekly review payload まで外部契約を 1 本通す
 - [packs/hr guide](../packs/hr/README.md)
 
 コードを理解する:
@@ -50,9 +51,10 @@
 
 ## まず確認する順番
 
-1. [onboarding-quickstart](demo/onboarding-quickstart.md) で 1 回通し実行
-2. [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) で実装理解
-3. [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) で運用開始
+1. [onboarding-quickstart](demo/onboarding-quickstart.md) で内蔵フローを 1 回通す
+2. 外部 endpoint 境界を先に見たい場合は [external-contract-localhost](demo/external-contract-localhost.md) を使う
+3. [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) で実装理解
+4. [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) で運用開始
 
 ## 補足
 
@@ -75,6 +77,7 @@ Getting started:
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
+- [external-contract-localhost](demo/external-contract-localhost.md) — run the external contract story from localhost to weekly review payload
 - [packs/hr guide](../packs/hr/README.md)
 
 Understanding the code:
@@ -114,9 +117,10 @@ Architecture rationale:
 
 ### Suggested Reading Order
 
-1. Run [onboarding-quickstart](demo/onboarding-quickstart.md) once end-to-end
-2. Read [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
-3. Start [weekly metrics](ops/operations/phase2-5-weekly-metrics-register.md)
+1. Run [onboarding-quickstart](demo/onboarding-quickstart.md) once for the built-in path
+2. If the external endpoint boundary matters first, run [external-contract-localhost](demo/external-contract-localhost.md)
+3. Read [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
+4. Start [weekly metrics](ops/operations/phase2-5-weekly-metrics-register.md)
 
 ### Notes
 

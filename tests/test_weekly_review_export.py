@@ -169,6 +169,85 @@ def test_export_weekly_review_command_writes_issue_payload(capsys) -> None:
     assert "## Required Actions" in payload["body"]
 
 
+def test_export_weekly_review_command_writes_issue_payload_from_bundle(capsys) -> None:
+    tmp_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-weekly-review-bundle"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    bundle_path = tmp_dir / "gate-report.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "decision": {
+                    "run_id": "run-2",
+                    "status": "FAIL",
+                },
+                "history_summary": {
+                    "entries": 2,
+                    "week_start": "2026-04-20",
+                    "status_mix": {"pass": 0, "warn": 1, "fail": 1},
+                    "summary_lines": ["- Latest status: FAIL (run-2)"],
+                    "trend": {"latest_run_id": "run-2", "latest_status": "FAIL"},
+                    "review_steward": "ops-team",
+                    "uncovered_categories": [],
+                },
+                "report_markdown": "## RAG Quality Gate: FAIL",
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    output_path = tmp_dir / "weekly-review-issue.json"
+    exit_code = main(
+        [
+            "export-weekly-review",
+            "--bundle-file",
+            str(bundle_path),
+            "--output",
+            str(output_path),
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert output_path.exists()
+    assert "Saved weekly review issue payload" in captured.out
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["summary"]["latest_run_id"] == "run-2"
+    assert payload["summary"]["latest_status"] == "FAIL"
+    assert payload["review_steward"] == "ops-team"
+
+
+def test_export_weekly_review_command_accepts_bundle_via_summary_file(capsys) -> None:
+    tmp_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-weekly-review-summary-bundle"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    bundle_path = tmp_dir / "gate-report.json"
+    bundle_path.write_text(
+        json.dumps(
+            {
+                "history_summary": {
+                    "entries": 1,
+                    "week_start": "2026-04-20",
+                    "status_mix": {"pass": 1, "warn": 0, "fail": 0},
+                    "trend": {"latest_run_id": "run-1", "latest_status": "PASS"},
+                    "review_steward": "ops-team",
+                    "uncovered_categories": [],
+                }
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["export-weekly-review", "--summary-file", str(bundle_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Saved weekly review issue payload" in captured.out
+    output_path = bundle_path.with_name("weekly-review-issue.json")
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["summary"]["latest_status"] == "PASS"
+
+
 def test_build_weekly_review_issue_payload_is_needed_for_stale_cases_even_without_uncovered_categories() -> (
     None
 ):
@@ -248,3 +327,13 @@ def test_export_weekly_review_command_returns_error_when_summary_missing(capsys)
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "No gate history summary found" in captured.out
+
+
+def test_export_weekly_review_command_returns_error_when_bundle_missing(capsys) -> None:
+    missing_path = Path("tests/.tmp") / f"{uuid.uuid4()}-missing" / "gate-report.json"
+
+    exit_code = main(["export-weekly-review", "--bundle-file", str(missing_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "No gate report bundle found" in captured.out

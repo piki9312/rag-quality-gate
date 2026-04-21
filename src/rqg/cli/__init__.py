@@ -30,6 +30,7 @@ from .gate import cmd_gate
 from .history import cmd_history
 from .pack import cmd_init_pack
 from .scaffold import cmd_create_sample_case, cmd_create_sample_gate, cmd_init_snapshot
+from .serve_http_rag import cmd_serve_http_rag
 from .validate_connection import cmd_validate_connection
 from .validate_pack import cmd_validate_pack
 
@@ -238,17 +239,22 @@ def build_parser() -> argparse.ArgumentParser:
     # --- export-weekly-review ---
     p_export_weekly_review = sub.add_parser(
         "export-weekly-review",
-        help="Export a GitHub issue payload from gate-history-summary.json",
+        help="Export a GitHub issue payload from gate-history-summary.json or gate-report.json",
+    )
+    p_export_weekly_review.add_argument(
+        "--bundle-file",
+        default=None,
+        help="Path to gate-report.json bundle (uses its history_summary payload)",
     )
     p_export_weekly_review.add_argument(
         "--summary-file",
         default=None,
-        help="Path to gate-history-summary.json (default: <log-dir>/gate-history-summary.json)",
+        help="Path to gate-history-summary.json; gate-report.json is also accepted (default: <log-dir>/gate-history-summary.json)",
     )
     p_export_weekly_review.add_argument(
         "--log-dir",
         default="runs/quality",
-        help="Log directory used when --summary-file is omitted",
+        help="Log directory used when neither --bundle-file nor --summary-file is set",
     )
     p_export_weekly_review.add_argument(
         "--output",
@@ -295,6 +301,38 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         default=None,
         help="Optional output path (.json or .md)",
+    )
+
+    # --- serve-http-rag ---
+    p_serve_http_rag = sub.add_parser(
+        "serve-http-rag",
+        help="Expose the built-in RAG store behind the external HTTP /search contract",
+    )
+    p_serve_http_rag.add_argument(
+        "--docs-dir",
+        default=None,
+        help="Optional documents directory to ingest when the index is empty",
+    )
+    p_serve_http_rag.add_argument(
+        "--index-dir",
+        default="index/external-http",
+        help="FAISS index directory used by the local HTTP server",
+    )
+    p_serve_http_rag.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind host (default: 127.0.0.1)",
+    )
+    p_serve_http_rag.add_argument(
+        "--port",
+        type=int,
+        default=8011,
+        help="Bind port (default: 8011)",
+    )
+    p_serve_http_rag.add_argument(
+        "--api-key-env",
+        default=None,
+        help="Optional environment variable name used for Bearer auth on /search",
     )
 
     # --- gen-cases ---
@@ -579,6 +617,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_validate_pack(args)
     elif args.command == "validate-connection":
         return cmd_validate_connection(args)
+    elif args.command == "serve-http-rag":
+        return cmd_serve_http_rag(args)
     else:
         parser.print_help()
         return 0
