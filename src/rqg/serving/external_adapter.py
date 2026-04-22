@@ -115,6 +115,12 @@ class HTTPRAGAdapter:
         """
         return self.search(query, top_k=top_k)
 
+    def get_reliability_snapshot(self) -> dict[str, object]:
+        return {
+            "embedding_fallback_used": False,
+            "embedding_fallback_reason": None,
+        }
+
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------

@@ -299,6 +299,7 @@ def build_gate_history_summary_payload(
         "failure_action_coverage": _serialize_failure_action_coverage(coverage),
         "uncovered_categories": uncovered_categories,
         "stale_case_review": stale_case_review,
+        "reliability": _serialize_reliability(decisions[-1]) if decisions else None,
         "review_steward": (review_steward or "").strip() or None,
     }
 
@@ -315,6 +316,7 @@ def build_gate_history_summary_lines(
     comparison = build_gate_history_comparison(decisions, compare_offset=compare_offset)
 
     lines: list[str] = []
+    latest = decisions[-1] if decisions else None
     if trend is not None:
         lines.append(f"- Latest status: {trend.latest_status} ({trend.latest_run_id})")
         lines.append(f"- Current streak: {trend.latest_status} x{trend.streak_count}")
@@ -339,6 +341,26 @@ def build_gate_history_summary_lines(
             lines.append(
                 f"- Uncovered categories: {_summarize_action_coverage_items(coverage.uncovered_categories, limit=5)}"
             )
+
+    if latest is not None:
+        lines.append(f"- Judge reliability: {latest.judge_reliability.upper()}")
+        if latest.judge_fallback_count > 0:
+            lines.append(f"- Judge fallback count: {latest.judge_fallback_count}")
+        if latest.judge_failure_types:
+            failure_types = ", ".join(
+                f"{failure_type}={count}"
+                for failure_type, count in sorted(latest.judge_failure_types.items())
+            )
+            lines.append(f"- Judge failure types: {failure_types}")
+        if latest.embedding_fallback_used:
+            lines.append(
+                "- Embedding fallback: "
+                f"YES ({latest.embedding_fallback_reason or 'fallback detected'})"
+            )
+        if latest.needs_human_review:
+            lines.append("- Needs human review: YES")
+        else:
+            lines.append("- Needs human review: NO")
 
     if comparison is not None:
         lines.append("")
@@ -374,6 +396,20 @@ def build_gate_history_summary_lines(
                     f"{action_delta.failure_category}: {action_delta.previous_count} -> "
                     f"{action_delta.current_count} ({_format_count_delta(action_delta.delta)})"
                 )
+        current_decision = decisions[-1]
+        previous_decision = decisions[-(compare_offset + 1)]
+        if previous_decision.judge_reliability != current_decision.judge_reliability:
+            lines.append(
+                "- Judge reliability change: "
+                f"{previous_decision.judge_reliability.upper()} -> "
+                f"{current_decision.judge_reliability.upper()}"
+            )
+        if previous_decision.needs_human_review != current_decision.needs_human_review:
+            lines.append(
+                "- Needs human review change: "
+                f"{'YES' if previous_decision.needs_human_review else 'NO'} -> "
+                f"{'YES' if current_decision.needs_human_review else 'NO'}"
+            )
 
     return lines
 
@@ -515,6 +551,19 @@ def _serialize_metric_delta(metric: GateMetricDelta) -> dict[str, object]:
         "previous": metric.previous,
         "delta": metric.delta,
         "unit": metric.unit,
+    }
+
+
+def _serialize_reliability(decision: GateDecision) -> dict[str, object]:
+    return {
+        "judge_fallback_used": decision.judge_fallback_used,
+        "judge_fallback_count": decision.judge_fallback_count,
+        "judge_failure_types": decision.judge_failure_types,
+        "judge_reliability": decision.judge_reliability,
+        "embedding_fallback_used": decision.embedding_fallback_used,
+        "embedding_fallback_count": decision.embedding_fallback_count,
+        "embedding_fallback_reason": decision.embedding_fallback_reason,
+        "needs_human_review": decision.needs_human_review,
     }
 
 

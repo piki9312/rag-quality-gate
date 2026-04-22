@@ -14,6 +14,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         GateConfig,
         build_gate_decision,
         load_failure_actions_from_quality_pack,
+        load_quality_pack_payload,
         load_review_steward_from_quality_pack,
         normalize_aggregation_policy,
         render_gate_markdown,
@@ -71,14 +72,23 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     failure_actions: dict[str, str] = {}
     review_steward: str | None = None
+    pack_metadata: dict[str, object] | None = None
     if quality_pack_path:
         failure_actions = load_failure_actions_from_quality_pack(quality_pack_path)
         review_steward = load_review_steward_from_quality_pack(quality_pack_path)
+        pack_payload = load_quality_pack_payload(quality_pack_path)
+        raw_pack_metadata = pack_payload.get("pack", {}) if isinstance(pack_payload, dict) else {}
+        if isinstance(raw_pack_metadata, dict):
+            pack_metadata = raw_pack_metadata
 
     decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
     append_history = getattr(args, "append_history", True)
     notifications_enabled = getattr(args, "notifications_enabled", True)
-    decision = build_gate_decision(result, failure_actions=failure_actions)
+    decision = build_gate_decision(
+        result,
+        failure_actions=failure_actions,
+        pack_metadata=pack_metadata,
+    )
     history_decisions = [*load_gate_decision_history(decision_history_path), decision]
     history_summary_payload = build_gate_history_summary_payload(
         history_decisions,

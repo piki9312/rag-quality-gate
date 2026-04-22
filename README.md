@@ -1,10 +1,10 @@
-# RAG Quality Gate
+# Proof Gate / RAG Quality Gate
 
 [日本語](#日本語--japanese) | [English](#english)
 
 ## 日本語 / Japanese
 
-RAG/Agent の品質を、毎回同じやり方で検証してリリース判定までつなぐための実運用向け品質ゲート基盤です。
+Proof Gate は、RAG/Agent の品質を毎回同じやり方で検証し、高リスク更新の事故をリリース前に検知・遮断するための実運用向け品質ゲート基盤です。
 
 この製品は AI を賢くするものではなく、AI を安全に更新・運用するための品質管理レイヤです。
 
@@ -44,6 +44,7 @@ flowchart LR
 | 変更のたびに品質確認が属人化する | `rqg gate` で定型化。毎回同じ基準 |
 | 重大ケースの取りこぼし | S1/S2 の severity 分離。S1 は 100% pass 必須 |
 | fail 時にどこから直すべきか不明 | gate-report.md に failure category + next action |
+| 判定自体の信頼性が見えない | judge / embedding fallback, reliability, needs_human_review を artifact に明示 |
 | PR の品質判定が曖昧 | CI exit code 0/1 で機械的に判定 |
 
 ## なぜ RQG?（競合との位置づけ）
@@ -72,6 +73,7 @@ rqg validate-connection  外部RAG endpoint の接続/契約検証
 rqg serve-http-rag      内蔵RAG を localhost の /search contract で公開
 rqg validate-pack       pack 導入前の設定ミス検証
 rqg history             gate decision の時系列比較と差分要約
+rqg monthly-summary     月次の blocked run / fallback / unresolved issue 要約
 rqg export-weekly-review  uncovered category から GitHub issue payload を生成
 rqg gen-cases    ケース草案を文書から自動生成
 rqg merge-cases  生成ケースを cases.csv に安全マージ
@@ -81,6 +83,7 @@ rqg impact       文書変更の影響ケース特定
 rqg init-pack    テンプレートから pack を初期化
 rqg init-snapshot / create-sample-case / create-sample-gate  scaffold 用
 rqg migrate-cases  レガシー参照の移行
+rqg serve-dashboard     pack / run / monthly summary の閲覧UI
 ```
 
 GitHub Actions 向けの導入テンプレートは `templates/github/` に同梱しています。
@@ -185,6 +188,8 @@ rqg gate packs/my_pack/cases.csv \
 ```
 
 `gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。たとえば `rqg export-weekly-review --bundle-file runs/quality/gate-report.json` で weekly review issue payload を直接生成できます。
+
+`gate-decision.json` には judge fallback、judge reliability、embedding fallback、needs_human_review、pack metadata も含まれます。Proof Gate の PoC では、この JSON を中心に意思決定と UI 表示を揃えます。
 
 ## ドキュメント案内
 

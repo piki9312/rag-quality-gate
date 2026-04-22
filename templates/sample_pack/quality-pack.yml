@@ -5,6 +5,16 @@ pack:
   domain: "Internal Documents"
   profile: "HR-first"
   review_steward: ops-team
+  pack_name: internal-docs-starter
+  tenant_name: demo-tenant
+  use_case: internal-policy-search
+  vertical: internal-docs
+  risk_profile: high-risk-rag
+  owner: ops-team
+  environment: poc
+  pack_version: "1.0"
+  source_pack: demo_cycle
+  created_from_template: true
   description: >
     Starter quality pack for assistant AI that relies on internal policy,
     procedure, FAQ, and knowledge-base documents.

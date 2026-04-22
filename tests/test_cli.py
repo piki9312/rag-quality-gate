@@ -39,9 +39,11 @@ class TestCLIHelp:
         assert "validate-cases" in result.stdout
         assert "validate-pack" in result.stdout
         assert "history" in result.stdout
+        assert "monthly-summary" in result.stdout
         assert "export-weekly-review" in result.stdout
         assert "validate-connection" in result.stdout
         assert "serve-http-rag" in result.stdout
+        assert "serve-dashboard" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -119,6 +121,17 @@ class TestCLIParsing:
         assert args.week_start is None
         assert args.label is None
 
+    def test_monthly_summary_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["monthly-summary"])
+        assert args.command == "monthly-summary"
+        assert args.log_dir == "runs/quality"
+        assert args.month is None
+        assert args.markdown_output is None
+        assert args.json_output is None
+
     def test_validate_connection_args(self):
         from rqg.cli import build_parser
 
@@ -157,6 +170,17 @@ class TestCLIParsing:
         assert args.api_key_env is None
         assert args.required_env is None
         assert args.connection_query == "healthcheck"
+
+    def test_serve_dashboard_defaults(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["serve-dashboard"])
+        assert args.command == "serve-dashboard"
+        assert args.workspace_dir == "."
+        assert args.runs_dir is None
+        assert args.host == "127.0.0.1"
+        assert args.port == 8012
 
     def test_gate_defaults(self):
         from rqg.cli import build_parser
@@ -575,6 +599,9 @@ class TestPhase1CLI:
         assert (target / "gate.yml").exists()
         assert (target / "quality-pack.yml").exists()
         assert (target / "documents" / "leave_policy.md").exists()
+        quality_pack = (target / "quality-pack.yml").read_text(encoding="utf-8")
+        assert "pack_name:" in quality_pack
+        assert "created_from_template: true" in quality_pack
 
     def test_init_pack_scaffolds_sample_alias(self):
         target = Path("tests/.tmp") / f"{uuid.uuid4()}-pack-sample-alias"

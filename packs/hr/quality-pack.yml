@@ -5,6 +5,16 @@ pack:
   domain: "Internal Documents"
   profile: "HR/Policy"
   review_steward: hr-team
+  pack_name: internal-docs-hr-profile
+  tenant_name: demo-hr-tenant
+  use_case: hr-policy-faq
+  vertical: hr
+  risk_profile: high-risk-rag
+  owner: hr-team
+  environment: poc
+  pack_version: "1.1"
+  source_pack: hr
+  created_from_template: true
   description: >
     社内文書を知識源にする業務支援 AI の品質ゲート向けパック。
     このプロファイルは人事・就業規則・経費関連の文書で最初の導入価値を示す。

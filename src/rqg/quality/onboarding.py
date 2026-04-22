@@ -38,6 +38,7 @@ class PackOnboardingValidationResult:
     failure_pattern_count: int = 0
     error_count: int = 0
     warning_count: int = 0
+    pack_metadata: dict[str, object] = field(default_factory=dict)
     env_checks: list[dict[str, object]] = field(default_factory=list)
     connection: dict[str, object] | None = None
     findings: list[OnboardingFinding] = field(default_factory=list)
@@ -58,6 +59,7 @@ class PackOnboardingValidationResult:
             "quality_pack": {
                 "path": self.quality_pack_path,
                 "failure_pattern_count": self.failure_pattern_count,
+                "pack_metadata": self.pack_metadata,
             },
             "docs": {
                 "path": self.docs_dir,
@@ -95,6 +97,7 @@ def validate_pack_onboarding(
     active_case_count = 0
     docs_file_count = 0
     failure_pattern_count = 0
+    pack_metadata: dict[str, object] = {}
 
     if not root_dir.exists() or not root_dir.is_dir():
         findings.append(
@@ -117,6 +120,7 @@ def validate_pack_onboarding(
                 Path(quality_pack_path) if quality_pack_path else root_dir / "quality-pack.yml"
             ),
             docs_dir=Path(docs_dir) if docs_dir else root_dir / "documents",
+            pack_metadata={},
         )
 
     quality_pack_target = _resolve_pack_path(root_dir, quality_pack_path, "quality-pack.yml")
@@ -140,6 +144,9 @@ def validate_pack_onboarding(
                 failure_pattern_count = _validate_quality_pack(
                     findings, quality_pack_target, quality_pack_data
                 )
+                raw_pack_metadata = quality_pack_data.get("pack", {})
+                if isinstance(raw_pack_metadata, dict):
+                    pack_metadata = dict(raw_pack_metadata)
             else:
                 findings.append(
                     OnboardingFinding(
@@ -297,6 +304,7 @@ def validate_pack_onboarding(
         active_case_count=active_case_count,
         docs_file_count=docs_file_count,
         failure_pattern_count=failure_pattern_count,
+        pack_metadata=pack_metadata,
         env_checks=env_checks,
         connection_payload=connection_payload,
     )
@@ -348,6 +356,7 @@ def _build_result(
     active_case_count: int = 0,
     docs_file_count: int = 0,
     failure_pattern_count: int = 0,
+    pack_metadata: dict[str, object] | None = None,
     env_checks: list[dict[str, object]] | None = None,
     connection_payload: dict[str, object] | None = None,
 ) -> PackOnboardingValidationResult:
@@ -367,6 +376,7 @@ def _build_result(
         failure_pattern_count=failure_pattern_count,
         error_count=error_count,
         warning_count=warning_count,
+        pack_metadata=pack_metadata or {},
         env_checks=env_checks or [],
         connection=connection_payload,
         findings=findings,
@@ -399,6 +409,26 @@ def _validate_quality_pack(
                     str(quality_pack_path),
                 )
             )
+        for field_name in (
+            "pack_name",
+            "tenant_name",
+            "use_case",
+            "vertical",
+            "risk_profile",
+            "owner",
+            "environment",
+            "pack_version",
+            "source_pack",
+        ):
+            if not str(pack_meta.get(field_name, "")).strip():
+                findings.append(
+                    OnboardingFinding(
+                        "warn",
+                        "quality_pack",
+                        f"pack.{field_name} is missing; productized pack metadata is incomplete",
+                        str(quality_pack_path),
+                    )
+                )
 
     patterns = payload.get("common_failure_patterns", [])
     if patterns is None:

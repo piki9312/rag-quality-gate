@@ -5,6 +5,16 @@ pack:
   domain: "Internal Documents"
   profile: "Wiki/FAQ"
   review_steward: knowledge-team
+  pack_name: internal-docs-wiki-faq-profile
+  tenant_name: demo-wiki-tenant
+  use_case: knowledge-base-faq
+  vertical: wiki-faq
+  risk_profile: high-risk-rag
+  owner: knowledge-team
+  environment: poc
+  pack_version: "1.0"
+  source_pack: wiki
+  created_from_template: true
   description: >
     Internal knowledge-base and FAQ profile for assistant AI quality gating.
     Focuses on access guidance, security escalation, and runbook operation accuracy.
