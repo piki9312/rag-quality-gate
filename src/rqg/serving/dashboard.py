@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 from pathlib import Path
 from typing import Any
@@ -33,10 +34,10 @@ def create_dashboard_app(
             latest = latest_by_pack.get(pack["pack_name"])
             rows.append(
                 "<tr>"
-                f"<td><a href='/packs/{pack['pack_name']}'>{pack['pack_name']}</a></td>"
-                f"<td>{pack.get('tenant_name', '-')}</td>"
-                f"<td>{latest['status'] if latest else '-'}</td>"
-                f"<td>{latest['run_id'] if latest else '-'}</td>"
+                f"<td><a href='/packs/{_esc(pack['pack_name'])}'>{_esc(pack['pack_name'])}</a></td>"
+                f"<td>{_esc(pack.get('tenant_name', '-'))}</td>"
+                f"<td>{_esc(latest['status'] if latest else '-')}</td>"
+                f"<td>{_esc(latest['run_id'] if latest else '-')}</td>"
                 "</tr>"
             )
         return _page(
@@ -55,20 +56,20 @@ def create_dashboard_app(
         runs = [run for run in _scan_runs(app.state.runs_dir) if run["pack_name"] == pack_name]
         latest = runs[-1] if runs else None
         metadata_lines = "".join(
-            f"<li><strong>{key}</strong>: {value}</li>"
+            f"<li><strong>{_esc(key)}</strong>: {_esc(value)}</li>"
             for key, value in sorted(pack.items())
             if key not in {"path"}
         )
         latest_html = (
-            f"<p>Latest gate: <a href='/packs/{pack_name}/runs/{latest['run_id']}'>{latest['status']}</a></p>"
+            f"<p>Latest gate: <a href='/packs/{_esc(pack_name)}/runs/{_esc(latest['run_id'])}'>{_esc(latest['status'])}</a></p>"
             if latest
             else "<p>No runs found.</p>"
         )
         nav = (
-            f"<p><a href='/packs/{pack_name}/runs'>Runs</a> | "
-            f"<a href='/packs/{pack_name}/latest'>Latest gate</a> | "
-            f"<a href='/packs/{pack_name}/fail-cases'>Fail cases</a> | "
-            f"<a href='/packs/{pack_name}/monthly'>Monthly summary</a></p>"
+            f"<p><a href='/packs/{_esc(pack_name)}/runs'>Runs</a> | "
+            f"<a href='/packs/{_esc(pack_name)}/latest'>Latest gate</a> | "
+            f"<a href='/packs/{_esc(pack_name)}/fail-cases'>Fail cases</a> | "
+            f"<a href='/packs/{_esc(pack_name)}/monthly'>Monthly summary</a></p>"
         )
         return _page(pack_name, nav + latest_html + f"<ul>{metadata_lines}</ul>")
 
@@ -81,10 +82,10 @@ def create_dashboard_app(
         for run in reversed(runs):
             rows.append(
                 "<tr>"
-                f"<td><a href='/packs/{pack_name}/runs/{run['run_id']}'>{run['run_id']}</a></td>"
-                f"<td>{run['status']}</td>"
-                f"<td>{run['overall_pass_rate']:.1f}%</td>"
-                f"<td>{run['s1_pass_rate']:.1f}%</td>"
+                f"<td><a href='/packs/{_esc(pack_name)}/runs/{_esc(run['run_id'])}'>{_esc(run['run_id'])}</a></td>"
+                f"<td>{_esc(run['status'])}</td>"
+                f"<td>{_esc('{:.1f}%'.format(run['overall_pass_rate']))}</td>"
+                f"<td>{_esc('{:.1f}%'.format(run['s1_pass_rate']))}</td>"
                 "</tr>"
             )
         return _page(
@@ -99,21 +100,21 @@ def create_dashboard_app(
         run = _find_run(_scan_runs(app.state.runs_dir), pack_name=pack_name, run_id=run_id)
         reliability = run["decision"]
         next_actions = "".join(
-            f"<li>{item['failure_category']}: {item['action']}</li>"
+            f"<li>{_esc(item['failure_category'])}: {_esc(item['action'])}</li>"
             for item in reliability.get("next_actions", [])
         )
-        reasons = "".join(f"<li>{item}</li>" for item in reliability.get("reasons", []))
+        reasons = "".join(f"<li>{_esc(item)}</li>" for item in reliability.get("reasons", []))
         comparison = run.get("history_summary", {}).get("comparison") or {}
         return _page(
             f"Run {run_id}",
             (
-                f"<p>Status: {run['status']}</p>"
-                f"<p>Overall pass rate: {run['overall_pass_rate']:.1f}%</p>"
-                f"<p>S1 pass rate: {run['s1_pass_rate']:.1f}%</p>"
-                f"<p>S1 fail count: {run['s1_fail_count']:.0f}</p>"
-                f"<p>Judge reliability: {reliability.get('judge_reliability', 'unknown')}</p>"
-                f"<p>Needs human review: {reliability.get('needs_human_review')}</p>"
-                f"<p>Previous diff: {comparison.get('previous_run_id', '-')} -> {comparison.get('current_run_id', '-')}</p>"
+                f"<p>Status: {_esc(run['status'])}</p>"
+                f"<p>Overall pass rate: {_esc('{:.1f}%'.format(run['overall_pass_rate']))}</p>"
+                f"<p>S1 pass rate: {_esc('{:.1f}%'.format(run['s1_pass_rate']))}</p>"
+                f"<p>S1 fail count: {_esc('{:.0f}'.format(run['s1_fail_count']))}</p>"
+                f"<p>Judge reliability: {_esc(reliability.get('judge_reliability', 'unknown'))}</p>"
+                f"<p>Needs human review: {_esc(reliability.get('needs_human_review'))}</p>"
+                f"<p>Previous diff: {_esc(comparison.get('previous_run_id', '-'))} -> {_esc(comparison.get('current_run_id', '-'))}</p>"
                 f"<h3>Reasons</h3><ul>{reasons or '<li>None</li>'}</ul>"
                 f"<h3>Next Actions</h3><ul>{next_actions or '<li>None</li>'}</ul>"
             ),
@@ -137,7 +138,7 @@ def create_dashboard_app(
         for action in latest["decision"].get("next_actions", []):
             case_ids = ", ".join(action.get("affected_case_ids", [])) or "-"
             fail_case_rows.append(
-                f"<tr><td>{action.get('failure_category', '-')}</td><td>{case_ids}</td></tr>"
+                f"<tr><td>{_esc(action.get('failure_category', '-'))}</td><td>{_esc(case_ids)}</td></tr>"
             )
         return _page(
             f"Fail cases for {pack_name}",
@@ -154,14 +155,16 @@ def create_dashboard_app(
         else:
             history_path = app.state.runs_dir / pack_name / "gate-decisions.jsonl"
             summary = build_monthly_summary_payload(load_gate_decision_history(history_path))
-        unresolved = "".join(f"<li>{item}</li>" for item in summary.get("unresolved_issues", []))
+        unresolved = "".join(
+            f"<li>{_esc(item)}</li>" for item in summary.get("unresolved_issues", [])
+        )
         return _page(
             f"Monthly summary for {pack_name}",
             (
-                f"<p>Total runs: {summary.get('total_runs', 0)}</p>"
-                f"<p>Blocked runs: {summary.get('blocked_runs', 0)}</p>"
-                f"<p>S1 incidents detected: {summary.get('s1_incidents_detected', 0)}</p>"
-                f"<p>Trend summary: {summary.get('quality_trend_summary', '-')}</p>"
+                f"<p>Total runs: {_esc(summary.get('total_runs', 0))}</p>"
+                f"<p>Blocked runs: {_esc(summary.get('blocked_runs', 0))}</p>"
+                f"<p>S1 incidents detected: {_esc(summary.get('s1_incidents_detected', 0))}</p>"
+                f"<p>Trend summary: {_esc(summary.get('quality_trend_summary', '-'))}</p>"
                 f"<h3>Unresolved issues</h3><ul>{unresolved or '<li>None</li>'}</ul>"
             ),
         )
@@ -232,5 +235,13 @@ def _load_json(path: Path) -> dict[str, Any]:
 
 def _page(title: str, body: str) -> str:
     return (
-        "<html><body>" f"<h1>{title}</h1>" "<p><a href='/'>Packs</a></p>" f"{body}" "</body></html>"
+        "<html><body>"
+        f"<h1>{_esc(title)}</h1>"
+        "<p><a href='/'>Packs</a></p>"
+        f"{body}"
+        "</body></html>"
     )
+
+
+def _esc(value: object) -> str:
+    return html.escape(str(value))

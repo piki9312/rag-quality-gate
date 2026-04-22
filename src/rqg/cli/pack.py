@@ -108,6 +108,6 @@ def _hydrate_pack_metadata(*, target_dir: Path, selected_profile: str) -> None:
     pack_metadata.setdefault("created_from_template", True)
     payload["pack"] = pack_metadata
     quality_pack_path.write_text(
-        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+        yaml.safe_dump(payload, sort_keys=True, allow_unicode=True),
         encoding="utf-8",
     )

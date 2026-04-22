@@ -1,4 +1,4 @@
-# Proof Gate / RAG Quality Gate
+# Proof Gate
 
 [日本語](#日本語--japanese) | [English](#english)
 
