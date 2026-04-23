@@ -12,6 +12,7 @@
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
 - [external-contract-localhost](demo/external-contract-localhost.md) — localhost から weekly review payload まで外部契約を 1 本通す
+- `rqg serve-dashboard` — pack / run / monthly summary を 1 画面で閲覧する read-only UI
 - [packs/hr guide](../packs/hr/README.md)
 
 コードを理解する:
@@ -22,6 +23,7 @@
 週次運用する:
 
 - [週次メトリクス登録](ops/operations/phase2-5-weekly-metrics-register.md)
+- `rqg monthly-summary` — 月次の blocked run / fallback / unresolved issue を要約
 - [ケース品質レビュー](ops/operations/phase2-5-case-quality-weekly-review.md)
 - [失敗レビューテンプレート](ops/operations/phase2-5-ws2-failure-review-template.md)
 - [ゲート例外申請テンプレート](ops/operations/phase2-5-ws3-gate-exception-approval-template.md)
@@ -55,6 +57,7 @@
 2. 外部 endpoint 境界を先に見たい場合は [external-contract-localhost](demo/external-contract-localhost.md) を使う
 3. [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) で実装理解
 4. [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) で運用開始
+5. `rqg monthly-summary` と `rqg serve-dashboard` で継続価値を共有
 
 ## 補足
 

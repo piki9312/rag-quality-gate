@@ -319,6 +319,28 @@ def test_build_weekly_review_issue_payload_formats_no_action_state() -> None:
     )
 
 
+def test_build_weekly_review_issue_payload_includes_reliability_signals() -> None:
+    payload = build_weekly_review_issue_payload(
+        {
+            "entries": 1,
+            "status_mix": {"pass": 0, "warn": 1, "fail": 0},
+            "trend": {"latest_run_id": "run-1", "latest_status": "WARN"},
+            "reliability": {
+                "judge_reliability": "low",
+                "judge_fallback_count": 2,
+                "embedding_fallback_used": True,
+                "embedding_fallback_reason": "dependency_missing",
+                "needs_human_review": True,
+            },
+            "uncovered_categories": [],
+        }
+    )
+
+    assert "Judge reliability: LOW (fallbacks=2)" in payload["body"]
+    assert "Embedding fallback: YES (dependency_missing)" in payload["body"]
+    assert "Needs human review: yes" in payload["body"]
+
+
 def test_export_weekly_review_command_returns_error_when_summary_missing(capsys) -> None:
     missing_path = Path("tests/.tmp") / f"{uuid.uuid4()}-missing" / "gate-history-summary.json"
 

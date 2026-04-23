@@ -37,6 +37,16 @@ def _write_pack(
                     "pack:",
                     "  name: sample-pack",
                     "  review_steward: ops-team",
+                    "  pack_name: sample-pack",
+                    "  tenant_name: tenant-a",
+                    "  use_case: hr-faq",
+                    "  vertical: hr",
+                    "  risk_profile: high",
+                    "  owner: ops-team",
+                    "  environment: poc",
+                    "  pack_version: '1.0'",
+                    "  source_pack: demo_cycle",
+                    "  created_from_template: true",
                     "cases_file: cases.csv",
                     "documents_dir: documents",
                     "gate_file: gate.yml",
@@ -90,6 +100,7 @@ def test_validate_pack_local_docs_success_writes_json(tmp_path, capsys) -> None:
     assert payload["mode"] == "local_docs"
     assert payload["cases"]["case_count"] == 1
     assert payload["docs"]["file_count"] == 1
+    assert payload["quality_pack"]["pack_metadata"]["pack_name"] == "sample-pack"
 
 
 def test_validate_pack_requires_docs_or_endpoint(tmp_path, capsys) -> None:

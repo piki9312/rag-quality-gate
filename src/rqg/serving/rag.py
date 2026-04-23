@@ -95,6 +95,8 @@ class FaissRAGStore:
         os.makedirs(index_dir, exist_ok=True)
 
         self.emb_model_name = emb_model or os.getenv("EMB_MODEL", DEFAULT_EMB_MODEL)
+        self.embedding_fallback_used = False
+        self.embedding_fallback_reason: str | None = None
         self.model = self._load_embedding_model()
         self.index: Optional[faiss.Index] = None
         self.metas: list[dict[str, Any]] = []
@@ -115,6 +117,8 @@ class FaissRAGStore:
                 "Install with: pip install rag-quality-gate[embedding]"
             )
             self.emb_model_name = "local-fallback-hash-embedding"
+            self.embedding_fallback_used = True
+            self.embedding_fallback_reason = "dependency_missing"
             return None
         try:
             return SentenceTransformer(self.emb_model_name)
@@ -125,6 +129,8 @@ class FaissRAGStore:
                 exc,
             )
             self.emb_model_name = "local-fallback-hash-embedding"
+            self.embedding_fallback_used = True
+            self.embedding_fallback_reason = "model_load_error"
             return None
 
     def _fallback_embed(self, texts: list[str]) -> np.ndarray:
@@ -300,6 +306,12 @@ class FaissRAGStore:
         for p in [self.index_path, self.meta_path]:
             if os.path.exists(p):
                 os.remove(p)
+
+    def get_reliability_snapshot(self) -> dict[str, object]:
+        return {
+            "embedding_fallback_used": self.embedding_fallback_used,
+            "embedding_fallback_reason": self.embedding_fallback_reason,
+        }
 
 
 # Backward-compatible alias — existing imports ``from rqg.serving.rag import RAGStore``

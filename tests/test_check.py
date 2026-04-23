@@ -602,6 +602,33 @@ class TestCheckResult:
         decision = build_gate_decision(result)
         assert decision.next_actions[0].affected_case_ids == []
 
+    def test_build_gate_decision_includes_reliability_signals(self):
+        result = CheckResult(
+            run_id="run-reliability",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=100.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            judge_fallback_count=1,
+            judge_failure_types={"parse": 1},
+            judge_reliability="low",
+            embedding_fallback_count=1,
+            embedding_fallback_used=True,
+            embedding_fallback_reason="dependency_missing",
+            needs_human_review=True,
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.judge_fallback_used is True
+        assert decision.judge_failure_types == {"parse": 1}
+        assert decision.judge_reliability == "low"
+        assert decision.embedding_fallback_used is True
+        assert decision.needs_human_review is True
+        assert any(action.failure_category == "human_review" for action in decision.next_actions)
+
 
 class TestRenderMarkdown:
     def test_pass_rendering(self):

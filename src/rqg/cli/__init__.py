@@ -28,8 +28,10 @@ from .eval import cmd_eval, cmd_ingest
 from .export_weekly_review import cmd_export_weekly_review
 from .gate import cmd_gate
 from .history import cmd_history
+from .monthly_summary import cmd_monthly_summary
 from .pack import cmd_init_pack
 from .scaffold import cmd_create_sample_case, cmd_create_sample_gate, cmd_init_snapshot
+from .serve_dashboard import cmd_serve_dashboard
 from .serve_http_rag import cmd_serve_http_rag
 from .validate_connection import cmd_validate_connection
 from .validate_pack import cmd_validate_pack
@@ -236,6 +238,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional markdown output path for history report",
     )
 
+    # --- monthly-summary ---
+    p_monthly_summary = sub.add_parser(
+        "monthly-summary",
+        help="Generate monthly quality summary artifacts from gate decision history",
+    )
+    p_monthly_summary.add_argument("--log-dir", default="runs/quality")
+    p_monthly_summary.add_argument(
+        "--month",
+        default=None,
+        help="Target month in YYYY-MM format (default: current UTC month)",
+    )
+    p_monthly_summary.add_argument(
+        "--markdown-output",
+        default=None,
+        help="Optional markdown output path (default: <log-dir>/monthly-summary.md)",
+    )
+    p_monthly_summary.add_argument(
+        "--json-output",
+        default=None,
+        help="Optional JSON output path (default: <log-dir>/monthly-summary.json)",
+    )
+
     # --- export-weekly-review ---
     p_export_weekly_review = sub.add_parser(
         "export-weekly-review",
@@ -334,6 +358,24 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional environment variable name used for Bearer auth on /search",
     )
+
+    # --- serve-dashboard ---
+    p_serve_dashboard = sub.add_parser(
+        "serve-dashboard",
+        help="Serve a read-only dashboard for packs, runs, and monthly summaries",
+    )
+    p_serve_dashboard.add_argument(
+        "--workspace-dir",
+        default=".",
+        help="Workspace root containing packs/ and runs/ (default: .)",
+    )
+    p_serve_dashboard.add_argument(
+        "--runs-dir",
+        default=None,
+        help="Optional runs directory override (default: <workspace-dir>/runs)",
+    )
+    p_serve_dashboard.add_argument("--host", default="127.0.0.1")
+    p_serve_dashboard.add_argument("--port", type=int, default=8012)
 
     # --- gen-cases ---
     p_gen_cases = sub.add_parser("gen-cases", help="Generate EvalCase candidates from a snapshot")
@@ -593,6 +635,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_check(args)
     elif args.command == "history":
         return cmd_history(args)
+    elif args.command == "monthly-summary":
+        return cmd_monthly_summary(args)
     elif args.command == "export-weekly-review":
         return cmd_export_weekly_review(args)
     elif args.command == "init-snapshot":
@@ -619,6 +663,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_validate_connection(args)
     elif args.command == "serve-http-rag":
         return cmd_serve_http_rag(args)
+    elif args.command == "serve-dashboard":
+        return cmd_serve_dashboard(args)
     else:
         parser.print_help()
         return 0

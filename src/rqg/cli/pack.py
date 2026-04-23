@@ -7,6 +7,8 @@ import shutil
 import sys
 from pathlib import Path
 
+import yaml
+
 from .helpers import (
     PACK_PROFILE_ALIASES,
     normalize_pack_profile,
@@ -62,6 +64,7 @@ def cmd_init_pack(args: argparse.Namespace) -> int:
 
     target_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(template_dir, target_dir)
+    _hydrate_pack_metadata(target_dir=target_dir, selected_profile=selected_profile)
     if requested_profile == selected_profile:
         print(f"Initialized {selected_profile} pack at {target_dir}")
     else:
@@ -70,3 +73,41 @@ def cmd_init_pack(args: argparse.Namespace) -> int:
             f"(requested alias: {requested_profile})"
         )
     return 0
+
+
+def _hydrate_pack_metadata(*, target_dir: Path, selected_profile: str) -> None:
+    quality_pack_path = target_dir / "quality-pack.yml"
+    if not quality_pack_path.exists():
+        return
+
+    payload = yaml.safe_load(quality_pack_path.read_text(encoding="utf-8")) or {}
+    if not isinstance(payload, dict):
+        return
+    pack_metadata = payload.get("pack", {})
+    if not isinstance(pack_metadata, dict):
+        pack_metadata = {}
+
+    existing_version = (
+        str(pack_metadata.get("pack_version") or pack_metadata.get("version") or "1.0").strip()
+        or "1.0"
+    )
+    review_steward = str(pack_metadata.get("review_steward", "")).strip()
+    pack_metadata.setdefault("pack_name", target_dir.name)
+    pack_metadata.setdefault("tenant_name", target_dir.name)
+    pack_metadata.setdefault(
+        "use_case", str(pack_metadata.get("profile", "")).strip() or selected_profile
+    )
+    pack_metadata.setdefault(
+        "vertical", str(pack_metadata.get("domain", "")).strip() or "internal-docs"
+    )
+    pack_metadata.setdefault("risk_profile", "high-risk-rag")
+    pack_metadata.setdefault("owner", review_steward or "ops-team")
+    pack_metadata.setdefault("environment", "poc")
+    pack_metadata.setdefault("pack_version", existing_version)
+    pack_metadata.setdefault("source_pack", selected_profile)
+    pack_metadata.setdefault("created_from_template", True)
+    payload["pack"] = pack_metadata
+    quality_pack_path.write_text(
+        yaml.safe_dump(payload, sort_keys=True, allow_unicode=True),
+        encoding="utf-8",
+    )

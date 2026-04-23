@@ -23,6 +23,7 @@ def build_weekly_review_issue_payload(
     trend = _mapping(summary_payload.get("trend"))
     coverage = _mapping(summary_payload.get("failure_action_coverage"))
     status_mix = _mapping(summary_payload.get("status_mix"))
+    reliability = _mapping(summary_payload.get("reliability"))
     uncovered_categories = _list_of_mappings(summary_payload.get("uncovered_categories"))
     stale_case_review = _mapping(summary_payload.get("stale_case_review"))
     stale_owner_rollup = _list_of_mappings(stale_case_review.get("owners"))
@@ -78,6 +79,21 @@ def build_weekly_review_issue_payload(
             f"({int(stale_case_review.get('fresh_case_count', 0) or 0)}/"
             f"{int(stale_case_review.get('total_cases', 0) or 0)}) within "
             f"{int(stale_case_review.get('stale_after_days', 0) or 0)} days"
+        )
+    if reliability:
+        body_lines.append(
+            "- Judge reliability: "
+            f"{str(reliability.get('judge_reliability', 'unknown')).upper()} "
+            f"(fallbacks={int(reliability.get('judge_fallback_count', 0) or 0)})"
+        )
+        if reliability.get("embedding_fallback_used"):
+            body_lines.append(
+                "- Embedding fallback: YES "
+                f"({str(reliability.get('embedding_fallback_reason', 'fallback detected'))})"
+            )
+        body_lines.append(
+            "- Needs human review: "
+            f"{'yes' if bool(reliability.get('needs_human_review')) else 'no'}"
         )
 
     body_lines.append(

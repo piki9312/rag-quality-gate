@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from rqg.domain import GateDecision, GateNextAction
+from rqg.domain import GateDecision, GateNextAction, GatePackMetadata
 
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
 from .models import QARunRecord
@@ -213,6 +213,13 @@ class CheckResult:
     fresh_case_count: int = 0
     fresh_case_total: int = 0
     stale_cases: list[CaseStalenessItem] = field(default_factory=list)
+    judge_fallback_count: int = 0
+    judge_failure_types: dict[str, int] = field(default_factory=dict)
+    judge_reliability: str = "high"
+    embedding_fallback_count: int = 0
+    embedding_fallback_used: bool = False
+    embedding_fallback_reason: str | None = None
+    needs_human_review: bool = False
 
     @property
     def gate_passed(self) -> bool:
@@ -281,6 +288,29 @@ def _average_metric(records: list[QARunRecord], field_name: str) -> tuple[float 
     if not values:
         return None, 0
     return sum(values) / len(values) * 100, len(values)
+
+
+def _count_string_field(records: list[QARunRecord], field_name: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        value = str(getattr(record, field_name, "") or "").strip()
+        if not value:
+            continue
+        counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
+
+
+def _judge_reliability_label(
+    *,
+    total_runs: int,
+    judge_scored_runs: int,
+    judge_fallback_count: int,
+) -> str:
+    if total_runs <= 0:
+        return "low"
+    if judge_fallback_count > 0 or judge_scored_runs < total_runs:
+        return "low"
+    return "high"
 
 
 def _group_records_by_run(records: list[QARunRecord]) -> dict[str, list[QARunRecord]]:
@@ -413,6 +443,19 @@ def run_check(
     avg_faithfulness, faithfulness_scored = _average_metric(current, "faithfulness_score")
     avg_judge_relevance, judge_relevance_scored = _average_metric(current, "judge_relevance")
     avg_evidence_recall, evidence_recall_scored = _average_metric(current, "evidence_recall")
+    judge_fallback_count = sum(1 for record in current if record.judge_fallback_used)
+    judge_failure_types = _count_string_field(current, "judge_failure_type")
+    embedding_fallback_count = sum(1 for record in current if record.embedding_fallback_used)
+    embedding_fallback_reasons = _count_string_field(current, "embedding_fallback_reason")
+    embedding_fallback_reason = next(iter(embedding_fallback_reasons), None)
+    judge_reliability = _judge_reliability_label(
+        total_runs=total,
+        judge_scored_runs=judge_relevance_scored,
+        judge_fallback_count=judge_fallback_count,
+    )
+    needs_human_review = (
+        judge_fallback_count > 0 or embedding_fallback_count > 0 or judge_relevance_scored < total
+    )
 
     # Threshold checks
     checks: list[ThresholdResult] = []
@@ -627,6 +670,13 @@ def run_check(
         fresh_case_count=staleness_summary.fresh_cases if staleness_summary else 0,
         fresh_case_total=staleness_summary.total_cases if staleness_summary else 0,
         stale_cases=staleness_summary.stale_cases if staleness_summary else [],
+        judge_fallback_count=judge_fallback_count,
+        judge_failure_types=judge_failure_types,
+        judge_reliability=judge_reliability,
+        embedding_fallback_count=embedding_fallback_count,
+        embedding_fallback_used=embedding_fallback_count > 0,
+        embedding_fallback_reason=embedding_fallback_reason,
+        needs_human_review=needs_human_review,
     )
 
 
@@ -667,6 +717,7 @@ def _build_structured_next_actions(
 def build_gate_decision(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
+    pack_metadata: dict[str, Any] | None = None,
 ) -> GateDecision:
     """Convert a gate check result into a GateDecision model."""
     failed_thresholds = [t for t in result.thresholds if not t.passed]
@@ -692,11 +743,25 @@ def build_gate_decision(
         for t in warned_case_thresholds:
             reasons.append(f"WARN {t.name}: {t.actual:.1f} < warn threshold {t.warn_threshold:.1f}")
 
+    if result.judge_fallback_count > 0:
+        reasons.append(
+            "Judge fallback detected; re-run evaluation and verify judge/API connectivity before release"
+        )
+    if result.embedding_fallback_used:
+        reasons.append(
+            "Embedding fallback detected; confirm embedding dependency/model health and rebuild the index"
+        )
+    if result.needs_human_review:
+        reasons.append("Human review required because run reliability signals were degraded")
+
     metrics = {
         "overall_pass_rate": result.overall_rate,
         "s1_pass_rate": result.s1_rate,
+        "s1_fail_count": float(max(0, result.s1_total - result.s1_passed)),
         "current_runs": float(result.current_runs),
         "baseline_runs": float(result.baseline_runs),
+        "judge_fallback_count": float(result.judge_fallback_count),
+        "embedding_fallback_count": float(result.embedding_fallback_count),
     }
     if result.avg_faithfulness is not None:
         metrics["avg_faithfulness"] = result.avg_faithfulness
@@ -721,6 +786,30 @@ def build_gate_decision(
     next_actions = _build_structured_next_actions(
         result.failure_categories, failure_actions, result.failure_case_ids
     )
+    if result.judge_fallback_count > 0:
+        next_actions.append(
+            GateNextAction(
+                failure_category="judge_reliability",
+                count=result.judge_fallback_count,
+                action="Re-run judge-enabled evaluation and confirm model/API connectivity",
+            )
+        )
+    if result.embedding_fallback_used:
+        next_actions.append(
+            GateNextAction(
+                failure_category="embedding_reliability",
+                count=max(1, result.embedding_fallback_count),
+                action="Check embedding dependency/model loading and rebuild the retrieval index",
+            )
+        )
+    if result.needs_human_review:
+        next_actions.append(
+            GateNextAction(
+                failure_category="human_review",
+                count=1,
+                action="Route this run for manual review before approving the update",
+            )
+        )
 
     return GateDecision(
         run_id=result.run_id,
@@ -728,6 +817,15 @@ def build_gate_decision(
         reasons=reasons,
         metrics=metrics,
         next_actions=next_actions,
+        judge_fallback_used=result.judge_fallback_count > 0,
+        judge_fallback_count=result.judge_fallback_count,
+        judge_failure_types=result.judge_failure_types,
+        judge_reliability=result.judge_reliability,
+        embedding_fallback_used=result.embedding_fallback_used,
+        embedding_fallback_count=result.embedding_fallback_count,
+        embedding_fallback_reason=result.embedding_fallback_reason,
+        needs_human_review=result.needs_human_review,
+        pack=GatePackMetadata.model_validate(pack_metadata or None) if pack_metadata else None,
         created_at=datetime.now(timezone.utc),
     )
 
@@ -794,6 +892,19 @@ def render_gate_markdown(
         for name, actual, scored in observed_metrics:
             lines.append(f"| {name} | {actual:.1f}% | {scored} |")
 
+    lines.append("\n### Reliability")
+    lines.append(f"- Judge reliability: {result.judge_reliability.upper()}")
+    lines.append(f"- Judge fallback count: {result.judge_fallback_count}")
+    if result.judge_failure_types:
+        judge_failure_summary = ", ".join(
+            f"{failure_type}={count}" for failure_type, count in result.judge_failure_types.items()
+        )
+        lines.append(f"- Judge failure types: {judge_failure_summary}")
+    lines.append(f"- Embedding fallback: {'YES' if result.embedding_fallback_used else 'NO'}")
+    if result.embedding_fallback_reason:
+        lines.append(f"- Embedding fallback reason: {result.embedding_fallback_reason}")
+    lines.append(f"- Needs human review: {'YES' if result.needs_human_review else 'NO'}")
+
     if result.fresh_case_review_rate is not None and result.stale_after_days > 0:
         lines.append("\n### Case Staleness")
         lines.append(
@@ -834,17 +945,43 @@ def render_gate_markdown(
         for category, count in result.failure_categories.items():
             lines.append(f"| {category} | {count} |")
 
-    if result.failure_categories:
+    next_actions = _build_structured_next_actions(
+        result.failure_categories, failure_actions, result.failure_case_ids
+    )
+    if result.judge_fallback_count > 0:
+        next_actions.append(
+            GateNextAction(
+                failure_category="judge_reliability",
+                count=result.judge_fallback_count,
+                action="Re-run judge-enabled evaluation and confirm model/API connectivity",
+            )
+        )
+    if result.embedding_fallback_used:
+        next_actions.append(
+            GateNextAction(
+                failure_category="embedding_reliability",
+                count=max(1, result.embedding_fallback_count),
+                action="Check embedding dependency/model loading and rebuild the retrieval index",
+            )
+        )
+    if result.needs_human_review:
+        next_actions.append(
+            GateNextAction(
+                failure_category="human_review",
+                count=1,
+                action="Route this run for manual review before approving the update",
+            )
+        )
+
+    if next_actions:
         lines.append("\n### Next Actions")
         lines.append("| Failure Category | Affected Cases | Next Action | Owner | Due |")
         lines.append("|------------------|----------------|-------------|-------|-----|")
-        for category in result.failure_categories:
-            action = DEFAULT_NEXT_ACTION_HINT
-            if failure_actions and category in failure_actions:
-                action = failure_actions[category]
-            safe_action = action.replace("|", "\\|")
-            case_ids = result.failure_case_ids.get(category, [])
-            cases_str = ", ".join(case_ids) if case_ids else "-"
-            lines.append(f"| {category} | {cases_str} | {safe_action} | T.B.D. | T.B.D. |")
+        for action in next_actions:
+            safe_action = action.action.replace("|", "\\|")
+            cases_str = ", ".join(action.affected_case_ids) if action.affected_case_ids else "-"
+            lines.append(
+                f"| {action.failure_category} | {cases_str} | {safe_action} | {action.owner} | {action.due} |"
+            )
 
     return "\n".join(lines) + "\n"

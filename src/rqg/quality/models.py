@@ -94,6 +94,9 @@ class EvalResult:
     judge_relevance: float | None = None  # 0.0〜1.0
     judge_fallback_used: bool = False
     judge_fallback_reason: str | None = None
+    judge_failure_type: str | None = None
+    embedding_fallback_used: bool = False
+    embedding_fallback_reason: str | None = None
 
 
 # ------------------------------------------------------------------
@@ -152,6 +155,9 @@ class QARunRecord(BaseModel):
     judge_relevance: float | None = Field(None)
     judge_fallback_used: bool | None = Field(None)
     judge_fallback_reason: str | None = Field(None)
+    judge_failure_type: str | None = Field(None)
+    embedding_fallback_used: bool | None = Field(None)
+    embedding_fallback_reason: str | None = Field(None)
 
     model_config = ConfigDict(ser_json_timedelta="float")
 
@@ -197,4 +203,7 @@ class QARunRecord(BaseModel):
             judge_relevance=result.judge_relevance,
             judge_fallback_used=result.judge_fallback_used or None,
             judge_fallback_reason=result.judge_fallback_reason,
+            judge_failure_type=result.judge_failure_type,
+            embedding_fallback_used=result.embedding_fallback_used or None,
+            embedding_fallback_reason=result.embedding_fallback_reason,
         )

@@ -123,6 +123,30 @@ def test_history_command_compare_offset_skips_to_older_baseline(capsys) -> None:
     assert "Status change: PASS -> FAIL" in captured.out
 
 
+def test_history_command_shows_reliability_signals(capsys) -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-history-reliability"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    history_path = log_dir / "gate-decisions.jsonl"
+    history_path.write_text(
+        "\n".join(
+            [
+                '{"run_id":"run-1","status":"warn","reasons":[],"metrics":{"overall_pass_rate":100.0,"s1_pass_rate":100.0},"next_actions":[],"judge_fallback_used":true,"judge_fallback_count":1,"judge_failure_types":{"parse":1},"judge_reliability":"low","embedding_fallback_used":false,"embedding_fallback_count":0,"embedding_fallback_reason":null,"needs_human_review":true,"created_at":"2026-04-20T00:00:00Z"}',
+                '{"run_id":"run-2","status":"pass","reasons":[],"metrics":{"overall_pass_rate":100.0,"s1_pass_rate":100.0},"next_actions":[],"judge_fallback_used":false,"judge_fallback_count":0,"judge_failure_types":{},"judge_reliability":"high","embedding_fallback_used":false,"embedding_fallback_count":0,"embedding_fallback_reason":null,"needs_human_review":false,"created_at":"2026-04-20T01:00:00Z"}',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    exit_code = main(["history", "--log-dir", str(log_dir)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "Judge reliability: HIGH" in captured.out
+    assert "Judge reliability change: LOW -> HIGH" in captured.out
+    assert "Needs human review change: YES -> NO" in captured.out
+
+
 def test_history_command_returns_error_when_missing(capsys) -> None:
     log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-history-empty"
 

@@ -383,6 +383,9 @@ class RAGQualityRunner:
         judge_relevance: float | None = None
         judge_fallback_used = False
         judge_fallback_reason: str | None = None
+        judge_failure_type: str | None = None
+        embedding_fallback_used = False
+        embedding_fallback_reason: str | None = None
         cost_usd = 0.0
         input_tokens = 0
         output_tokens = 0
@@ -394,6 +397,16 @@ class RAGQualityRunner:
                 raw = self.store.search_multi(case.question, top_k=self.retrieval_k)
             else:
                 raw = self.store.search(case.question, top_k=self.retrieval_k)
+
+            reliability_snapshot = {}
+            if hasattr(self.store, "get_reliability_snapshot"):
+                reliability_snapshot = self.store.get_reliability_snapshot() or {}
+            embedding_fallback_used = bool(
+                reliability_snapshot.get("embedding_fallback_used", False)
+            )
+            embedding_fallback_reason = (
+                str(reliability_snapshot.get("embedding_fallback_reason") or "").strip() or None
+            )
 
             # 重複排除 & context_k 件に絞り込み
             seen: set[str] = set()
@@ -445,6 +458,7 @@ class RAGQualityRunner:
                 judge_relevance = judge_result.relevance
                 judge_fallback_used = judge_result.fallback_used
                 judge_fallback_reason = judge_result.fallback_reason
+                judge_failure_type = _classify_judge_failure_type(judge_fallback_reason)
                 if judge_result.usage and not self.mock_llm:
                     judge_cost = judge_result.usage.get("estimated_cost_usd", 0.0) or 0.0
                     cost_usd += judge_cost
@@ -593,6 +607,9 @@ class RAGQualityRunner:
             judge_relevance=judge_relevance,
             judge_fallback_used=judge_fallback_used,
             judge_fallback_reason=judge_fallback_reason,
+            judge_failure_type=judge_failure_type,
+            embedding_fallback_used=embedding_fallback_used,
+            embedding_fallback_reason=embedding_fallback_reason,
         )
 
     def run_all(self, cases: list[QATestCase], run_id: str | None = None) -> EvalRun:
@@ -633,3 +650,18 @@ class RAGQualityRunner:
                 f.write(record.model_dump_json() + "\n")
 
         return jsonl_file
+
+
+def _classify_judge_failure_type(reason: str | None) -> str | None:
+    normalized = str(reason or "").strip().lower()
+    if not normalized:
+        return None
+    if "parse" in normalized:
+        return "parse"
+    if "config" in normalized:
+        return "config"
+    if "infra" in normalized or "timeout" in normalized or "connection" in normalized:
+        return "infra"
+    if "api" in normalized:
+        return "api"
+    return "api"
