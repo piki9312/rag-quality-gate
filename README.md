@@ -129,7 +129,7 @@ RQG は評価の先にある **運用サイクル全体** をカバーします�
 ### パターン A: ワンコマンド体験（30秒）
 
 ```bash
-pip install -e ".[dev]"
+pip install -e .
 rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
 cat runs/quality/gate-report.md
 ```
@@ -349,7 +349,7 @@ The product core remains horizontal. The vertical pack is an adoption and value-
 Bash:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e .
 rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
 cat runs/quality/gate-report.md
 ```
@@ -357,10 +357,33 @@ cat runs/quality/gate-report.md
 PowerShell:
 
 ```powershell
-pip install -e ".[dev]"
+pip install -e .
 rqg gate packs\hr\cases.csv --docs packs\hr\documents --mock --index-dir index --log-dir runs\quality --config .rqg.yml
 Get-Content runs\quality\gate-report.md -Encoding UTF8
 ```
+
+### Install Profiles
+
+Use the smallest install profile that matches the job:
+
+```bash
+# Client-facing demo, validate-pack/check/gate, and report viewing.
+pip install -e .
+
+# External RAG HTTP adapter and connection validation.
+pip install -e ".[external]"
+
+# Local embedding, FAISS index, and sentence-transformers features.
+pip install -e ".[embedding]"
+
+# Developer tools only: tests and formatting commands.
+pip install -e ".[dev]"
+
+# Full local test setup, including external, serve, and embedding extras.
+pip install -e ".[all]"
+```
+
+Full test runs that exercise local FAISS-backed retrieval should use `pip install -e ".[all]"`. The lightweight client demo does not require `sentence-transformers`.
 
 ### Pattern B: Full Demo (5-10 minutes)
 

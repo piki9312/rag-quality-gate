@@ -1,6 +1,15 @@
 pack:
   name: vendor-poc-pack
   version: "1.0"
+  pack_name: vendor-poc-pack
+  pack_version: "1.0"
+  tenant_name: example-customer
+  use_case: customer-support-rag
+  vertical: customer-support
+  risk_profile: medium
+  owner: vendor-qa
+  environment: poc
+  source_pack: vendor-poc-pack
   domain: "Customer Support RAG"
   profile: "Vendor PoC"
   review_steward: vendor-qa
