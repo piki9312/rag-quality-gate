@@ -31,7 +31,7 @@ Bash:
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
-pip install -e ".[dev]"
+pip install -e .
 ```
 
 PowerShell:
@@ -40,7 +40,7 @@ PowerShell:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -U pip
-pip install -e ".[dev]"
+pip install -e .
 ```
 
 If PowerShell blocks activation scripts:
@@ -56,6 +56,24 @@ If console text looks garbled on Windows, set UTF-8 for the current session:
 chcp 65001
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
+Use the base install for this client-facing walkthrough. It is enough for `validate-pack`, `check`, `gate`, and report viewing, and it avoids installing `sentence-transformers`.
+
+Install extras only when needed:
+
+```bash
+# External RAG HTTP adapter and connection validation.
+pip install -e ".[external]"
+
+# Local embedding, FAISS index, and sentence-transformers features.
+pip install -e ".[embedding]"
+
+# Developer formatting/test tools only.
+pip install -e ".[dev]"
+
+# Full developer test setup, including external, serve, and embedding extras.
+pip install -e ".[all]"
 ```
 
 ## Pack Layout
