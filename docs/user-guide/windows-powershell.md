@@ -4,17 +4,25 @@ This guide lists Windows PowerShell equivalents for common onboarding and gate c
 
 Run commands from the repository root unless noted otherwise.
 
-## UTF-8 Note
+## UTF-8 Setup
 
-If Japanese text looks garbled in PowerShell output, set UTF-8 for the current session:
+If Markdown, JSON, or report output looks garbled in Windows PowerShell, set UTF-8 for the current session before running the demo:
 
 ```powershell
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-$OutputEncoding = [System.Text.UTF8Encoding]::new()
 chcp 65001
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 ```
 
 This does not change RQG behavior. It only affects console display.
+
+For files, prefer explicit UTF-8 reads:
+
+```powershell
+Get-Content runs\quality\gate-report.md -Encoding UTF8
+```
+
+If output still looks garbled, open the Markdown or JSON file in VS Code.
 
 ## Virtual Environment
 
@@ -150,9 +158,8 @@ python -m json.tool runs/quality/gate-report.json
 PowerShell:
 
 ```powershell
-Get-Content runs\quality\gate-report.md
-Get-Content runs\quality\gate-decision.json
-Get-Content runs\quality\gate-report.json
+Get-Content runs\quality\gate-report.md -Encoding UTF8
+python -m json.tool runs\quality\gate-decision.json
 python -m json.tool runs\quality\gate-report.json
 ```
 

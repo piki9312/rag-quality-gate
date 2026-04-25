@@ -53,9 +53,9 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 If console text looks garbled on Windows, set UTF-8 for the current session:
 
 ```powershell
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-$OutputEncoding = [System.Text.UTF8Encoding]::new()
 chcp 65001
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 ```
 
 ## Pack Layout
@@ -215,14 +215,16 @@ python -m json.tool runs/vendor-poc/gate/gate-report.json
 PowerShell:
 
 ```powershell
-Get-Content runs\vendor-poc\gate\gate-report.md
-Get-Content runs\vendor-poc\gate\gate-decision.json
+Get-Content runs\vendor-poc\gate\gate-report.md -Encoding UTF8
+python -m json.tool runs\vendor-poc\gate\gate-decision.json
 python -m json.tool runs\vendor-poc\gate\gate-report.json
 ```
 
 Use the Markdown report for a human review conversation. Use `gate-report.json` for downstream consumers such as CI annotations, weekly review automation, dashboards, or customer evidence archives.
 
 Do not remove or rename existing `gate-report.json` fields in downstream integrations. Treat it as a machine-readable contract.
+
+If Markdown output looks garbled on Windows PowerShell, run the UTF-8 setup commands in the prerequisites section or open the file in VS Code.
 
 ## 6. Read The S1 Failure
 
