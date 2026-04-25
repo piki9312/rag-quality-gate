@@ -19,7 +19,16 @@ The reusable workflow exposes these job outputs for downstream jobs and deploy g
 - `pack_validation_path`
 - `connection_ok`
 - `connection_validation_path`
+- `dry_run_ok`
+- `dry_run_artifact_dir`
 - `gate_history_summary_path`
+- `external_proof_contract_version`
+- `weekly_review_ready`
+- `external_proof_ready`
+
+The reusable workflow output definitions in `templates/github/workflows/rqg-reusable-gate.yml` are the contract source of truth for external proof completion. This README and the demo docs explain that contract, but downstream automation should key off the workflow outputs themselves.
+
+All listed outputs above are always emitted. Diagnostic outputs such as `pack_validation_ok`, `connection_ok`, `dry_run_ok`, `weekly_review_ready`, and `external_proof_ready` use `true`, `false`, or `skipped`. Path outputs stay present but become an empty string when the corresponding artifact was not produced. `external_proof_contract_version` versions the proof-oriented output slice so downstream jobs can make compatibility decisions explicitly.
 
 Minimal setup checklist:
 
@@ -27,15 +36,18 @@ Minimal setup checklist:
 2. Turn on `run_pack_validation: true` and set `pack_dir` so misconfigured packs fail before eval/check.
 3. Prefer `pack_validation_preset` for common caller profiles: `local_docs`, `external`, or `external_notify`.
 4. Add `pack_required_env` only when you need repo-specific env checks beyond the preset.
-5. Set `RAG_API_ENDPOINT` and `RAG_API_KEY` secrets for external mode.
-6. Set `RQG_SLACK_WEBHOOK_URL` or map `notification_webhook_url` for notify mode.
-7. Gate follow-up jobs on `needs.<job-id>.outputs.gate_status == 'pass'`.
+5. For external HTTP proof and onboarding, set `run_connection_validation: true` and pair it with `run_dry_run_probe: true`. The `rqg-gate-external.yml` and `rqg-gate-external-notify.yml` callers already do this.
+6. Set `RAG_API_ENDPOINT` and `RAG_API_KEY` secrets for external mode.
+7. Set `RQG_SLACK_WEBHOOK_URL` or map `notification_webhook_url` for notify mode.
+8. Gate follow-up jobs on `needs.<job-id>.outputs.gate_status == 'pass'`, `weekly_review_ready == 'true'`, or `external_proof_ready == 'true'` depending on the downstream contract you need.
 
 When `run_pack_validation` is enabled, the reusable workflow runs `rqg validate-pack` before connection validation or gate execution. `pack_validation_preset` expands the common env requirements for each caller profile, `pack_required_env` appends repo-specific env names, and the workflow writes `pack-validation.json` into `log_dir/`, surfaces `pack_validation_ok` / `pack_validation_path` as workflow outputs, and adds top findings to the GitHub job summary.
 
-The reusable workflow uploads the full `log_dir/` artifact set, including `pack-validation.json`, `gate-report.md`, `gate-report.json`, `gate-decision.json`, and `gate-history-summary.json`. The report bundle JSON contains the markdown report, decision payload, and recent-history summary in one machine-readable file. The history summary JSON contains the same recent-history summary shown in the gate report and GitHub job summary, plus structured `uncovered_categories`, `stale_case_review`, and `review_steward` data for weekly review automation and issue creation.
+When `run_connection_validation` and `run_dry_run_probe` are both enabled, the reusable workflow also writes a dry-run probe under `log_dir/dry-run/`, surfaces `dry_run_ok` / `dry_run_artifact_dir`, and derives two higher-level readiness signals. `weekly_review_ready` turns `true` when a gate report bundle or history summary exists and downstream review/export jobs have enough input. `external_proof_ready` turns `true` only when connection validation succeeded, the dry-run probe succeeded, and the normal gate emitted decision, bundle, and history artifacts. This aggregate-plus-diagnostics shape is intentional: keep `external_proof_ready` for gating, and keep the individual diagnosis outputs for troubleshooting. `external_proof_contract_version` is the version stamp for that output contract.
 
-The weekly review example downloads the uploaded gate artifacts, prefers `gate-report.json` via `gate_report_json_path`, falls back to `gate-history-summary.json` when needed, and shows how to upsert a GitHub issue plus send an optional Slack Block Kit summary based on the exported payload.
+The reusable workflow uploads the full `log_dir/` artifact set, including `pack-validation.json`, `gate-report.md`, `gate-report.json`, `gate-decision.json`, and `gate-history-summary.json`. The report bundle JSON contains the markdown report, decision payload, and recent-history summary in one machine-readable file. It now declares `schema_version`, `artifact_type`, `bundle_type`, `contract.required_fields`, and `contract.empty_value_rule` so downstream consumers can reason about additive changes and field presence explicitly. The history summary JSON contains the same recent-history summary shown in the gate report and GitHub job summary, plus structured `uncovered_categories`, `stale_case_review`, and `review_steward` data for weekly review automation and issue creation.
+
+The weekly review example downloads the uploaded gate artifacts, prefers `gate-report.json` via `gate_report_json_path`, falls back to `gate-history-summary.json` when needed, and shows how to upsert a GitHub issue plus send an optional Slack Block Kit summary based on the exported payload. The exported weekly review payload now carries `schema_version`, `payload_type`, and `contract` at the top level, while `action_contract` carries its own `schema_version`, `version`, `required_fields`, and `required_action_fields`. The issue body stays human-readable, but the downstream stewardship contract stays machine-readable and versioned.
 
 For triage board linking, set these repository secrets when you use a GitHub Project v2 board:
 

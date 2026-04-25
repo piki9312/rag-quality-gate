@@ -11,10 +11,12 @@ from typing import Protocol
 from rqg.domain import GateDecision
 
 GATE_REPORT_BUNDLE_TYPE = "rqg.gate_report_bundle"
+GATE_REPORT_BUNDLE_ARTIFACT_TYPE = GATE_REPORT_BUNDLE_TYPE
 GATE_REPORT_BUNDLE_SCHEMA_VERSION = "1.0"
 GATE_REPORT_BUNDLE_CONTRACT_NAME = "rqg.gate_report_bundle"
 GATE_REPORT_BUNDLE_STABLE_FIELDS = (
     "schema_version",
+    "artifact_type",
     "bundle_type",
     "contract",
     "generated_at",
@@ -23,6 +25,27 @@ GATE_REPORT_BUNDLE_STABLE_FIELDS = (
     "history_summary",
     "report_markdown",
     "artifact_paths",
+)
+GATE_REPORT_BUNDLE_REQUIRED_FIELDS = GATE_REPORT_BUNDLE_STABLE_FIELDS
+GATE_REPORT_BUNDLE_OPTIONAL_FIELDS: tuple[str, ...] = ()
+GATE_REPORT_BUNDLE_REQUIRED_RUN_FIELDS = (
+    "run_id",
+    "status",
+    "created_at",
+)
+GATE_REPORT_BUNDLE_OPTIONAL_RUN_FIELDS: tuple[str, ...] = ()
+GATE_REPORT_BUNDLE_REQUIRED_ARTIFACT_PATH_FIELDS = (
+    "report_path",
+    "decision_path",
+    "history_summary_path",
+    "history_path",
+    "bundle_path",
+)
+GATE_REPORT_BUNDLE_OPTIONAL_ARTIFACT_PATH_FIELDS: tuple[str, ...] = ()
+GATE_REPORT_BUNDLE_EMPTY_VALUE_RULE = (
+    "fields are always present within the same major version; use empty strings for empty "
+    "text/path values, [] for empty lists, {} for empty objects, and null for absent scalar "
+    "values instead of omitting keys"
 )
 
 
@@ -88,17 +111,32 @@ class BundleJsonReportAdapter:
 def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str, object]:
     """Build a consolidated machine-readable gate report bundle."""
     generated_at = _format_datetime_iso(artifacts.decision.created_at)
+    artifact_paths = {
+        "report_path": artifacts.report_path.as_posix(),
+        "decision_path": artifacts.decision_path.as_posix(),
+        "history_summary_path": artifacts.history_summary_path.as_posix(),
+        "history_path": artifacts.history_path.as_posix(),
+        "bundle_path": artifacts.bundle_path.as_posix(),
+    }
     return {
         "schema_version": GATE_REPORT_BUNDLE_SCHEMA_VERSION,
+        "artifact_type": GATE_REPORT_BUNDLE_ARTIFACT_TYPE,
         "bundle_type": GATE_REPORT_BUNDLE_TYPE,
         "contract": {
             "name": GATE_REPORT_BUNDLE_CONTRACT_NAME,
             "version": GATE_REPORT_BUNDLE_SCHEMA_VERSION,
             "stable_fields": list(GATE_REPORT_BUNDLE_STABLE_FIELDS),
+            "required_fields": list(GATE_REPORT_BUNDLE_REQUIRED_FIELDS),
+            "optional_fields": list(GATE_REPORT_BUNDLE_OPTIONAL_FIELDS),
+            "required_run_fields": list(GATE_REPORT_BUNDLE_REQUIRED_RUN_FIELDS),
+            "optional_run_fields": list(GATE_REPORT_BUNDLE_OPTIONAL_RUN_FIELDS),
+            "required_artifact_path_fields": list(GATE_REPORT_BUNDLE_REQUIRED_ARTIFACT_PATH_FIELDS),
+            "optional_artifact_path_fields": list(GATE_REPORT_BUNDLE_OPTIONAL_ARTIFACT_PATH_FIELDS),
             "compatibility": (
                 "minor changes are additive; existing stable fields remain backward "
                 "compatible within the same major version"
             ),
+            "empty_value_rule": GATE_REPORT_BUNDLE_EMPTY_VALUE_RULE,
         },
         "generated_at": generated_at,
         "run": {
@@ -109,13 +147,7 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         "decision": artifacts.decision.model_dump(mode="json"),
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,
-        "artifact_paths": {
-            "report_path": artifacts.report_path.as_posix(),
-            "decision_path": artifacts.decision_path.as_posix(),
-            "history_summary_path": artifacts.history_summary_path.as_posix(),
-            "history_path": artifacts.history_path.as_posix(),
-            "bundle_path": artifacts.bundle_path.as_posix(),
-        },
+        "artifact_paths": artifact_paths,
     }
 
 

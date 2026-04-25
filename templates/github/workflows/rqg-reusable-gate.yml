@@ -92,6 +92,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_dry_run_probe:
+        description: Run rqg gate --dry-run before the main gate to prove the external path safely
+        required: false
+        default: false
+        type: boolean
       connection_query:
         description: Probe query for external connection validation
         required: false
@@ -164,9 +169,24 @@ on:
       connection_validation_path:
         description: Path to connection-validation.json when produced
         value: ${{ jobs.rqg_gate.outputs.connection_validation_path }}
+      dry_run_ok:
+        description: true, false, or skipped
+        value: ${{ jobs.rqg_gate.outputs.dry_run_ok }}
+      dry_run_artifact_dir:
+        description: Path to the newest dry-run artifact directory when produced
+        value: ${{ jobs.rqg_gate.outputs.dry_run_artifact_dir }}
       gate_history_summary_path:
         description: Path to gate-history-summary.json when produced
         value: ${{ jobs.rqg_gate.outputs.gate_history_summary_path }}
+      external_proof_contract_version:
+        description: Version of the reusable workflow external proof output contract
+        value: ${{ jobs.rqg_gate.outputs.external_proof_contract_version }}
+      weekly_review_ready:
+        description: true when gate artifacts are sufficient to export weekly review payloads
+        value: ${{ jobs.rqg_gate.outputs.weekly_review_ready }}
+      external_proof_ready:
+        description: true when connection validation, dry-run, gate, history, and weekly-review inputs are all ready
+        value: ${{ jobs.rqg_gate.outputs.external_proof_ready }}
 
 jobs:
   rqg_gate:
@@ -182,7 +202,12 @@ jobs:
       pack_validation_path: ${{ steps.collect.outputs.pack_validation_path }}
       connection_ok: ${{ steps.collect.outputs.connection_ok }}
       connection_validation_path: ${{ steps.collect.outputs.connection_validation_path }}
+      dry_run_ok: ${{ steps.collect.outputs.dry_run_ok }}
+      dry_run_artifact_dir: ${{ steps.collect.outputs.dry_run_artifact_dir }}
       gate_history_summary_path: ${{ steps.collect.outputs.gate_history_summary_path }}
+      external_proof_contract_version: ${{ steps.collect.outputs.external_proof_contract_version }}
+      weekly_review_ready: ${{ steps.collect.outputs.weekly_review_ready }}
+      external_proof_ready: ${{ steps.collect.outputs.external_proof_ready }}
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       RQG_RAG_API_ENDPOINT: ${{ secrets.rag_api_endpoint }}
@@ -418,9 +443,53 @@ jobs:
           printf '\n'
           "${cmd[@]}"
 
+      - name: Run gate dry-run probe
+        id: dry_run_probe
+        if: ${{ (!inputs.run_pack_validation || steps.validate_pack.outcome == 'success') && (!inputs.run_connection_validation || steps.validate_connection.outcome == 'success') && inputs.run_dry_run_probe }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          cmd=(
+            rqg gate "${{ inputs.cases_path }}"
+            --log-dir "${{ inputs.log_dir }}"
+            --index-dir "${{ inputs.index_dir }}"
+            --context-k "${{ inputs.context_k }}"
+            --warn-exit-code "${{ inputs.warn_exit_code }}"
+            --dry-run
+          )
+
+          if [ -n "${{ inputs.docs_dir }}" ]; then
+            cmd+=(--docs "${{ inputs.docs_dir }}")
+          fi
+
+          if [ "${{ inputs.mock }}" = "true" ]; then
+            cmd+=(--mock)
+          fi
+
+          if [ -n "$RQG_RAG_API_ENDPOINT" ]; then
+            cmd+=(--rag-endpoint "$RQG_RAG_API_ENDPOINT")
+          fi
+
+          if [ -n "$RQG_RAG_API_KEY" ]; then
+            cmd+=(--rag-api-key-env RQG_RAG_API_KEY)
+          fi
+
+          if [ -n "${{ inputs.quality_pack_path }}" ]; then
+            cmd+=(--quality-pack "${{ inputs.quality_pack_path }}")
+          fi
+
+          if [ -n "${{ steps.resolve_config.outputs.config_path }}" ]; then
+            cmd+=(--config "${{ steps.resolve_config.outputs.config_path }}")
+          fi
+
+          printf 'Running:'
+          printf ' %q' "${cmd[@]}"
+          printf '\n'
+          "${cmd[@]}"
+
       - name: Run gate
         id: run_gate
-        if: ${{ (!inputs.run_pack_validation || steps.validate_pack.outcome == 'success') && (!inputs.run_connection_validation || steps.validate_connection.outcome == 'success') }}
+        if: ${{ (!inputs.run_pack_validation || steps.validate_pack.outcome == 'success') && (!inputs.run_connection_validation || steps.validate_connection.outcome == 'success') && (!inputs.run_dry_run_probe || steps.dry_run_probe.outcome == 'success') }}
         continue-on-error: true
         shell: bash
         run: |
@@ -473,6 +542,9 @@ jobs:
           LOG_DIR: ${{ inputs.log_dir }}
           VALIDATE_PACK_STEP_OUTCOME: ${{ steps.validate_pack.outcome }}
           CONNECTION_STEP_OUTCOME: ${{ steps.validate_connection.outcome }}
+          DRY_RUN_STEP_OUTCOME: ${{ steps.dry_run_probe.outcome }}
+          RUN_CONNECTION_VALIDATION: ${{ inputs.run_connection_validation }}
+          RUN_DRY_RUN_PROBE: ${{ inputs.run_dry_run_probe }}
         run: |
           import json
           import os
@@ -484,6 +556,7 @@ jobs:
           report_bundle_path = log_dir / "gate-report.json"
           pack_validation_path = log_dir / "pack-validation.json"
           connection_path = log_dir / "connection-validation.json"
+          dry_run_root = log_dir / "dry-run"
           history_summary_path = log_dir / "gate-history-summary.json"
 
           gate_status = "not_run"
@@ -493,6 +566,8 @@ jobs:
           pack_validation_ok = "skipped"
           pack_validation_summary = ""
           pack_validation_findings = []
+          run_connection_validation = os.environ.get("RUN_CONNECTION_VALIDATION", "").lower() == "true"
+          run_dry_run_probe = os.environ.get("RUN_DRY_RUN_PROBE", "").lower() == "true"
 
           if pack_validation_path.exists():
               pack_validation_payload = json.loads(pack_validation_path.read_text(encoding="utf-8"))
@@ -542,6 +617,39 @@ jobs:
           else:
               connection_ok = "skipped"
 
+          dry_run_artifact_dir = ""
+          if dry_run_root.exists():
+              dry_run_dirs = sorted(
+                  [path for path in dry_run_root.iterdir() if path.is_dir()],
+                  key=lambda path: path.stat().st_mtime,
+              )
+              if dry_run_dirs:
+                  dry_run_artifact_dir = dry_run_dirs[-1].as_posix()
+
+          if os.environ.get("DRY_RUN_STEP_OUTCOME"):
+              if os.environ["DRY_RUN_STEP_OUTCOME"] == "success" and dry_run_artifact_dir:
+                  dry_run_ok = "true"
+              elif os.environ["DRY_RUN_STEP_OUTCOME"] == "failure":
+                  dry_run_ok = "false"
+              else:
+                  dry_run_ok = "false"
+          else:
+              dry_run_ok = "skipped"
+
+          weekly_review_ready = (
+              "true" if report_bundle_path.exists() or history_summary_path.exists() else "false"
+          )
+          external_proof_ready = "true" if (
+              run_connection_validation
+              and connection_ok == "true"
+              and run_dry_run_probe
+              and dry_run_ok == "true"
+              and gate_path.exists()
+              and report_bundle_path.exists()
+              and history_summary_path.exists()
+              and weekly_review_ready == "true"
+          ) else "false"
+
           outputs = {
               "gate_status": gate_status,
               "gate_run_id": gate_run_id,
@@ -552,7 +660,12 @@ jobs:
               "pack_validation_path": pack_validation_path.as_posix() if pack_validation_path.exists() else "",
               "connection_ok": connection_ok,
               "connection_validation_path": connection_path.as_posix() if connection_path.exists() else "",
+              "dry_run_ok": dry_run_ok,
+              "dry_run_artifact_dir": dry_run_artifact_dir,
               "gate_history_summary_path": history_summary_path.as_posix() if history_summary_path.exists() else "",
+                "external_proof_contract_version": "1.0",
+              "weekly_review_ready": weekly_review_ready,
+              "external_proof_ready": external_proof_ready,
           }
 
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
@@ -568,12 +681,16 @@ jobs:
                   f"- Pack validation: {pack_validation_ok}",
                   f"- Connection validation: {connection_ok}",
               ]
+              if run_dry_run_probe:
+                  lines.append(f"- Dry-run probe: {dry_run_ok}")
               if gate_run_id:
                   lines.append(f"- Run ID: {gate_run_id}")
               if pack_validation_path.exists():
                   lines.append(f"- Pack validation path: {pack_validation_path.as_posix()}")
               if pack_validation_summary:
                   lines.append(f"- Pack validation findings: {pack_validation_summary}")
+              if dry_run_artifact_dir:
+                  lines.append(f"- Dry-run artifact dir: {dry_run_artifact_dir}")
               if report_path.exists():
                   lines.append(f"- Report path: {report_path.as_posix()}")
               if report_bundle_path.exists():
@@ -582,11 +699,35 @@ jobs:
                   lines.append(f"- Decision path: {gate_path.as_posix()}")
               if history_summary_path.exists():
                   lines.append(f"- History summary path: {history_summary_path.as_posix()}")
+              lines.append(f"- Weekly review ready: {weekly_review_ready}")
+              if run_connection_validation or run_dry_run_probe:
+                  lines.append(f"- External proof ready: {external_proof_ready}")
               if pack_validation_findings:
                   lines.append("")
                   lines.append("### Pack Validation Findings")
                   for finding in pack_validation_findings:
                       lines.append(f"- {finding}")
+              if run_connection_validation or run_dry_run_probe:
+                  lines.append("")
+                  lines.append("### External Proof Checklist")
+                  if run_connection_validation:
+                      lines.append(
+                          f"- [{'x' if connection_ok == 'true' else ' '}] External connection validation"
+                      )
+                  if run_dry_run_probe:
+                      lines.append(f"- [{'x' if dry_run_ok == 'true' else ' '}] Gate dry-run probe")
+                  lines.append(
+                      f"- [{'x' if gate_path.exists() else ' '}] Gate decision artifact"
+                  )
+                  lines.append(
+                      f"- [{'x' if report_bundle_path.exists() else ' '}] Gate report bundle"
+                  )
+                  lines.append(
+                      f"- [{'x' if history_summary_path.exists() else ' '}] History summary"
+                  )
+                  lines.append(
+                      f"- [{'x' if weekly_review_ready == 'true' else ' '}] Weekly review export input"
+                  )
               if history_summary_lines:
                   lines.append("")
                   lines.append("### Recent History Summary")
@@ -609,6 +750,11 @@ jobs:
 
       - name: Fail when connection validation failed
         if: ${{ always() && inputs.run_connection_validation && steps.validate_connection.outcome == 'failure' }}
+        shell: bash
+        run: exit 1
+
+      - name: Fail when gate dry-run probe failed
+        if: ${{ always() && inputs.run_dry_run_probe && steps.dry_run_probe.outcome == 'failure' }}
         shell: bash
         run: exit 1
 

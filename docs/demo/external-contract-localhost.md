@@ -172,8 +172,9 @@ rqg history --log-dir runs/external-http-proof/gate --last 5 --compare-offset 1 
 downstream consumer が安定して参照するフィールド:
 
 - `schema_version`: bundle schema version。現在は `1.0`
+- `artifact_type`: `rqg.gate_report_bundle`
 - `bundle_type`: `rqg.gate_report_bundle`
-- `contract`: contract name, version, stable fields, compatibility rule
+- `contract`: contract name, version, stable fields, required fields, compatibility rule, empty/null/omitted rule
 - `run`: `run_id`, `status`, `created_at` の軽量 summary
 - `decision`: gate 判定の machine-readable 本体
 - `history_summary`: recent history / stale / uncovered category の運用 summary
@@ -183,7 +184,9 @@ downstream consumer が安定して参照するフィールド:
 互換性方針:
 
 - minor change は additive とし、既存 stable field の意味を壊さない
-- downstream はまず `bundle_type` と `schema_version` を確認する
+- downstream はまず `artifact_type` と `schema_version` を確認する
+- top-level fields と `artifact_paths` fields は常に存在し、値が空でも key は省略しない
+- 空の文字列は `""`、空の配列は `[]`、空の object は `{}`、値なし scalar は `null` に寄せる
 - weekly review, GitHub issue, Slack 要約などの後続連携は `decision` と `history_summary` を主に読む
 - `report_markdown` は表示用であり、判定ロジックの入力にはしない
 
@@ -196,8 +199,12 @@ rqg export-weekly-review `
 期待結果:
 
 - `weekly-review-issue.json` が生成される
-- title / body / labels / summary が入る
+- `schema_version`, `payload_type`, `contract`, title / body / labels / summary / action_contract が入る
 - `summary.latest_status`, `summary.latest_run_id`, `summary.week_start` が downstream でそのまま使える
+- `action_contract.schema_version`, `action_contract.version`, `action_contract.required_fields`, `action_contract.required_action_fields` が contract metadata としてそのまま使える
+- `action_contract.state`, `action_contract.required_action_count`, `action_contract.required_actions[*].id` が steward 向け follow-up contract としてそのまま使える
+
+この payload は key の存在も固定しています。top-level fields と `action_contract` fields は常に存在し、値がない場合は key ごと落とすのではなく `null` / `[]` / `{}` で表現します。
 
 この 1 ファイルがあれば、GitHub issue 作成、Slack 要約生成、週次レビュー会議資料への転記を分岐しやすくなります。
 
@@ -238,7 +245,22 @@ rqg gate packs/hr/cases.csv `
 
 1. `validate-connection` の失敗系で `auth_error` を確認した
 2. `validate-connection` の成功系が OK になった
-3. `rqg gate --dry-run` が external endpoint 経由で通った
-4. 通常 `rqg gate` の通知 payload が notify sink に入った
+3. `rqg gate --dry-run` が external endpoint 経由で通り、dry-run artifact dir が作られた
+4. 通常 `rqg gate` の通知 payload が notify sink に入り、`gate-report.json` と `gate-history-summary.json` が残った
 5. `rqg history` が append 済み履歴を読めた
-6. `gate-report.json` から weekly review payload を生成できた
+6. `gate-report.json` から weekly review payload を生成でき、payload に `action_contract` が入った
+
+GitHub Actions の reusable workflow に寄せると、上の完了条件は次の signals で同じ意味になります。
+
+| Manual proof step | Reusable workflow contract |
+|---|---|
+| `validate-connection` 成功系 | `run_connection_validation: true` と `connection_ok == 'true'` |
+| `gate --dry-run` 成功 | `run_dry_run_probe: true` と `dry_run_ok == 'true'` |
+| 通常 gate の artifact が揃った | `gate_report_json_path` と `gate_history_summary_path` が空でない |
+| output contract version が一致 | `external_proof_contract_version == '1.0'` |
+| weekly review export の入力が揃った | `weekly_review_ready == 'true'` |
+| external proof 全体が完了 | `external_proof_ready == 'true'` |
+
+manual proof を終えたら、この table の outputs を reusable workflow 側でも同じ完了条件として扱います。完了条件の source of truth は reusable workflow outputs です。docs はその読み方を説明するだけで、将来ズレた場合は workflow outputs の定義を優先します。以後は docs の手順を毎回なぞるより、workflow outputs を downstream gate や onboarding 完了判定に使う方が再利用しやすいです。
+
+downstream 側では、aggregate boolean の `external_proof_ready` で gate を切りつつ、`connection_ok`, `dry_run_ok`, `weekly_review_ready`, `gate_report_json_path`, `gate_history_summary_path` を diagnosis details として読む形が扱いやすいです。

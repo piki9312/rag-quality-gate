@@ -105,8 +105,9 @@ jobs:
           script: |
             const fs = require('fs');
             const payload = JSON.parse(fs.readFileSync('weekly-review-issue.json', 'utf8'));
+            const actionContract = payload.action_contract || {};
             if (!payload.issue_needed) {
-              core.info('No uncovered categories. Skipping issue creation.');
+              core.info(`No weekly review issue needed (state=${actionContract.state || 'unknown'}). Skipping issue creation.`);
               core.setOutput('created', 'false');
               return;
             }
@@ -232,6 +233,7 @@ jobs:
 
           payload = json.loads(open("weekly-review-issue.json", "r", encoding="utf-8").read())
           summary = payload.get("summary", {})
+          action_contract = payload.get("action_contract", {})
           uncovered = payload.get("uncovered_categories", [])[:5]
           text_lines = [payload.get("title", "[Phase2.5][Weekly Review]")]
           text_lines.append(
@@ -239,6 +241,9 @@ jobs:
           )
           text_lines.append(
               f"Coverage: {summary.get('coverage_rate', 0.0):.1f}% / uncovered: {summary.get('uncovered_categories_count', 0)}"
+          )
+          text_lines.append(
+              f"Action state: {action_contract.get('state', '-')} / required actions: {action_contract.get('required_action_count', 0)}"
           )
           uncovered_text = []
           if uncovered:
@@ -276,6 +281,14 @@ jobs:
                       {
                           "type": "mrkdwn",
                           "text": f"*Coverage*\n{summary.get('coverage_rate', 0.0):.1f}%",
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": f"*Action State*\n{action_contract.get('state', '-')}",
+                      },
+                      {
+                          "type": "mrkdwn",
+                          "text": f"*Required Actions*\n{action_contract.get('required_action_count', 0)}",
                       },
                   ],
               },

@@ -184,7 +184,7 @@ rqg gate packs/my_pack/cases.csv \
     --dry-run
 ```
 
-`gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。`schema_version`、`bundle_type`、`contract`、`run` を含むため、GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。たとえば `rqg export-weekly-review --bundle-file runs/quality/gate-report.json` で weekly review issue payload を直接生成できます。
+`gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。`schema_version`、`artifact_type`、`bundle_type`、`contract`、`run` を含むため、GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。`contract.required_fields` と `contract.required_artifact_path_fields` で常に存在する key を確認でき、`contract.compatibility` と `contract.empty_value_rule` で additive change 原則と empty/null/omitted の統一ルールを読めます。たとえば `rqg export-weekly-review --bundle-file runs/quality/gate-report.json` で weekly review issue payload を直接生成できます。
 
 ## ドキュメント案内
 

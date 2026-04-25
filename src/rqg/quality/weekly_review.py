@@ -7,6 +7,59 @@ from typing import Any, Mapping
 
 DEFAULT_WEEKLY_REVIEW_TITLE_PREFIX = "[Phase2.5][Weekly Review]"
 DEFAULT_WEEKLY_REVIEW_LABELS = ["phase2-5", "weekly-review", "ops"]
+WEEKLY_REVIEW_PAYLOAD_TYPE = "rqg.weekly_review_issue_payload"
+WEEKLY_REVIEW_PAYLOAD_SCHEMA_VERSION = "1.0"
+WEEKLY_REVIEW_PAYLOAD_CONTRACT_NAME = "rqg.weekly_review_issue_payload"
+WEEKLY_REVIEW_PAYLOAD_STABLE_FIELDS = (
+    "schema_version",
+    "payload_type",
+    "contract",
+    "title",
+    "body",
+    "labels",
+    "issue_needed",
+    "review_steward",
+    "summary",
+    "action_contract",
+    "uncovered_categories",
+    "stale_case_review",
+)
+WEEKLY_REVIEW_PAYLOAD_REQUIRED_FIELDS = WEEKLY_REVIEW_PAYLOAD_STABLE_FIELDS
+WEEKLY_REVIEW_PAYLOAD_OPTIONAL_FIELDS: tuple[str, ...] = ()
+WEEKLY_REVIEW_ACTION_CONTRACT_NAME = "rqg.weekly_review_actions"
+WEEKLY_REVIEW_ACTION_CONTRACT_SCHEMA_VERSION = "1.0"
+WEEKLY_REVIEW_ACTION_CONTRACT_VERSION = "1.0"
+WEEKLY_REVIEW_ACTION_CONTRACT_STABLE_FIELDS = (
+    "schema_version",
+    "name",
+    "version",
+    "stable_fields",
+    "required_fields",
+    "optional_fields",
+    "required_action_fields",
+    "optional_action_fields",
+    "compatibility",
+    "state",
+    "issue_needed",
+    "review_steward",
+    "triggered_by",
+    "signals",
+    "required_action_count",
+    "required_actions",
+    "completion_criteria",
+)
+WEEKLY_REVIEW_ACTION_CONTRACT_REQUIRED_FIELDS = WEEKLY_REVIEW_ACTION_CONTRACT_STABLE_FIELDS
+WEEKLY_REVIEW_ACTION_CONTRACT_OPTIONAL_FIELDS: tuple[str, ...] = ()
+WEEKLY_REVIEW_ACTION_ITEM_REQUIRED_FIELDS = (
+    "id",
+    "title",
+    "summary",
+    "owner",
+    "status",
+    "evidence",
+    "completion_criteria",
+)
+WEEKLY_REVIEW_ACTION_ITEM_OPTIONAL_FIELDS: tuple[str, ...] = ()
 
 
 def build_weekly_review_issue_payload(
@@ -38,9 +91,28 @@ def build_weekly_review_issue_payload(
         trend.get("latest_run_id") or comparison.get("current_run_id") or "unknown-run"
     )
     latest_status = str(trend.get("latest_status") or comparison.get("current_status") or "UNKNOWN")
+    coverage_rate = float(coverage.get("coverage_rate", 0.0) or 0.0) if coverage else 0.0
     uncovered_count = len(uncovered_categories)
     stale_case_count = len(stale_cases)
     issue_needed = uncovered_count > 0 or stale_case_count > 0
+    action_contract = _build_action_contract(
+        week_start=week_start,
+        latest_run_id=latest_run_id,
+        latest_status=latest_status,
+        coverage_rate=coverage_rate,
+        review_steward=review_steward or None,
+        uncovered_categories=uncovered_categories,
+        stale_cases=stale_cases,
+    )
+    summary = {
+        "week_start": week_start,
+        "latest_run_id": latest_run_id,
+        "latest_status": latest_status,
+        "entries": int(summary_payload.get("entries", 0) or 0),
+        "coverage_rate": coverage_rate,
+        "uncovered_categories_count": uncovered_count,
+        "stale_cases_count": stale_case_count,
+    }
 
     title = f"{title_prefix.strip() or DEFAULT_WEEKLY_REVIEW_TITLE_PREFIX} {week_start}"
     if title_suffix.strip():
@@ -68,7 +140,7 @@ def build_weekly_review_issue_payload(
             "- Failure action coverage: "
             f"{int(coverage.get('covered_categories', 0) or 0)}/"
             f"{int(coverage.get('total_categories', 0) or 0)} categories "
-            f"({float(coverage.get('coverage_rate', 0.0) or 0.0):.1f}%)"
+            f"({coverage_rate:.1f}%)"
         )
 
     if stale_case_review:
@@ -86,6 +158,10 @@ def build_weekly_review_issue_payload(
             uncovered_count=uncovered_count,
             stale_case_count=stale_case_count,
         )
+    )
+    body_lines.append(f"- Action contract state: {action_contract['state']}")
+    body_lines.append(
+        f"- Required steward actions: {int(action_contract['required_action_count'])}"
     )
 
     body_lines.extend(
@@ -140,22 +216,11 @@ def build_weekly_review_issue_payload(
             )
 
     body_lines.extend(["", "## Required Actions", ""])
-    if issue_needed:
-        body_lines.extend(
-            [
-                "- [ ] Review uncovered failure categories and confirm first_action coverage in quality-pack.yml.",
-                "- [ ] Assign owner and due date for stale or uncovered items.",
-                "- [ ] Record warn-only, no-data, or override exceptions when they affected this week.",
-                "- [ ] Close this issue after stale and uncovered items are cleared or explicitly accepted.",
-            ]
-        )
-    else:
-        body_lines.extend(
-            [
-                "- [ ] Review the recent history summary below and close or archive this issue if no follow-up is needed.",
-                "- [ ] Record any steward-owned operational follow-up discovered during the weekly review.",
-            ]
-        )
+    body_lines.extend(
+        f"- [ ] {str(action.get('summary', '')).strip()}"
+        for action in action_contract["required_actions"]
+        if str(action.get("summary", "")).strip()
+    )
 
     summary_lines = [str(line) for line in summary_payload.get("summary_lines", [])]
     if summary_lines:
@@ -175,23 +240,248 @@ def build_weekly_review_issue_payload(
     )
 
     return {
+        "schema_version": WEEKLY_REVIEW_PAYLOAD_SCHEMA_VERSION,
+        "payload_type": WEEKLY_REVIEW_PAYLOAD_TYPE,
+        "contract": {
+            "name": WEEKLY_REVIEW_PAYLOAD_CONTRACT_NAME,
+            "version": WEEKLY_REVIEW_PAYLOAD_SCHEMA_VERSION,
+            "stable_fields": list(WEEKLY_REVIEW_PAYLOAD_STABLE_FIELDS),
+            "required_fields": list(WEEKLY_REVIEW_PAYLOAD_REQUIRED_FIELDS),
+            "optional_fields": list(WEEKLY_REVIEW_PAYLOAD_OPTIONAL_FIELDS),
+            "compatibility": (
+                "minor changes are additive; existing stable fields remain backward "
+                "compatible within the same major version"
+            ),
+        },
         "title": title.strip(),
         "body": "\n".join(body_lines).strip() + "\n",
         "labels": labels,
         "issue_needed": issue_needed,
         "review_steward": review_steward or None,
-        "summary": {
-            "week_start": week_start,
-            "latest_run_id": latest_run_id,
-            "latest_status": latest_status,
-            "entries": int(summary_payload.get("entries", 0) or 0),
-            "coverage_rate": float(coverage.get("coverage_rate", 0.0) or 0.0) if coverage else 0.0,
-            "uncovered_categories_count": uncovered_count,
-            "stale_cases_count": stale_case_count,
-        },
+        "summary": summary,
+        "action_contract": action_contract,
         "uncovered_categories": uncovered_categories,
         "stale_case_review": stale_case_review,
     }
+
+
+def _build_action_contract(
+    *,
+    week_start: str,
+    latest_run_id: str,
+    latest_status: str,
+    coverage_rate: float,
+    review_steward: str | None,
+    uncovered_categories: list[dict[str, Any]],
+    stale_cases: list[dict[str, Any]],
+) -> dict[str, Any]:
+    uncovered_count = len(uncovered_categories)
+    stale_case_count = len(stale_cases)
+    issue_needed = uncovered_count > 0 or stale_case_count > 0
+    triggered_by: list[str] = []
+    required_actions: list[dict[str, Any]] = []
+
+    if uncovered_count > 0:
+        triggered_by.append("uncovered_categories")
+        required_actions.append(
+            _build_action_item(
+                action_id="review-uncovered-categories",
+                title="Review uncovered failure categories",
+                summary=(
+                    "Review uncovered failure categories and confirm first_action coverage in "
+                    "quality-pack.yml."
+                ),
+                owner=review_steward,
+                evidence={
+                    "uncovered_categories_count": uncovered_count,
+                    "failure_categories": _collect_unique_strings(
+                        item.get("failure_category") for item in uncovered_categories
+                    ),
+                    "affected_case_ids": _collect_unique_strings(
+                        case_id
+                        for item in uncovered_categories
+                        for case_id in item.get("affected_case_ids", [])
+                    ),
+                },
+                completion_criteria=(
+                    "Each uncovered category has first_action coverage or an explicit acceptance "
+                    "record."
+                ),
+            )
+        )
+
+    if stale_case_count > 0:
+        triggered_by.append("stale_cases")
+        required_actions.append(
+            _build_action_item(
+                action_id="review-stale-cases",
+                title="Review stale active cases",
+                summary="Review stale active cases and refresh owner, due date, or review evidence.",
+                owner=review_steward,
+                evidence={
+                    "stale_cases_count": stale_case_count,
+                    "case_ids": _collect_unique_strings(
+                        item.get("case_id") for item in stale_cases
+                    ),
+                    "owners": _collect_unique_strings(item.get("owner") for item in stale_cases),
+                },
+                completion_criteria=(
+                    "Each stale active case has fresh review evidence or an explicit acceptance "
+                    "record."
+                ),
+            )
+        )
+
+    if issue_needed:
+        required_actions.extend(
+            [
+                _build_action_item(
+                    action_id="assign-follow-up-owner",
+                    title="Assign owners and due dates",
+                    summary="Assign owner and due date for stale or uncovered items.",
+                    owner=review_steward,
+                    evidence={
+                        "uncovered_categories_count": uncovered_count,
+                        "stale_cases_count": stale_case_count,
+                    },
+                    completion_criteria="Every stale or uncovered item has an owner and due date.",
+                ),
+                _build_action_item(
+                    action_id="record-operational-exceptions",
+                    title="Record weekly exceptions",
+                    summary="Record warn-only, no-data, or override exceptions when they affected this week.",
+                    owner=review_steward,
+                    evidence={
+                        "latest_status": latest_status,
+                    },
+                    completion_criteria=(
+                        "Relevant weekly exceptions are captured in the issue or downstream tracker."
+                    ),
+                ),
+                _build_action_item(
+                    action_id="close-weekly-review",
+                    title="Close weekly review issue",
+                    summary=(
+                        "Close this issue after stale and uncovered items are cleared or explicitly "
+                        "accepted."
+                    ),
+                    owner=review_steward,
+                    evidence={
+                        "issue_needed": issue_needed,
+                    },
+                    completion_criteria=(
+                        "The weekly review issue is closed after follow-up is complete or explicitly "
+                        "accepted."
+                    ),
+                ),
+            ]
+        )
+        completion_criteria = [
+            "Required actions are completed or explicitly accepted by the weekly review steward.",
+            "Outstanding stale or uncovered items have owners and due dates.",
+            "The weekly review issue is closed after follow-up is complete.",
+        ]
+    else:
+        required_actions.extend(
+            [
+                _build_action_item(
+                    action_id="review-recent-history",
+                    title="Review recent history",
+                    summary=(
+                        "Review the recent history summary below and close or archive this issue if "
+                        "no follow-up is needed."
+                    ),
+                    owner=review_steward,
+                    evidence={
+                        "latest_run_id": latest_run_id,
+                        "latest_status": latest_status,
+                        "week_start": week_start,
+                    },
+                    completion_criteria="Recent history has been reviewed.",
+                ),
+                _build_action_item(
+                    action_id="record-steward-follow-up",
+                    title="Record steward follow-up",
+                    summary=(
+                        "Record any steward-owned operational follow-up discovered during the weekly "
+                        "review."
+                    ),
+                    owner=review_steward,
+                    evidence={
+                        "latest_status": latest_status,
+                    },
+                    completion_criteria=(
+                        "Any additional steward-owned follow-up is captured before closure or archive."
+                    ),
+                ),
+            ]
+        )
+        completion_criteria = [
+            "Recent history has been reviewed.",
+            "Any steward-owned follow-up is captured before the weekly review is closed or archived.",
+        ]
+
+    return {
+        "schema_version": WEEKLY_REVIEW_ACTION_CONTRACT_SCHEMA_VERSION,
+        "name": WEEKLY_REVIEW_ACTION_CONTRACT_NAME,
+        "version": WEEKLY_REVIEW_ACTION_CONTRACT_VERSION,
+        "stable_fields": list(WEEKLY_REVIEW_ACTION_CONTRACT_STABLE_FIELDS),
+        "required_fields": list(WEEKLY_REVIEW_ACTION_CONTRACT_REQUIRED_FIELDS),
+        "optional_fields": list(WEEKLY_REVIEW_ACTION_CONTRACT_OPTIONAL_FIELDS),
+        "required_action_fields": list(WEEKLY_REVIEW_ACTION_ITEM_REQUIRED_FIELDS),
+        "optional_action_fields": list(WEEKLY_REVIEW_ACTION_ITEM_OPTIONAL_FIELDS),
+        "compatibility": (
+            "minor changes are additive; existing stable fields remain backward compatible "
+            "within the same major version"
+        ),
+        "state": "action_required" if issue_needed else "review_only",
+        "issue_needed": issue_needed,
+        "review_steward": review_steward,
+        "triggered_by": triggered_by,
+        "signals": {
+            "week_start": week_start,
+            "latest_run_id": latest_run_id,
+            "latest_status": latest_status,
+            "coverage_rate": coverage_rate,
+            "uncovered_categories_count": uncovered_count,
+            "stale_cases_count": stale_case_count,
+        },
+        "required_action_count": len(required_actions),
+        "required_actions": required_actions,
+        "completion_criteria": completion_criteria,
+    }
+
+
+def _build_action_item(
+    *,
+    action_id: str,
+    title: str,
+    summary: str,
+    owner: str | None,
+    evidence: Mapping[str, Any],
+    completion_criteria: str,
+) -> dict[str, Any]:
+    return {
+        "id": action_id,
+        "title": title,
+        "summary": summary,
+        "owner": owner,
+        "status": "open",
+        "evidence": dict(evidence),
+        "completion_criteria": completion_criteria,
+    }
+
+
+def _collect_unique_strings(values: Any) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        item = str(value or "").strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        normalized.append(item)
+    return normalized
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:

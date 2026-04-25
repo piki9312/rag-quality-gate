@@ -33,6 +33,7 @@ def test_reusable_gate_template_declares_workflow_call_contract() -> None:
     assert "pack_validation_preset" in inputs
     assert "pack_dir" in inputs
     assert "run_connection_validation" in inputs
+    assert "run_dry_run_probe" in inputs
     assert "notification_kind" in inputs
 
     assert "gate_status" in outputs
@@ -44,12 +45,18 @@ def test_reusable_gate_template_declares_workflow_call_contract() -> None:
     assert "pack_validation_path" in outputs
     assert "connection_ok" in outputs
     assert "connection_validation_path" in outputs
+    assert "dry_run_ok" in outputs
+    assert "dry_run_artifact_dir" in outputs
     assert "gate_history_summary_path" in outputs
+    assert "external_proof_contract_version" in outputs
+    assert "weekly_review_ready" in outputs
+    assert "external_proof_ready" in outputs
 
     step_names = [step.get("name", "") for step in payload["jobs"]["rqg_gate"]["steps"]]
     assert "Preflight configuration" in step_names
     assert "Validate pack onboarding" in step_names
     assert "Validate external RAG connection" in step_names
+    assert "Run gate dry-run probe" in step_names
     assert "Run gate" in step_names
     assert "Collect gate outputs" in step_names
 
@@ -112,6 +119,9 @@ def test_template_callers_use_reusable_gate_workflow() -> None:
         assert job["with"]["run_pack_validation"] == "true"
         assert job["with"]["pack_validation_preset"] == expected_presets[template_name]
         assert job["with"]["pack_dir"] == "packs/hr"
+        if template_name in {"rqg-gate-external.yml", "rqg-gate-external-notify.yml"}:
+            assert job["with"]["run_connection_validation"] == "true"
+            assert job["with"]["run_dry_run_probe"] == "true"
 
 
 def test_weekly_review_template_downloads_artifact_and_exports_issue_payload() -> None:
@@ -131,6 +141,11 @@ def test_weekly_review_template_downloads_artifact_and_exports_issue_payload() -
     assert "gate_report_json_path" in resolve_step["run"]
     assert "--bundle-file" in resolve_step["run"]
     assert "--summary-file" in resolve_step["run"]
+
+    workflow_text = Path("templates/github/rqg-gate-weekly-review.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "action_contract" in workflow_text
 
 
 def test_repo_reusable_gate_workflow_matches_template() -> None:
@@ -219,16 +234,27 @@ def test_template_readme_mentions_reusable_workflow_outputs() -> None:
     assert "pack_validation_ok" in readme
     assert "pack-validation.json" in readme
     assert "connection_ok" in readme
+    assert "dry_run_ok" in readme
+    assert "dry_run_artifact_dir" in readme
     assert "gate_report_json_path" in readme
     assert "gate-report.json" in readme
+    assert "artifact_type" in readme
+    assert "required_fields" in readme
     assert "gate_history_summary_path" in readme
     assert "gate-history-summary.json" in readme
+    assert "external_proof_contract_version" in readme
+    assert "weekly_review_ready" in readme
+    assert "external_proof_ready" in readme
     assert "rqg-gate-weekly-review.yml" in readme
     assert "[Phase2.5][Weekly Review] YYYY-MM-DD" in readme
     assert "RQG_TRIAGE_PROJECT_ID" in readme
     assert "repository secrets" in readme
     assert "run_pack_validation" in readme
     assert "pack_validation_preset" in readme
+    assert "run_dry_run_probe" in readme
+    assert "action_contract" in readme
+    assert "source of truth" in readme
+    assert "always emitted" in readme
 
 
 def test_onboarding_template_runs_pack_validation() -> None:

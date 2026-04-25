@@ -69,6 +69,25 @@ def test_build_weekly_review_issue_payload_from_summary() -> None:
 
     assert payload["issue_needed"] is True
     assert payload["labels"] == ["phase2-5", "weekly-review", "ops"]
+    assert payload["schema_version"] == "1.0"
+    assert payload["payload_type"] == "rqg.weekly_review_issue_payload"
+    assert payload["contract"]["name"] == "rqg.weekly_review_issue_payload"
+    assert payload["contract"]["version"] == "1.0"
+    assert payload["contract"]["required_fields"] == [
+        "schema_version",
+        "payload_type",
+        "contract",
+        "title",
+        "body",
+        "labels",
+        "issue_needed",
+        "review_steward",
+        "summary",
+        "action_contract",
+        "uncovered_categories",
+        "stale_case_review",
+    ]
+    assert payload["contract"]["optional_fields"] == []
     assert payload["title"] == "[Phase2.5][Weekly Review] 2026-04-20"
     assert "Week start: 2026-04-20" in payload["body"]
     assert "Weekly review steward: ops-team" in payload["body"]
@@ -82,6 +101,30 @@ def test_build_weekly_review_issue_payload_from_summary() -> None:
     assert "## Required Actions" in payload["body"]
     assert payload["review_steward"] == "ops-team"
     assert payload["summary"]["stale_cases_count"] == 1
+    assert payload["action_contract"]["name"] == "rqg.weekly_review_actions"
+    assert payload["action_contract"]["schema_version"] == "1.0"
+    assert payload["action_contract"]["version"] == "1.0"
+    assert payload["action_contract"]["state"] == "action_required"
+    assert payload["action_contract"]["review_steward"] == "ops-team"
+    assert payload["action_contract"]["triggered_by"] == ["uncovered_categories", "stale_cases"]
+    assert payload["action_contract"]["optional_fields"] == []
+    assert payload["action_contract"]["optional_action_fields"] == []
+    assert payload["action_contract"]["required_action_count"] == len(
+        payload["action_contract"]["required_actions"]
+    )
+    required_action_fields = set(payload["action_contract"]["required_action_fields"])
+    assert all(
+        required_action_fields <= set(action)
+        for action in payload["action_contract"]["required_actions"]
+    )
+    assert any(
+        action["id"] == "review-uncovered-categories"
+        for action in payload["action_contract"]["required_actions"]
+    )
+    assert any(
+        action["id"] == "review-stale-cases"
+        for action in payload["action_contract"]["required_actions"]
+    )
 
 
 def test_export_weekly_review_command_writes_issue_payload(capsys) -> None:
@@ -159,6 +202,8 @@ def test_export_weekly_review_command_writes_issue_payload(capsys) -> None:
     assert output_path.exists()
     assert "Saved weekly review issue payload" in captured.out
     payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "1.0"
+    assert payload["contract"]["optional_fields"] == []
     assert payload["issue_needed"] is True
     assert payload["summary"]["coverage_rate"] == 50.0
     assert payload["summary"]["week_start"] == "2026-04-20"
@@ -167,6 +212,8 @@ def test_export_weekly_review_command_writes_issue_payload(capsys) -> None:
     assert payload["review_steward"] == "ops-team"
     assert payload["title"] == "[Phase2.5][Weekly Review] 2026-04-20"
     assert "## Required Actions" in payload["body"]
+    assert payload["action_contract"]["signals"]["coverage_rate"] == 50.0
+    assert payload["action_contract"]["state"] == "action_required"
 
 
 def test_export_weekly_review_command_writes_issue_payload_from_bundle(capsys) -> None:
@@ -212,9 +259,12 @@ def test_export_weekly_review_command_writes_issue_payload_from_bundle(capsys) -
     assert output_path.exists()
     assert "Saved weekly review issue payload" in captured.out
     payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "1.0"
     assert payload["summary"]["latest_run_id"] == "run-2"
     assert payload["summary"]["latest_status"] == "FAIL"
     assert payload["review_steward"] == "ops-team"
+    assert payload["action_contract"]["state"] == "review_only"
+    assert payload["action_contract"]["required_action_count"] == 2
 
 
 def test_export_weekly_review_command_accepts_bundle_via_summary_file(capsys) -> None:
@@ -246,6 +296,7 @@ def test_export_weekly_review_command_accepts_bundle_via_summary_file(capsys) ->
     output_path = bundle_path.with_name("weekly-review-issue.json")
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["summary"]["latest_status"] == "PASS"
+    assert payload["action_contract"]["state"] == "review_only"
 
 
 def test_build_weekly_review_issue_payload_is_needed_for_stale_cases_even_without_uncovered_categories() -> (
@@ -295,6 +346,15 @@ def test_build_weekly_review_issue_payload_is_needed_for_stale_cases_even_withou
 
     assert payload["issue_needed"] is True
     assert "Action required: 1 stale active case" in payload["body"]
+    assert payload["action_contract"]["triggered_by"] == ["stale_cases"]
+    assert any(
+        action["id"] == "review-stale-cases"
+        for action in payload["action_contract"]["required_actions"]
+    )
+    assert not any(
+        action["id"] == "review-uncovered-categories"
+        for action in payload["action_contract"]["required_actions"]
+    )
 
 
 def test_build_weekly_review_issue_payload_formats_no_action_state() -> None:
@@ -317,6 +377,9 @@ def test_build_weekly_review_issue_payload_formats_no_action_state() -> None:
     assert (
         "Review the recent history summary below and close or archive this issue" in payload["body"]
     )
+    assert payload["action_contract"]["state"] == "review_only"
+    assert payload["action_contract"]["triggered_by"] == []
+    assert payload["action_contract"]["required_action_count"] == 2
 
 
 def test_export_weekly_review_command_returns_error_when_summary_missing(capsys) -> None:

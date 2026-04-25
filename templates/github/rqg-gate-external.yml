@@ -18,6 +18,7 @@ jobs:
       log_dir: runs/quality
       quality_pack_path: packs/hr/quality-pack.yml
       run_connection_validation: true
+      run_dry_run_probe: true
     secrets:
       rag_api_endpoint: ${{ secrets.RAG_API_ENDPOINT }}
       rag_api_key: ${{ secrets.RAG_API_KEY }}
