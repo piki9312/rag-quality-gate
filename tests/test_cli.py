@@ -33,6 +33,31 @@ def _subparser_option_strings(command: str) -> set[str]:
     }
 
 
+def _create_pack_dir(
+    base_dir: Path,
+    *,
+    include_cases: bool = True,
+    include_docs: bool = True,
+    include_quality_pack: bool = True,
+    include_gate_config: bool = True,
+) -> Path:
+    pack_dir = base_dir / f"pack-{uuid.uuid4().hex[:8]}"
+    pack_dir.mkdir(parents=True, exist_ok=True)
+
+    if include_cases:
+        (pack_dir / "cases.csv").write_text("case_id,name\n", encoding="utf-8")
+    if include_docs:
+        docs_dir = pack_dir / "documents"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "doc.md").write_text("# doc\n", encoding="utf-8")
+    if include_quality_pack:
+        (pack_dir / "quality-pack.yml").write_text("pack:\n  review_steward: qa\n", encoding="utf-8")
+    if include_gate_config:
+        (pack_dir / "gate.yml").write_text("s1_pass_rate: 100\n", encoding="utf-8")
+
+    return pack_dir
+
+
 class TestCLIHelp:
     def test_main_help(self):
         result = subprocess.run(
@@ -75,10 +100,26 @@ class TestCLIHelp:
 class TestCLIParserContract:
     """Guard public CLI flags used by docs, CI templates, and downstream scripts."""
 
+    def test_eval_option_contract(self):
+        options = _subparser_option_strings("eval")
+
+        assert {
+            "--pack",
+            "--docs",
+            "--index-dir",
+            "--log-dir",
+            "--reset-log-dir",
+            "--context-k",
+            "--mock",
+            "--rag-endpoint",
+            "--rag-api-key-env",
+        }.issubset(options)
+
     def test_gate_option_contract(self):
         options = _subparser_option_strings("gate")
 
         assert {
+            "--pack",
             "--docs",
             "--index-dir",
             "--log-dir",
@@ -109,6 +150,7 @@ class TestCLIParserContract:
         options = _subparser_option_strings("check")
 
         assert {
+            "--pack",
             "--log-dir",
             "--config",
             "--days",
@@ -131,6 +173,7 @@ class TestCLIParserContract:
         options = _subparser_option_strings("validate-pack")
 
         assert {
+            "--pack",
             "--pack-dir",
             "--cases",
             "--gate-config",
@@ -193,7 +236,17 @@ class TestCLIParsing:
         args = parser.parse_args(["eval", "cases.csv", "--mock"])
         assert args.mock is True
         assert args.command == "eval"
+        assert args.pack is None
         assert args.reset_log_dir is False
+
+    def test_eval_accepts_pack_option_without_positional_cases(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["eval", "--pack", "packs/hr", "--mock"])
+        assert args.command == "eval"
+        assert args.cases is None
+        assert args.pack == "packs/hr"
 
     def test_eval_reset_log_dir_flag(self):
         from rqg.cli import build_parser
@@ -209,6 +262,7 @@ class TestCLIParsing:
         parser = build_parser()
         args = parser.parse_args(["check"])
         assert args.command == "check"
+        assert args.pack is None
         assert args.quality_pack is None
         assert args.bundle_file is None
         assert args.max_overall_drop_pct is None
@@ -298,6 +352,14 @@ class TestCLIParsing:
         assert args.required_env is None
         assert args.connection_query == "healthcheck"
 
+    def test_validate_pack_accepts_pack_alias(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["validate-pack", "--pack", "packs/hr"])
+        assert args.command == "validate-pack"
+        assert args.pack_dir == "packs/hr"
+
     def test_serve_dashboard_defaults(self):
         from rqg.cli import build_parser
 
@@ -316,6 +378,7 @@ class TestCLIParsing:
         args = parser.parse_args(["gate", "packs/hr/cases.csv"])
         assert args.command == "gate"
         assert args.cases == "packs/hr/cases.csv"
+        assert args.pack is None
         assert args.log_dir == "runs/quality"
         assert args.cases_file is None
         assert args.bundle_file is None
@@ -524,6 +587,107 @@ class TestPhase1CLI:
         assert exit_code == 1
         assert "must be outside runs/" in captured.err
         load_cases_mock.assert_not_called()
+
+    def test_eval_pack_resolves_cases_and_docs(self, tmp_path):
+        pack_dir = _create_pack_dir(tmp_path)
+
+        with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
+            exit_code = main(["eval", "--pack", str(pack_dir), "--mock"])
+
+        assert exit_code == 0
+        resolved_args = eval_mock.call_args.args[0]
+        assert resolved_args.cases == (pack_dir / "cases.csv").as_posix()
+        assert resolved_args.docs == (pack_dir / "documents").as_posix()
+        assert resolved_args.pack == str(pack_dir)
+
+    def test_eval_pack_keeps_explicit_cases_and_docs(self, tmp_path):
+        pack_dir = _create_pack_dir(tmp_path)
+
+        with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
+            exit_code = main(
+                [
+                    "eval",
+                    "custom-cases.csv",
+                    "--docs",
+                    "custom-docs",
+                    "--pack",
+                    str(pack_dir),
+                    "--mock",
+                ]
+            )
+
+        assert exit_code == 0
+        resolved_args = eval_mock.call_args.args[0]
+        assert resolved_args.cases == "custom-cases.csv"
+        assert resolved_args.docs == "custom-docs"
+
+    def test_check_pack_resolves_cases_config_and_quality_pack(self, tmp_path):
+        pack_dir = _create_pack_dir(tmp_path)
+
+        with patch("rqg.cli.cmd_check", return_value=0) as check_mock:
+            exit_code = main(["check", "--pack", str(pack_dir), "--log-dir", "runs/test-pack"])
+
+        assert exit_code == 0
+        resolved_args = check_mock.call_args.args[0]
+        assert resolved_args.cases_file == (pack_dir / "cases.csv").as_posix()
+        assert resolved_args.config == (pack_dir / "gate.yml").as_posix()
+        assert resolved_args.quality_pack == (pack_dir / "quality-pack.yml").as_posix()
+
+    def test_gate_pack_resolves_cases_docs_config_and_quality_pack(self, tmp_path):
+        pack_dir = _create_pack_dir(tmp_path)
+
+        with patch("rqg.cli.cmd_gate", return_value=0) as gate_mock:
+            exit_code = main(["gate", "--pack", str(pack_dir), "--mock"])
+
+        assert exit_code == 0
+        resolved_args = gate_mock.call_args.args[0]
+        assert resolved_args.cases == (pack_dir / "cases.csv").as_posix()
+        assert resolved_args.docs == (pack_dir / "documents").as_posix()
+        assert resolved_args.config == (pack_dir / "gate.yml").as_posix()
+        assert resolved_args.quality_pack == (pack_dir / "quality-pack.yml").as_posix()
+
+    def test_eval_pack_reports_missing_cases_file(self, tmp_path, capsys):
+        pack_dir = _create_pack_dir(tmp_path, include_cases=False)
+
+        with patch("rqg.cli.cmd_eval") as eval_mock:
+            exit_code = main(["eval", "--pack", str(pack_dir), "--mock"])
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "missing required cases.csv" in captured.err
+        eval_mock.assert_not_called()
+
+    def test_check_pack_reports_missing_quality_pack(self, tmp_path, capsys):
+        pack_dir = _create_pack_dir(tmp_path, include_quality_pack=False)
+
+        with patch("rqg.cli.cmd_check") as check_mock:
+            exit_code = main(["check", "--pack", str(pack_dir)])
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "missing required quality-pack.yml" in captured.err
+        check_mock.assert_not_called()
+
+    def test_gate_pack_reports_missing_documents_dir(self, tmp_path, capsys):
+        pack_dir = _create_pack_dir(tmp_path, include_docs=False)
+
+        with patch("rqg.cli.cmd_gate") as gate_mock:
+            exit_code = main(["gate", "--pack", str(pack_dir), "--mock"])
+
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "missing required documents/" in captured.err
+        gate_mock.assert_not_called()
+
+    def test_eval_old_style_args_still_work_without_pack(self):
+        with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
+            exit_code = main(["eval", "packs/hr/cases.csv", "--docs", "packs/hr/documents", "--mock"])
+
+        assert exit_code == 0
+        resolved_args = eval_mock.call_args.args[0]
+        assert resolved_args.cases == "packs/hr/cases.csv"
+        assert resolved_args.docs == "packs/hr/documents"
+        assert resolved_args.pack is None
 
     def test_gate_rejects_index_dir_under_runs_before_eval_and_check(self, capsys):
         with patch("rqg.cli.gate.cmd_eval") as eval_mock:

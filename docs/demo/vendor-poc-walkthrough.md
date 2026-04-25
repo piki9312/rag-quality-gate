@@ -95,13 +95,13 @@ The S1 case `VPOC001` intentionally expects the keyword `security owner hotline`
 Bash:
 
 ```bash
-rqg validate-pack --pack-dir examples/vendor-poc-pack --output runs/vendor-poc/pack-validation.json
+rqg validate-pack --pack examples/vendor-poc-pack --output runs/vendor-poc/pack-validation.json
 ```
 
 PowerShell:
 
 ```powershell
-rqg validate-pack --pack-dir examples\vendor-poc-pack --output runs\vendor-poc\pack-validation.json
+rqg validate-pack --pack examples\vendor-poc-pack --output runs\vendor-poc\pack-validation.json
 ```
 
 Expected result:
@@ -131,8 +131,7 @@ Use `--mock` for first-run PoCs so no LLM API key is needed.
 Bash:
 
 ```bash
-rqg eval examples/vendor-poc-pack/cases.csv \
-  --docs examples/vendor-poc-pack/documents \
+rqg eval --pack examples/vendor-poc-pack \
   --mock \
   --index-dir runs/vendor-poc/index \
   --log-dir runs/vendor-poc/eval
@@ -141,8 +140,7 @@ rqg eval examples/vendor-poc-pack/cases.csv \
 PowerShell:
 
 ```powershell
-rqg eval examples\vendor-poc-pack\cases.csv `
-  --docs examples\vendor-poc-pack\documents `
+rqg eval --pack examples\vendor-poc-pack `
   --mock `
   --index-dir runs\vendor-poc\index `
   --log-dir runs\vendor-poc\eval
@@ -158,19 +156,13 @@ Expected result:
 Bash:
 
 ```bash
-rqg check \
-  --log-dir runs/vendor-poc/eval \
-  --config examples/vendor-poc-pack/gate.yml \
-  --quality-pack examples/vendor-poc-pack/quality-pack.yml
+rqg check --pack examples/vendor-poc-pack --log-dir runs/vendor-poc/eval
 ```
 
 PowerShell:
 
 ```powershell
-rqg check `
-  --log-dir runs\vendor-poc\eval `
-  --config examples\vendor-poc-pack\gate.yml `
-  --quality-pack examples\vendor-poc-pack\quality-pack.yml
+rqg check --pack examples\vendor-poc-pack --log-dir runs\vendor-poc\eval
 ```
 
 Expected result:
@@ -185,29 +177,25 @@ The status should be `fail` because the S1 case is intentionally broken.
 
 `gate` combines eval and check. This is the command most vendors put in CI once the pack is stable.
 
+`--pack` fills `cases.csv`, `documents/`, `gate.yml`, and `quality-pack.yml` from the pack root. If you also pass a lower-level argument such as `--docs` or `--config`, the explicit value wins.
+
 Bash:
 
 ```bash
-rqg gate examples/vendor-poc-pack/cases.csv \
-  --docs examples/vendor-poc-pack/documents \
+rqg gate --pack examples/vendor-poc-pack \
   --mock \
   --index-dir runs/vendor-poc/gate-index \
   --log-dir runs/vendor-poc/gate \
-  --config examples/vendor-poc-pack/gate.yml \
-  --quality-pack examples/vendor-poc-pack/quality-pack.yml \
   --reset-log-dir
 ```
 
 PowerShell:
 
 ```powershell
-rqg gate examples\vendor-poc-pack\cases.csv `
-  --docs examples\vendor-poc-pack\documents `
+rqg gate --pack examples\vendor-poc-pack `
   --mock `
   --index-dir runs\vendor-poc\gate-index `
   --log-dir runs\vendor-poc\gate `
-  --config examples\vendor-poc-pack\gate.yml `
-  --quality-pack examples\vendor-poc-pack\quality-pack.yml `
   --reset-log-dir
 ```
 

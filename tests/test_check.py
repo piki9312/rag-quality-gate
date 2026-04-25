@@ -20,6 +20,7 @@ from rqg.quality.check import (
     render_gate_markdown,
     run_check,
 )
+from rqg.quality.staleness import CaseStalenessItem
 from rqg.quality.models import QARunRecord
 
 # ------------------------------------------------------------------
@@ -629,6 +630,40 @@ class TestCheckResult:
         assert decision.needs_human_review is True
         assert any(action.failure_category == "human_review" for action in decision.next_actions)
 
+    def test_build_gate_decision_preserves_closing_parentheses_in_reasons(self):
+        result = CheckResult(
+            run_id="run-reason-format",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=0.0,
+            s1_rate=0.0,
+            s1_passed=0,
+            s1_total=1,
+            thresholds=[
+                ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1"),
+                ThresholdResult("Overall pass rate", 85.0, 0.0, False, "0/2"),
+                ThresholdResult("Avg evidence recall", 80.0, 0.0, False, "2 scored"),
+            ],
+            case_thresholds=[
+                ThresholdResult(
+                    "case:VPOC001",
+                    100.0,
+                    0.0,
+                    False,
+                    "Password reset escalation",
+                )
+            ],
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.reasons == [
+            "S1 pass rate: 0.0 < 100.0 (0/1)",
+            "Overall pass rate: 0.0 < 85.0 (0/2)",
+            "Avg evidence recall: 0.0 < 80.0 (2 scored)",
+            "case:VPOC001: 0.0 < 100.0 (Password reset escalation)",
+        ]
+
 
 class TestRenderMarkdown:
     def test_pass_rendering(self):
@@ -727,6 +762,39 @@ class TestRenderMarkdown:
         assert "Observed Metrics" in md
         assert "Avg judge relevance" in md
         assert "Avg evidence recall" in md
+
+    def test_rendering_inserts_blank_line_before_tables_after_bullets(self):
+        result = CheckResult(
+            run_id="run-spacing",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=50.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[ThresholdResult("Overall", 80.0, 50.0, False, "1/2")],
+            fresh_case_review_rate=50.0,
+            fresh_case_count=1,
+            fresh_case_total=2,
+            stale_after_days=30,
+            stale_cases=[
+                CaseStalenessItem(
+                    case_id="VPOC001",
+                    name="Escalation path",
+                    severity="S1",
+                    owner="vendor-qa",
+                    reference_field="last_reviewed_at",
+                    reference_value="2026-03-01",
+                    age_days=56,
+                    issue="older than 30 days",
+                )
+            ],
+        )
+
+        md = render_gate_markdown(result)
+
+        assert "- Aggregation Policy: latest_run\n\n| Metric | Actual | Threshold | Status |" in md
+        assert "within 30 days\n\n| Case | Severity | Owner | Reference | Age Days | Issue |" in md
 
 
 # ==================================================================

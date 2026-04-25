@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 from .casegen import (
     cmd_gen_cases,
@@ -37,6 +38,115 @@ from .validate_connection import cmd_validate_connection
 from .validate_pack import cmd_validate_pack
 
 
+def _resolve_pack_target(
+    *,
+    pack_dir: str,
+    relative_path: str,
+    label: str,
+    expect_dir: bool = False,
+) -> str:
+    pack_path = Path(pack_dir)
+    if not pack_path.exists():
+        raise FileNotFoundError(f"[ERROR] --pack directory not found: {pack_dir}")
+    if not pack_path.is_dir():
+        raise FileNotFoundError(f"[ERROR] --pack must point to a directory: {pack_dir}")
+
+    resolved = pack_path / relative_path
+    if not resolved.exists():
+        raise FileNotFoundError(
+            f"[ERROR] --pack {pack_dir} is missing required {label}: {resolved.as_posix()}"
+        )
+    if expect_dir and not resolved.is_dir():
+        raise FileNotFoundError(
+            f"[ERROR] --pack {pack_dir} requires {label} to be a directory: {resolved.as_posix()}"
+        )
+    if not expect_dir and not resolved.is_file():
+        raise FileNotFoundError(
+            f"[ERROR] --pack {pack_dir} requires {label} to be a file: {resolved.as_posix()}"
+        )
+    return resolved.as_posix()
+
+
+def _apply_pack_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    pack_dir = getattr(args, "pack", None)
+    if not pack_dir:
+        return args
+
+    if args.command == "eval":
+        if not getattr(args, "cases", None):
+            args.cases = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="cases.csv",
+                label="cases.csv",
+            )
+        if not getattr(args, "docs", None):
+            args.docs = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="documents",
+                label="documents/",
+                expect_dir=True,
+            )
+        return args
+
+    if args.command == "check":
+        if not getattr(args, "cases_file", None):
+            args.cases_file = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="cases.csv",
+                label="cases.csv",
+            )
+        if not getattr(args, "quality_pack", None):
+            args.quality_pack = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="quality-pack.yml",
+                label="quality-pack.yml",
+            )
+        if not getattr(args, "config", None):
+            args.config = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="gate.yml",
+                label="gate.yml",
+            )
+        return args
+
+    if args.command == "gate":
+        if not getattr(args, "cases", None):
+            args.cases = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="cases.csv",
+                label="cases.csv",
+            )
+        if not getattr(args, "docs", None):
+            args.docs = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="documents",
+                label="documents/",
+                expect_dir=True,
+            )
+        if not getattr(args, "quality_pack", None):
+            args.quality_pack = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="quality-pack.yml",
+                label="quality-pack.yml",
+            )
+        if not getattr(args, "config", None):
+            args.config = _resolve_pack_target(
+                pack_dir=pack_dir,
+                relative_path="gate.yml",
+                label="gate.yml",
+            )
+        return args
+
+    return args
+
+
+def _validate_required_cli_inputs(args: argparse.Namespace) -> None:
+    if args.command == "eval" and not getattr(args, "cases", None):
+        raise ValueError("[ERROR] eval requires either a cases path or --pack <dir>.")
+    if args.command == "gate" and not getattr(args, "cases", None):
+        raise ValueError("[ERROR] gate requires either a cases path or --pack <dir>.")
+
+
 def build_parser() -> argparse.ArgumentParser:
     """CLI パーサーを構築して返す。テストからも利用可能。"""
     parser = argparse.ArgumentParser(
@@ -53,7 +163,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     # --- eval ---
     p_eval = sub.add_parser("eval", help="Run quality evaluation")
-    p_eval.add_argument("cases", help="Path to test cases CSV")
+    p_eval.add_argument("cases", nargs="?", help="Path to test cases CSV")
+    p_eval.add_argument(
+        "--pack",
+        default=None,
+        help="Pack directory used to fill missing cases/docs paths; explicit CLI args win",
+    )
     p_eval.add_argument("--docs", help="Documents directory (auto-ingest if store empty)")
     p_eval.add_argument("--index-dir", default="index")
     p_eval.add_argument("--log-dir", default="runs/quality")
@@ -77,7 +192,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     # --- gate ---
     p_gate = sub.add_parser("gate", help="Run eval + check in one command")
-    p_gate.add_argument("cases", help="Path to test cases CSV")
+    p_gate.add_argument("cases", nargs="?", help="Path to test cases CSV")
+    p_gate.add_argument(
+        "--pack",
+        default=None,
+        help="Pack directory used to fill missing cases/docs/config/quality-pack paths; explicit CLI args win",
+    )
     p_gate.add_argument("--docs", help="Documents directory (auto-ingest if store empty)")
     p_gate.add_argument("--index-dir", default="index")
     p_gate.add_argument("--log-dir", default="runs/quality")
@@ -157,6 +277,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     # --- check ---
     p_check = sub.add_parser("check", help="Run quality gate check")
+    p_check.add_argument(
+        "--pack",
+        default=None,
+        help="Pack directory used to fill missing cases-file/config/quality-pack paths; explicit CLI args win",
+    )
     p_check.add_argument("--log-dir", default="runs/quality")
     p_check.add_argument("--config", help="Path to .rqg.yml config")
     p_check.add_argument("--days", type=int, default=1)
@@ -502,7 +627,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_validate_pack.add_argument(
         "--pack-dir",
+        "--pack",
         required=True,
+        dest="pack_dir",
         help="Pack root directory (for example: packs/hr)",
     )
     p_validate_pack.add_argument(
@@ -621,6 +748,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    try:
+        args = _apply_pack_defaults(args)
+        _validate_required_cli_inputs(args)
+    except (FileNotFoundError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format="%(message)s")

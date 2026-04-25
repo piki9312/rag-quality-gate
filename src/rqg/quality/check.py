@@ -714,6 +714,14 @@ def _build_structured_next_actions(
     return next_actions
 
 
+def _format_threshold_reason(threshold: ThresholdResult) -> str:
+    reason = f"{threshold.name}: {threshold.actual:.1f} < {threshold.threshold:.1f}"
+    detail = threshold.detail.strip()
+    if detail:
+        return f"{reason} ({detail})"
+    return reason
+
+
 def build_gate_decision(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
@@ -723,14 +731,8 @@ def build_gate_decision(
     failed_thresholds = [t for t in result.thresholds if not t.passed]
     failed_case_thresholds = [t for t in result.case_thresholds if not t.passed]
 
-    reasons = [
-        f"{t.name}: {t.actual:.1f} < {t.threshold:.1f} ({t.detail})".rstrip(" ()")
-        for t in failed_thresholds
-    ]
-    reasons.extend(
-        f"{t.name}: {t.actual:.1f} < {t.threshold:.1f} ({t.detail})".rstrip(" ()")
-        for t in failed_case_thresholds
-    )
+    reasons = [_format_threshold_reason(t) for t in failed_thresholds]
+    reasons.extend(_format_threshold_reason(t) for t in failed_case_thresholds)
 
     status = result.gate_status
 
@@ -860,6 +862,7 @@ def render_gate_markdown(
             lines.append("\n### Recent History Summary")
             lines.extend(history_lines)
 
+    lines.append("")
     lines.append("| Metric | Actual | Threshold | Status |")
     lines.append("|--------|--------|-----------|--------|")
     for t in result.thresholds:
@@ -914,6 +917,7 @@ def render_gate_markdown(
             f"within {result.stale_after_days} days"
         )
         if result.stale_cases:
+            lines.append("")
             lines.append("| Case | Severity | Owner | Reference | Age Days | Issue |")
             lines.append("|------|----------|-------|-----------|----------|-------|")
             for item in result.stale_cases:

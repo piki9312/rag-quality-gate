@@ -130,7 +130,7 @@ RQG は評価の先にある **運用サイクル全体** をカバーします�
 
 ```bash
 pip install -e .
-rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
+rqg gate --pack packs/hr --mock --index-dir index --log-dir runs/quality
 cat runs/quality/gate-report.md
 ```
 
@@ -159,13 +159,12 @@ python -m rqg.demo.onboarding_quickstart --profile wiki
 rqg init-pack packs/my_pack
 
 # 2. 導入前チェック
-rqg validate-pack --pack-dir packs/my_pack
+rqg validate-pack --pack packs/my_pack
 
-# 3. eval + check をワンコマンドで
-rqg gate packs/my_pack/cases.csv \
-  --docs packs/my_pack/documents \
-  --mock --index-dir index --log-dir runs/quality \
-  --config .rqg.yml
+# 3. Pack から直接 eval / check / gate
+rqg eval --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
+rqg check --pack packs/my_pack --log-dir runs/quality
+rqg gate --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
 
 # 4. 出力を確認
 cat runs/quality/gate-report.md
@@ -180,12 +179,12 @@ rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv
 Dry-run で本番用 history や通知を汚さずに gate 判定だけ見たい場合:
 
 ```bash
-rqg gate packs/my_pack/cases.csv \
-    --docs packs/my_pack/documents \
+rqg gate --pack packs/my_pack \
     --mock --index-dir index --log-dir runs/quality \
-    --config packs/my_pack/gate.yml \
     --dry-run
 ```
+
+`--pack` は convenience option です。`cases` / `--docs` / `--cases-file` / `--quality-pack` / `--config` を明示した場合はその明示値を優先し、足りない値だけを `<pack>/cases.csv`、`<pack>/documents`、`<pack>/quality-pack.yml`、`<pack>/gate.yml` から補完します。
 
 `gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。たとえば `rqg export-weekly-review --bundle-file runs/quality/gate-report.json` で weekly review issue payload を直接生成できます。
 
@@ -350,7 +349,7 @@ Bash:
 
 ```bash
 pip install -e .
-rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
+rqg gate --pack packs/hr --mock --index-dir index --log-dir runs/quality
 cat runs/quality/gate-report.md
 ```
 
@@ -358,7 +357,7 @@ PowerShell:
 
 ```powershell
 pip install -e .
-rqg gate packs\hr\cases.csv --docs packs\hr\documents --mock --index-dir index --log-dir runs\quality --config .rqg.yml
+rqg gate --pack packs\hr --mock --index-dir index --log-dir runs\quality
 Get-Content runs\quality\gate-report.md -Encoding UTF8
 ```
 
@@ -413,17 +412,19 @@ Bash:
 # 1. Scaffold a pack
 rqg init-pack packs/my_pack
 
-# 2. Run eval + check in one command
-rqg gate packs/my_pack/cases.csv \
-  --docs packs/my_pack/documents \
-  --mock --index-dir index --log-dir runs/quality \
-  --config .rqg.yml
+# 2. Validate pack onboarding inputs
+rqg validate-pack --pack packs/my_pack
 
-# 3. Review outputs
+# 3. Run eval / check / gate from the pack root
+rqg eval --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
+rqg check --pack packs/my_pack --log-dir runs/quality
+rqg gate --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
+
+# 4. Review outputs
 cat runs/quality/gate-report.md
 cat runs/quality/gate-decision.json
 
-# 4. Grow your cases (optional)
+# 5. Grow your cases (optional)
 rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.json --review-output runs/casegen/review.csv
 rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
 ```
@@ -440,13 +441,12 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 rqg init-pack packs\my_pack
 
 # 2. Validate pack onboarding inputs
-rqg validate-pack --pack-dir packs\my_pack
+rqg validate-pack --pack packs\my_pack
 
-# 3. Run eval + check in one command
-rqg gate packs\my_pack\cases.csv `
-  --docs packs\my_pack\documents `
-  --mock --index-dir index --log-dir runs\quality `
-  --config .rqg.yml
+# 3. Run eval / check / gate from the pack root
+rqg eval --pack packs\my_pack --mock --index-dir index --log-dir runs\quality
+rqg check --pack packs\my_pack --log-dir runs\quality
+rqg gate --pack packs\my_pack --mock --index-dir index --log-dir runs\quality
 
 # 4. Review outputs
 Get-Content runs\quality\gate-report.md -Encoding UTF8
@@ -457,6 +457,8 @@ python -m json.tool runs\quality\gate-report.json
 rqg gen-cases --snapshot runs\snapshots\latest.json --output runs\casegen\cases.json --review-output runs\casegen\review.csv
 rqg merge-cases --cases packs\my_pack\cases.csv --review runs\casegen\review.csv --in-place
 ```
+
+`--pack` is a convenience option. When explicit `cases`, `--docs`, `--cases-file`, `--quality-pack`, or `--config` values are also provided, the explicit values win and only the missing paths are filled from `<pack>/cases.csv`, `<pack>/documents`, `<pack>/quality-pack.yml`, and `<pack>/gate.yml`.
 
 For virtual environment setup, environment variables, UTF-8 console notes, and more PowerShell examples, see [Windows PowerShell command guide](docs/user-guide/windows-powershell.md).
 
