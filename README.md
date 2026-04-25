@@ -359,7 +359,7 @@ PowerShell:
 ```powershell
 pip install -e ".[dev]"
 rqg gate packs\hr\cases.csv --docs packs\hr\documents --mock --index-dir index --log-dir runs\quality --config .rqg.yml
-Get-Content runs\quality\gate-report.md
+Get-Content runs\quality\gate-report.md -Encoding UTF8
 ```
 
 ### Pattern B: Full Demo (5-10 minutes)
@@ -408,6 +408,11 @@ rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv
 PowerShell:
 
 ```powershell
+# Optional: keep Markdown and report output readable in Windows PowerShell.
+chcp 65001
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 # 1. Scaffold a pack
 rqg init-pack packs\my_pack
 
@@ -421,9 +426,9 @@ rqg gate packs\my_pack\cases.csv `
   --config .rqg.yml
 
 # 4. Review outputs
-Get-Content runs\quality\gate-report.md
-Get-Content runs\quality\gate-decision.json
-Get-Content runs\quality\gate-report.json
+Get-Content runs\quality\gate-report.md -Encoding UTF8
+python -m json.tool runs\quality\gate-decision.json
+python -m json.tool runs\quality\gate-report.json
 
 # 5. Grow your cases (optional)
 rqg gen-cases --snapshot runs\snapshots\latest.json --output runs\casegen\cases.json --review-output runs\casegen\review.csv
@@ -431,6 +436,8 @@ rqg merge-cases --cases packs\my_pack\cases.csv --review runs\casegen\review.csv
 ```
 
 For virtual environment setup, environment variables, UTF-8 console notes, and more PowerShell examples, see [Windows PowerShell command guide](docs/user-guide/windows-powershell.md).
+
+If Markdown output looks garbled on Windows PowerShell, run the UTF-8 setup commands above or open the file in VS Code.
 
 ## Documentation
 
