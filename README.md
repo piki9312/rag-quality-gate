@@ -346,13 +346,25 @@ The product core remains horizontal. The vertical pack is an adoption and value-
 
 ### Pattern A: One-Command Experience (30 seconds)
 
+Bash:
+
 ```bash
 pip install -e ".[dev]"
 rqg gate packs/hr/cases.csv --docs packs/hr/documents --mock --index-dir index --log-dir runs/quality --config .rqg.yml
 cat runs/quality/gate-report.md
 ```
 
+PowerShell:
+
+```powershell
+pip install -e ".[dev]"
+rqg gate packs\hr\cases.csv --docs packs\hr\documents --mock --index-dir index --log-dir runs\quality --config .rqg.yml
+Get-Content runs\quality\gate-report.md
+```
+
 ### Pattern B: Full Demo (5-10 minutes)
+
+Bash / PowerShell:
 
 ```bash
 python -m rqg.demo.onboarding_quickstart
@@ -371,6 +383,8 @@ If you want to prove the external endpoint boundary first, use the `serve-http-r
 - ends with tunnel-ready prep for the next external-like hop
 
 ### Pattern C: Gradual Adoption
+
+Bash:
 
 ```bash
 # 1. Scaffold a pack
@@ -391,6 +405,33 @@ rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.
 rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
 ```
 
+PowerShell:
+
+```powershell
+# 1. Scaffold a pack
+rqg init-pack packs\my_pack
+
+# 2. Validate pack onboarding inputs
+rqg validate-pack --pack-dir packs\my_pack
+
+# 3. Run eval + check in one command
+rqg gate packs\my_pack\cases.csv `
+  --docs packs\my_pack\documents `
+  --mock --index-dir index --log-dir runs\quality `
+  --config .rqg.yml
+
+# 4. Review outputs
+Get-Content runs\quality\gate-report.md
+Get-Content runs\quality\gate-decision.json
+Get-Content runs\quality\gate-report.json
+
+# 5. Grow your cases (optional)
+rqg gen-cases --snapshot runs\snapshots\latest.json --output runs\casegen\cases.json --review-output runs\casegen\review.csv
+rqg merge-cases --cases packs\my_pack\cases.csv --review runs\casegen\review.csv --in-place
+```
+
+For virtual environment setup, environment variables, UTF-8 console notes, and more PowerShell examples, see [Windows PowerShell command guide](docs/user-guide/windows-powershell.md).
+
 ## Documentation
 
 This README focuses on product overview and onboarding. See docs for detailed technical and operational guidance.
@@ -399,6 +440,8 @@ This README focuses on product overview and onboarding. See docs for detailed te
 
 Getting started and demos:
 
+- docs/user-guide/windows-powershell.md
+- docs/demo/vendor-poc-walkthrough.md
 - docs/demo/onboarding-quickstart.md
 - docs/demo/fail-fix-cycle.md
 - docs/demo/impact-cycle.md

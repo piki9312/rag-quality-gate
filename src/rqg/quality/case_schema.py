@@ -483,6 +483,13 @@ class ValidationError:
     level: Literal["error", "warn"] = "error"
 
 
+def _vendor_message(*, problem: str, why: str, fix: str, example: str = "") -> str:
+    parts = [f"Problem: {problem}", f"Why it matters: {why}", f"Fix: {fix}"]
+    if example:
+        parts.append(f"Example: {example}")
+    return " | ".join(parts)
+
+
 def _required_field_level(status: str) -> Literal["error", "warn"]:
     return "error" if status == "active" else "warn"
 
@@ -499,6 +506,68 @@ def _append_required_field_error(
     prefix = "active " if level == "error" else ""
     errors.append(
         ValidationError(case_id, field, f"{prefix}{eval_mode}ケースの{field}が空です", level)
+    )
+
+
+def _append_vendor_required_field_error(
+    errors: list[ValidationError],
+    case_id: str,
+    *,
+    field: str,
+    status: str,
+    eval_mode: str,
+) -> None:
+    level = _required_field_level(status)
+    active_prefix = "Active case: " if level == "error" else ""
+    messages = {
+        "expected_answer": _vendor_message(
+            problem=f"{active_prefix}{eval_mode} case is missing expected_answer.",
+            why=(
+                "The gate needs a reviewer-approved target answer to detect regressions "
+                "in high-risk FAQ/RAG responses."
+            ),
+            fix=(
+                "Fill expected_answer with the concise answer your customer would approve, "
+                "or move the row to status=needs_review until reviewed."
+            ),
+            example=(
+                "expected_answer=Paid leave requests must be submitted 5 business days "
+                "in advance."
+            ),
+        ),
+        "expected_evidence": _vendor_message(
+            problem=f"{active_prefix}{eval_mode} case is missing expected_evidence.",
+            why=(
+                "Without evidence, the gate cannot prove the answer is grounded in the "
+                "delivered customer documents."
+            ),
+            fix="Point expected_evidence to the source section or chunk that must support the answer.",
+            example="expected_evidence=leave_policy.md#sec-1",
+        ),
+        "expected_keywords": _vendor_message(
+            problem=f"{active_prefix}{eval_mode} case is missing expected_keywords.",
+            why=(
+                "Keywords are the lightweight acceptance checks that catch answer drift "
+                "before customer delivery."
+            ),
+            fix="Add semicolon-separated business-critical terms that must appear in a correct answer.",
+            example="expected_keywords=5 business days;paid leave;advance request",
+        ),
+    }
+    errors.append(
+        ValidationError(
+            case_id,
+            field,
+            messages.get(
+                field,
+                _vendor_message(
+                    problem=f"{active_prefix}{eval_mode} case is missing {field}.",
+                    why="Missing validation data weakens the quality gate.",
+                    fix=f"Fill {field} before making this case active.",
+                ),
+            ),
+            level,
+        )
     )
 
 
@@ -622,7 +691,7 @@ def validate_case_row(
 
     if effective_eval_mode == "exact":
         if not row.get("expected_answer", "").strip():
-            _append_required_field_error(
+            _append_vendor_required_field_error(
                 errors,
                 cid,
                 field="expected_answer",
@@ -631,7 +700,7 @@ def validate_case_row(
             )
     elif effective_eval_mode == "evidence_keyword":
         if not row.get("expected_evidence", "").strip():
-            _append_required_field_error(
+            _append_vendor_required_field_error(
                 errors,
                 cid,
                 field="expected_evidence",
@@ -639,7 +708,7 @@ def validate_case_row(
                 eval_mode="evidence_keyword",
             )
         if not row.get("expected_keywords", "").strip():
-            _append_required_field_error(
+            _append_vendor_required_field_error(
                 errors,
                 cid,
                 field="expected_keywords",
@@ -648,7 +717,7 @@ def validate_case_row(
             )
     elif effective_eval_mode == "grounded_judge":
         if not row.get("expected_evidence", "").strip():
-            _append_required_field_error(
+            _append_vendor_required_field_error(
                 errors,
                 cid,
                 field="expected_evidence",
