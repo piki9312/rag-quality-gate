@@ -161,6 +161,17 @@ class TestHTTPRAGAdapterNormalization:
         with pytest.raises(ExternalRAGSchemaError, match="missing 'results'"):
             adapter._normalize({"data": [{"chunk_id": "c1"}]})
 
+    def test_normalize_missing_results_key_reports_available_fields(self, adapter):
+        from rqg.serving.external_adapter import ExternalRAGSchemaError
+
+        with pytest.raises(ExternalRAGSchemaError) as exc_info:
+            adapter._normalize({"answer": "hello", "data": [{"id": "c1", "body": "text"}]})
+
+        message = str(exc_info.value)
+        assert "Available fields: answer, data" in message
+        assert "response_mapping" in message
+        assert "results[].chunk_id" in message
+
     def test_normalize_non_dict_item_raises(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError
 
@@ -172,6 +183,38 @@ class TestHTTPRAGAdapterNormalization:
 
         with pytest.raises(ExternalRAGSchemaError, match="missing required keys"):
             adapter._normalize([{"chunk_id": "c1", "text": "t"}])  # missing source
+
+    def test_normalize_missing_required_keys_reports_mapping_hint(self, adapter):
+        from rqg.serving.external_adapter import ExternalRAGSchemaError
+
+        with pytest.raises(ExternalRAGSchemaError) as exc_info:
+            adapter._normalize([{"id": "c1", "body": "hello"}])
+
+        message = str(exc_info.value)
+        assert "missing required keys" in message
+        assert "Available fields: body, id" in message
+        assert "response_mapping" in message
+
+    def test_normalize_empty_text_raises_schema_error(self, adapter):
+        from rqg.serving.external_adapter import ExternalRAGSchemaError
+
+        with pytest.raises(ExternalRAGSchemaError) as exc_info:
+            adapter._normalize([{"chunk_id": "c1", "source": "policy.md", "text": ""}])
+
+        message = str(exc_info.value)
+        assert "empty required fields" in message
+        assert "text" in message
+        assert "response_mapping" in message
+
+    def test_normalize_empty_source_raises_schema_error(self, adapter):
+        from rqg.serving.external_adapter import ExternalRAGSchemaError
+
+        with pytest.raises(ExternalRAGSchemaError) as exc_info:
+            adapter._normalize([{"chunk_id": "c1", "source": " ", "text": "hello"}])
+
+        message = str(exc_info.value)
+        assert "empty required fields" in message
+        assert "source" in message
 
     def test_normalize_invalid_score_raises(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError

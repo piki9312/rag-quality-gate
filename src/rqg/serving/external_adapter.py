@@ -58,6 +58,27 @@ class ExternalRAGSchemaError(ExternalRAGError):
     """外部 RAG API のレスポンスが期待するスキーマに合致しない。"""
 
 
+_REQUIRED_RESULT_FIELDS = ("chunk_id", "source", "text")
+
+
+def _available_fields(value: Any) -> str:
+    if not isinstance(value, dict):
+        return "(none)"
+    keys = sorted(str(key) for key in value.keys())
+    return ", ".join(keys) if keys else "(none)"
+
+
+def _response_mapping_hint() -> str:
+    return (
+        "Fix hint: adjust response_mapping or the external adapter response so "
+        "retrieval results map to results[].chunk_id, results[].source, and results[].text."
+    )
+
+
+def _schema_context(value: Any) -> str:
+    return f"Available fields: {_available_fields(value)}. {_response_mapping_hint()}"
+
+
 # ---------------------------------------------------------------------------
 # Adapter
 # ---------------------------------------------------------------------------
@@ -180,7 +201,7 @@ class HTTPRAGAdapter:
             if results is None:
                 raise ExternalRAGSchemaError(
                     "External RAG response missing 'results' or 'chunks' key. "
-                    f"Got keys: {list(raw.keys())}"
+                    f"{_schema_context(raw)}"
                 )
         elif isinstance(raw, list):
             results = raw
@@ -199,10 +220,20 @@ class HTTPRAGAdapter:
                     f"External RAG result item [{i}] must be a dict, " f"got {type(item).__name__}"
                 )
             # Validate required fields
-            missing = [k for k in ("chunk_id", "source", "text") if k not in item]
+            missing = [k for k in _REQUIRED_RESULT_FIELDS if k not in item]
             if missing:
                 raise ExternalRAGSchemaError(
-                    f"External RAG result item [{i}] missing required keys: {missing}"
+                    f"External RAG result item [{i}] missing required keys: {missing}. "
+                    f"{_schema_context(item)}"
+                )
+            values = {key: str(item[key]).strip() for key in _REQUIRED_RESULT_FIELDS}
+            empty = [key for key, value in values.items() if not value]
+            if empty:
+                raise ExternalRAGSchemaError(
+                    f"External RAG result item [{i}] has empty required fields: {empty}. "
+                    "Empty answer/context symptoms usually mean the external response fields "
+                    "are mapped incorrectly or the upstream retrieval returned empty content. "
+                    f"{_schema_context(item)}"
                 )
 
             score: float | None = None
@@ -217,9 +248,9 @@ class HTTPRAGAdapter:
                     ) from exc
 
             chunk = RetrievedChunk(
-                chunk_id=str(item["chunk_id"]),
-                source=str(item["source"]),
-                text=str(item["text"]),
+                chunk_id=values["chunk_id"],
+                source=values["source"],
+                text=values["text"],
                 score=score,
                 metadata=item.get("metadata"),
             )

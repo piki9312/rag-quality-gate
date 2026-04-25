@@ -74,7 +74,10 @@ For product overview and quick onboarding, see [README.md](../README.md).
 
 Getting started:
 
+- [Vendor PoC walkthrough](demo/vendor-poc-walkthrough.md)
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
+- [Windows PowerShell command guide](user-guide/windows-powershell.md)
+- [Quality Pack S1/S2 design guide](user-guide/quality-pack-s1-s2-design.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
 - [external-contract-localhost](demo/external-contract-localhost.md) — run the external contract story from localhost to weekly review payload
@@ -95,6 +98,13 @@ Weekly operations:
 - [Baseline sheet](ops/operations/phase2-5-ws1-baseline-sheet.md)
 - [KPI weekly template](ops/operations/execution-template-charter-kpi-weekly.md)
 - [Internal docs pack guide](ops/operations/phase3-internal-docs-vertical-pack.md)
+
+Product strategy:
+
+- [Product positioning](strategy/product-positioning.md)
+- [Service menu](strategy/service-menu.md)
+- [GTM 0 to 10](strategy/gtm-0-to-10.md)
+- [Product roadmap](roadmap/product-roadmap.md)
 
 Past plans & release records:
 

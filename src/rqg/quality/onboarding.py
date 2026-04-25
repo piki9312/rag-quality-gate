@@ -11,7 +11,13 @@ import yaml
 
 from ..serving.connection_validation import validate_http_rag_connection
 from .case_merge import load_csv_rows
-from .case_schema import infer_source_doc, validate_case_rows
+from .case_schema import (
+    LEGACY_FIELD_MAP,
+    ValidationError,
+    infer_source_doc,
+    normalize_legacy_row,
+    validate_case_rows,
+)
 from .check import GateConfig
 
 
@@ -208,19 +214,26 @@ def validate_pack_onboarding(
             )
         else:
             case_count = len(rows)
+            normalized_rows = [normalize_legacy_row(row) for row in rows]
             active_case_count = sum(
-                1 for row in rows if (row.get("status") or "active").strip() == "active"
+                1
+                for row in normalized_rows
+                if (row.get("status") or "active").strip() == "active"
             )
             require_active_owner = bool(gate_config and gate_config.staleness_policy_enabled)
-            for issue in validate_case_rows(rows, require_active_owner=require_active_owner):
+            for issue in validate_case_rows(
+                normalized_rows, require_active_owner=require_active_owner
+            ):
                 findings.append(
                     OnboardingFinding(
                         issue.level,
                         "cases",
-                        f"{issue.case_id} / {issue.field}: {issue.message}",
+                        _format_case_finding(issue),
                         str(cases_target),
                     )
                 )
+            _append_case_onboarding_warnings(findings, cases_target, rows, normalized_rows)
+            rows = normalized_rows
 
     docs_available = docs_target.exists() and docs_target.is_dir()
     if docs_available:
@@ -333,6 +346,271 @@ def render_pack_onboarding_summary(result: PackOnboardingValidationResult) -> st
                 f"- [{finding.level.upper()}] {finding.area}: {finding.message}{path_suffix}"
             )
     return "\n".join(lines) + "\n"
+
+
+def _case_message(problem: str, why: str, fix: str, example: str = "") -> str:
+    parts = [f"Problem: {problem}", f"Why it matters: {why}", f"Fix: {fix}"]
+    if example:
+        parts.append(f"Example: {example}")
+    return " | ".join(parts)
+
+
+def _format_case_finding(issue: ValidationError) -> str:
+    prefix = f"{issue.case_id} / {issue.field}: "
+    if "Problem:" in issue.message:
+        return prefix + issue.message
+
+    if issue.field == "expected_answer":
+        return prefix + _case_message(
+            "expected_answer is missing.",
+            "RAG vendors need a reviewer-approved target answer so the gate can explain why a response passed or failed.",
+            "Add the concise answer the customer expects, or keep the row as status=needs_review until the answer is reviewed.",
+            "expected_answer=Paid leave requests must be submitted 5 business days in advance.",
+        )
+    if issue.field == "expected_keywords":
+        return prefix + _case_message(
+            "expected_keywords is missing.",
+            "Keywords catch answer drift in FAQ/RAG responses before delivery to the customer.",
+            "Add 2-5 semicolon-separated terms that must appear in a correct answer.",
+            "expected_keywords=5 business days;paid leave;advance request",
+        )
+    if issue.field == "expected_evidence":
+        return prefix + _case_message(
+            "expected_evidence is missing or not usable.",
+            "The gate cannot verify groundedness without a source document section or chunk reference.",
+            "Point expected_evidence to the document section that supports the answer.",
+            "expected_evidence=leave_policy.md#sec-1",
+        )
+    if issue.field == "severity":
+        return prefix + _case_message(
+            issue.message,
+            "Severity controls gate strictness; S1 is the production-blocking class for high-risk customer answers.",
+            "Use severity=S1 for must-not-fail cases and severity=S2 for standard regression checks.",
+            "severity=S1",
+        )
+    if issue.field == "owner":
+        return prefix + _case_message(
+            issue.message,
+            "Stale active cases need a named owner so monthly quality operation does not become anonymous cleanup.",
+            "Fill owner for each active row when staleness policy is enabled.",
+            "owner=hr-ops",
+        )
+    if issue.field == "notes" and "auto-generated expected_answer draft" in issue.message:
+        return prefix + _case_message(
+            issue.message,
+            "Auto-generated answers are useful drafts, but S1/S2 active gates must be based on human-reviewed customer expectations.",
+            "Review the answer, remove auto_expected_answer_status:draft, then promote the case to active.",
+        )
+    return prefix + issue.message
+
+
+def _append_case_onboarding_warnings(
+    findings: list[OnboardingFinding],
+    cases_path: Path,
+    raw_rows: list[dict[str, str]],
+    normalized_rows: list[dict[str, str]],
+) -> None:
+    for raw_row in raw_rows:
+        cid = (raw_row.get("case_id") or "(empty)").strip() or "(empty)"
+        _append_legacy_alias_warnings(findings, cases_path, cid, raw_row)
+
+    active_rows = [
+        row for row in normalized_rows if (row.get("status") or "active").strip() != "deprecated"
+    ]
+    _append_severity_design_warnings(findings, cases_path, active_rows)
+    _append_category_design_warnings(findings, cases_path, active_rows)
+
+    for row in active_rows:
+        cid = (row.get("case_id") or "(empty)").strip() or "(empty)"
+        severity = (row.get("severity") or "").strip().upper()
+        expected_answer = (row.get("expected_answer") or "").strip()
+        evidence = (row.get("expected_evidence") or "").strip()
+        keywords = _split_semicolon(row.get("expected_keywords", ""))
+        if severity == "S1" and not expected_answer:
+            findings.append(
+                OnboardingFinding(
+                    "warn",
+                    "cases",
+                    f"{cid} / expected_answer: "
+                    + _case_message(
+                        "S1 case has no expected_answer.",
+                        "S1 is the blocking class; a target answer gives reviewers and customers a clear reason for pass/fail decisions.",
+                        "Add a short customer-approved answer, even when eval_mode primarily uses evidence/keywords.",
+                        "expected_answer=Paid leave requests must be submitted 5 business days in advance.",
+                    ),
+                    str(cases_path),
+                )
+            )
+        if severity == "S1" and not evidence:
+            findings.append(
+                OnboardingFinding(
+                    "warn",
+                    "cases",
+                    f"{cid} / expected_evidence: "
+                    + _case_message(
+                        "S1 case has no expected_evidence.",
+                        "S1 rows are production-blocking checks; without evidence, the vendor cannot explain the pass/fail decision to the customer.",
+                        "Add a source section/chunk reference before relying on this row as an S1 gate.",
+                        "expected_evidence=hr_rules.md#sec-3",
+                    ),
+                    str(cases_path),
+                )
+            )
+        if severity == "S1" and not keywords:
+            findings.append(
+                OnboardingFinding(
+                    "warn",
+                    "cases",
+                    f"{cid} / expected_keywords: "
+                    + _case_message(
+                        "S1 case has no expected_keywords.",
+                        "S1 cases should catch obvious answer drift before the delivery gate is approved.",
+                        "Add 2-5 must-include terms for the answer.",
+                        "expected_keywords=deadline;5 business days;advance request",
+                    ),
+                    str(cases_path),
+                )
+            )
+        if 0 < len(keywords) < 2:
+            findings.append(
+                OnboardingFinding(
+                    "warn",
+                    "cases",
+                    f"{cid} / expected_keywords: "
+                    + _case_message(
+                        "expected_keywords has fewer than 2 terms.",
+                        "A single keyword is often too weak to catch answer drift in customer FAQ/RAG regression checks.",
+                        "Add 2-5 business-critical terms separated by semicolons.",
+                        "expected_keywords=deadline;5 business days;advance request",
+                    ),
+                    str(cases_path),
+                )
+            )
+
+
+def _append_severity_design_warnings(
+    findings: list[OnboardingFinding],
+    cases_path: Path,
+    active_rows: list[dict[str, str]],
+) -> None:
+    if not active_rows:
+        return
+    s1_count = sum(1 for row in active_rows if (row.get("severity") or "").strip().upper() == "S1")
+    s2_count = sum(1 for row in active_rows if (row.get("severity") or "").strip().upper() == "S2")
+    total = len(active_rows)
+
+    if s1_count == 0:
+        findings.append(
+            OnboardingFinding(
+                "warn",
+                "cases",
+                _case_message(
+                    "Quality Pack has 0 active S1 cases.",
+                    "Without S1, validate-pack cannot help you confirm that the customer has at least one production-blocking quality gate.",
+                    "Promote the highest-risk FAQ/regulation cases to severity=S1.",
+                    "severity=S1 for HR policy, labor rule, or high-risk customer-facing answers.",
+                ),
+                str(cases_path),
+            )
+        )
+    elif total >= 5 and s1_count == 1:
+        findings.append(
+            OnboardingFinding(
+                "warn",
+                "cases",
+                _case_message(
+                    f"Quality Pack has only 1 S1 case across {total} active cases.",
+                    "A single S1 rarely covers enough customer risk for production readiness.",
+                    "Add S1 cases for the top failure modes: wrong deadline, wrong eligibility, wrong escalation, and unsupported answer.",
+                ),
+                str(cases_path),
+            )
+        )
+
+    if total >= 2 and s1_count == total:
+        findings.append(
+            OnboardingFinding(
+                "warn",
+                "cases",
+                _case_message(
+                    "All active cases are S1.",
+                    "If every case blocks release, monthly operation becomes too heavy and teams may stop trusting the gate.",
+                    "Keep true must-not-fail cases as S1 and move ordinary regression checks to S2.",
+                    "severity=S2 for normal wording, coverage, or low-risk FAQ checks.",
+                ),
+                str(cases_path),
+            )
+        )
+    if total >= 2 and s2_count == total:
+        findings.append(
+            OnboardingFinding(
+                "warn",
+                "cases",
+                _case_message(
+                    "All active cases are S2.",
+                    "A pack with only S2 has a weak blocking gate and may miss high-risk customer-facing failures.",
+                    "Choose at least one must-not-fail case and mark it severity=S1.",
+                ),
+                str(cases_path),
+            )
+        )
+
+
+def _append_category_design_warnings(
+    findings: list[OnboardingFinding],
+    cases_path: Path,
+    active_rows: list[dict[str, str]],
+) -> None:
+    if len(active_rows) < 4:
+        return
+    counts: dict[str, int] = {}
+    for row in active_rows:
+        category = (row.get("category") or "general").strip() or "general"
+        counts[category] = counts.get(category, 0) + 1
+    top_category, top_count = max(counts.items(), key=lambda item: item[1])
+    if top_count / len(active_rows) >= 0.8:
+        findings.append(
+            OnboardingFinding(
+                "warn",
+                "cases",
+                _case_message(
+                    f"Category coverage is concentrated in '{top_category}' ({top_count}/{len(active_rows)} active cases).",
+                    "A pack concentrated in one category may pass while important customer workflows remain untested.",
+                    "Add cases for other high-risk categories such as eligibility, deadline, procedure, exception, and escalation.",
+                    "category=deadline / category=eligibility / category=escalation",
+                ),
+                str(cases_path),
+            )
+        )
+
+
+def _append_legacy_alias_warnings(
+    findings: list[OnboardingFinding],
+    cases_path: Path,
+    case_id: str,
+    row: dict[str, str],
+) -> None:
+    for legacy_name, formal_name in LEGACY_FIELD_MAP.items():
+        if legacy_name not in row or not str(row.get(legacy_name) or "").strip():
+            continue
+        findings.append(
+            OnboardingFinding(
+                "warn",
+                "cases",
+                f"{case_id} / {legacy_name}: "
+                + _case_message(
+                    f"legacy alias '{legacy_name}' is still used.",
+                    "Legacy aliases remain readable for backward compatibility, but customer-facing Quality Packs are easier to maintain when all rows use the formal 16-column contract.",
+                    f"Rename '{legacy_name}' to '{formal_name}' in cases.csv.",
+                    f"{formal_name}=...",
+                ),
+                str(cases_path),
+            )
+        )
+
+
+def _split_semicolon(value: object) -> list[str]:
+    return [item.strip() for item in str(value or "").split(";") if item.strip()]
 
 
 def _build_result(

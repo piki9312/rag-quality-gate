@@ -16,6 +16,23 @@ from rqg.cli import main
 from rqg.quality.models import QATestCase
 
 
+def _subparser_option_strings(command: str) -> set[str]:
+    from rqg.cli import build_parser
+
+    parser = build_parser()
+    subparsers_action = next(
+        action
+        for action in parser._actions
+        if getattr(action, "choices", None) and command in action.choices
+    )
+    subparser = subparsers_action.choices[command]
+    return {
+        option
+        for action in subparser._actions
+        for option in action.option_strings
+    }
+
+
 class TestCLIHelp:
     def test_main_help(self):
         result = subprocess.run(
@@ -51,6 +68,116 @@ class TestCLIHelp:
         )
         assert result.returncode == 0
         assert "cases" in result.stdout.lower() or "CASES" in result.stdout
+
+
+class TestCLIParserContract:
+    """Guard public CLI flags used by docs, CI templates, and downstream scripts."""
+
+    def test_gate_option_contract(self):
+        options = _subparser_option_strings("gate")
+
+        assert {
+            "--docs",
+            "--index-dir",
+            "--log-dir",
+            "--reset-log-dir",
+            "--context-k",
+            "--mock",
+            "--rag-endpoint",
+            "--rag-api-key-env",
+            "--config",
+            "--days",
+            "--aggregation-policy",
+            "--baseline-dir",
+            "--baseline-days",
+            "--cases-file",
+            "--quality-pack",
+            "--s1-threshold",
+            "--overall-threshold",
+            "--max-overall-drop-pct",
+            "--max-s1-drop-pct",
+            "--output-file",
+            "--decision-file",
+            "--bundle-file",
+            "--dry-run",
+            "--warn-exit-code",
+        }.issubset(options)
+
+    def test_check_option_contract(self):
+        options = _subparser_option_strings("check")
+
+        assert {
+            "--log-dir",
+            "--config",
+            "--days",
+            "--aggregation-policy",
+            "--baseline-dir",
+            "--baseline-days",
+            "--cases-file",
+            "--quality-pack",
+            "--s1-threshold",
+            "--overall-threshold",
+            "--max-overall-drop-pct",
+            "--max-s1-drop-pct",
+            "--output-file",
+            "--decision-file",
+            "--bundle-file",
+            "--warn-exit-code",
+        }.issubset(options)
+
+    def test_pack_validation_option_contract(self):
+        options = _subparser_option_strings("validate-pack")
+
+        assert {
+            "--pack-dir",
+            "--cases",
+            "--gate-config",
+            "--quality-pack",
+            "--docs-dir",
+            "--endpoint",
+            "--api-key-env",
+            "--required-env",
+            "--connection-query",
+            "--connection-top-k",
+            "--connection-timeout-sec",
+            "--output",
+        }.issubset(options)
+
+    def test_downstream_review_and_external_contract_options(self):
+        assert {
+            "--bundle-file",
+            "--summary-file",
+            "--log-dir",
+            "--output",
+            "--title-prefix",
+            "--title-suffix",
+            "--week-start",
+            "--label",
+        }.issubset(_subparser_option_strings("export-weekly-review"))
+        assert {
+            "--endpoint",
+            "--query",
+            "--top-k",
+            "--api-key-env",
+            "--timeout-sec",
+            "--output",
+        }.issubset(_subparser_option_strings("validate-connection"))
+
+    def test_gate_and_check_keep_aggregation_policy_choices(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        for command, argv in {
+            "gate": ["gate", "packs/hr/cases.csv"],
+            "check": ["check"],
+        }.items():
+            args = parser.parse_args([*argv, "--aggregation-policy", "latest_run"])
+            assert args.command == command
+            assert args.aggregation_policy == "latest_run"
+
+            args = parser.parse_args([*argv, "--aggregation-policy", "window"])
+            assert args.command == command
+            assert args.aggregation_policy == "window"
 
 
 class TestCLIParsing:

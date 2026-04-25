@@ -84,6 +84,13 @@ def validate_http_rag_connection(
         str(item.get("chunk_id", "")) for item in results[:5] if item.get("chunk_id")
     ]
     sample_sources = [str(item.get("source", "")) for item in results[:5] if item.get("source")]
+    issues = []
+    if not results:
+        issues.append(
+            "External RAG returned 0 chunks (empty contexts/sources). "
+            "Check query, top_k, filters, index freshness, and response_mapping if "
+            "the response payload stores contexts under a different field."
+        )
 
     return ConnectionValidationResult(
         endpoint=endpoint,
@@ -94,6 +101,7 @@ def validate_http_rag_connection(
         chunk_count=len(results),
         sample_chunk_ids=sample_chunk_ids,
         sample_sources=sample_sources,
+        issues=issues,
         checked_at=_utcnow(),
     )
 
