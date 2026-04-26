@@ -1,0 +1,42 @@
+pack:
+  name: customer-rqg-template
+  version: "1.0"
+  pack_name: customer-rqg-template
+  pack_version: "1.0"
+  tenant_name: customer-placeholder
+  use_case: customer-rag-poc
+  vertical: placeholder-vertical
+  risk_profile: high
+  owner: customer-poc-owner
+  environment: poc
+  source_pack: customer-rqg-template
+  domain: "Customer PoC"
+  profile: "Template"
+  review_steward: customer-poc-owner
+  description: >
+    Starter metadata for a customer-specific RQG PoC repository.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+severity_policy:
+  s1_definition:
+    - escalation or compliance guidance that must be correct before release
+    - customer-impacting answers that block production when incorrect
+  s2_definition:
+    - non-critical regressions, clarity issues, or incomplete explanations
+
+common_failure_patterns:
+  - name: keyword_miss
+    symptom: "Answer does not include required business terms"
+    first_action: "Review expected_keywords and the retrieved supporting text"
+  - name: retrieval_miss
+    symptom: "Expected supporting evidence is not retrieved"
+    first_action: "Review indexing, expected_evidence, and source document alignment"
+  - name: schema_mismatch
+    symptom: "External RAG response does not map to results[].chunk_id/source/text"
+    first_action: "Adjust the adapter response mapping before rerunning the gate"
+  - name: policy_gap
+    symptom: "The source policy does not fully answer the question"
+    first_action: "Escalate the gap to the document owner and update the source guidance"

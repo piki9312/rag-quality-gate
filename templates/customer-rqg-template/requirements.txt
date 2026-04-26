@@ -1,0 +1,5 @@
+# Install rag-quality-gate from your tagged organization source.
+rag-quality-gate @ git+https://github.com/your-org/rag-quality-gate.git@v0.1.0
+
+# Optional local editable install during integration work:
+# pip install -e /path/to/rag-quality-gate

@@ -683,6 +683,13 @@ class TestRenderMarkdown:
         md = render_gate_markdown(result)
         assert "PASS" in md
         assert "S1" in md
+        assert "### Executive Summary" in md
+        assert "Production promotion: Recommended. This pack meets the configured gate thresholds." in md
+        assert "Gate status: PASS" in md
+        assert "S1 pass rate: 100.0% (0 S1 failures)" in md
+        assert "Overall pass rate: 90.0%" in md
+        assert "Main failure category: None" in md
+        assert "Recommended next action: No immediate action required." in md
 
     def test_fail_rendering(self):
         result = CheckResult(
@@ -698,10 +705,19 @@ class TestRenderMarkdown:
             ],
             failure_categories={"retrieval_miss": 2, "synthesis": 1},
         )
-        md = render_gate_markdown(result)
+        md = render_gate_markdown(
+            result,
+            failure_actions={"retrieval_miss": "Review retrieval settings"},
+        )
         assert "FAIL" in md
         assert "Failure Categories" in md
         assert "retrieval_miss" in md
+        assert "Production promotion: Not recommended. This pack should not be promoted to production." in md
+        assert "Gate status: FAIL" in md
+        assert "S1 pass rate: 50.0% (1 S1 failure)" in md
+        assert "Overall pass rate: 60.0%" in md
+        assert "Main failure category: retrieval_miss (2 cases)" in md
+        assert "Recommended next action: Review retrieval settings" in md
 
     def test_render_gate_markdown_includes_aggregation_policy(self, log_dir_with_records):
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0)

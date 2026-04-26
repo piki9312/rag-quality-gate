@@ -1,0 +1,23 @@
+# Copy this file to adapter/adapter_config.yml in a customer repo and replace
+# every placeholder value before using it in deployment or proxy configuration.
+
+adapter:
+  endpoint: https://rag.customer-example.com/search
+  method: POST
+  timeout_sec: 30
+  auth:
+    scheme: bearer
+    token_env: CUSTOMER_RAG_BEARER_TOKEN
+  request_template:
+    query: "{query}"
+    top_k: "{top_k}"
+  response_mapping:
+    results_path: results
+    fields:
+      chunk_id: chunk_id
+      source: source
+      text: text
+      score: score
+
+# The runtime adapter expects retrieval results that can be normalized to:
+# results[].chunk_id, results[].source, results[].text, and optional results[].score

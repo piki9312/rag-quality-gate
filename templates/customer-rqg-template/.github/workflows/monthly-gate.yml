@@ -1,0 +1,58 @@
+name: Customer Monthly Gate
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monthly-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Validate onboarding inputs
+        run: |
+          python -m rqg.cli validate-pack --pack .
+
+      - name: Run monthly gate
+        id: gate
+        continue-on-error: true
+        run: |
+          rm -rf indexes/customer-poc
+          rm -rf logs/customer-poc
+          python -m rqg.cli gate --pack . \
+            --mock \
+            --index-dir indexes/customer-poc \
+            --reset-log-dir \
+            --log-dir logs/customer-poc
+
+      - name: Upload gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-monthly-gate-${{ github.run_number }}
+          path: |
+            logs/customer-poc/
+            cases.csv
+            gate.yml
+            quality-pack.yml
+          retention-days: 90
+
+      - name: Fail workflow when gate fails
+        if: steps.gate.outcome == 'failure'
+        run: exit 1

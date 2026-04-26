@@ -11,7 +11,10 @@ It connects the recent quality-layer improvements into one first-run path:
 - external RAG schema mismatch diagnostics
 - Windows PowerShell command examples
 
-No customer data or secrets are required. The walkthrough uses `examples/vendor-poc-pack`, a small English pack with one intentional S1 failure.
+No customer data or secrets are required. The walkthrough uses two small English packs:
+
+- `examples/vendor-poc-pack`: intentional FAIL scenario with one S1 mismatch
+- `examples/vendor-poc-pack-pass`: aligned PASS scenario for the same workflow
 
 ## What You Will Prove
 
@@ -78,7 +81,7 @@ pip install -e ".[all]"
 
 ## Pack Layout
 
-The sample pack lives at:
+The sample packs live at:
 
 ```text
 examples/vendor-poc-pack/
@@ -86,9 +89,15 @@ examples/vendor-poc-pack/
   gate.yml
   quality-pack.yml
   documents/support_policy.md
+
+examples/vendor-poc-pack-pass/
+  cases.csv
+  gate.yml
+  quality-pack.yml
+  documents/support_policy.md
 ```
 
-The S1 case `VPOC001` intentionally expects the keyword `security owner hotline`, which is not present in the source document. This makes the gate fail in a controlled way so you can demonstrate S1 blocking behavior.
+The FAIL pack keeps `VPOC001` intentionally broken by expecting `security owner hotline`, which is not present in the source document. The PASS pack removes that mismatch so the same workflow produces a clean PASS report.
 
 ## 1. Validate The Pack
 
@@ -128,27 +137,33 @@ python -m json.tool runs\vendor-poc\pack-validation.json
 
 Use `--mock` for first-run PoCs so no LLM API key is needed.
 
+Use a dedicated index and log directory for each pack so the walkthrough does not reuse retrieval data from a previous demo corpus.
+
 Bash:
 
 ```bash
+rm -rf indexes/vendor-poc-demo-fail
+rm -rf logs/vendor-poc-demo-fail
 rqg eval --pack examples/vendor-poc-pack \
   --mock \
-  --index-dir runs/vendor-poc/index \
-  --log-dir runs/vendor-poc/eval
+  --index-dir indexes/vendor-poc-demo-fail \
+  --log-dir logs/vendor-poc-demo-fail
 ```
 
 PowerShell:
 
 ```powershell
+Remove-Item -Recurse -Force indexes\vendor-poc-demo-fail -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force logs\vendor-poc-demo-fail -ErrorAction SilentlyContinue
 rqg eval --pack examples\vendor-poc-pack `
   --mock `
-  --index-dir runs\vendor-poc\index `
-  --log-dir runs\vendor-poc\eval
+  --index-dir indexes\vendor-poc-demo-fail `
+  --log-dir logs\vendor-poc-demo-fail
 ```
 
 Expected result:
 
-- evaluation records are written under `runs/vendor-poc/eval`
+- evaluation records are written under `logs/vendor-poc-demo-fail`
 - at least one record should show the intentional S1 keyword miss
 
 ## 3. Run check
@@ -156,13 +171,13 @@ Expected result:
 Bash:
 
 ```bash
-rqg check --pack examples/vendor-poc-pack --log-dir runs/vendor-poc/eval
+rqg check --pack examples/vendor-poc-pack --log-dir logs/vendor-poc-demo-fail
 ```
 
 PowerShell:
 
 ```powershell
-rqg check --pack examples\vendor-poc-pack --log-dir runs\vendor-poc\eval
+rqg check --pack examples\vendor-poc-pack --log-dir logs\vendor-poc-demo-fail
 ```
 
 Expected result:
@@ -179,54 +194,97 @@ The status should be `fail` because the S1 case is intentionally broken.
 
 `--pack` fills `cases.csv`, `documents/`, `gate.yml`, and `quality-pack.yml` from the pack root. If you also pass a lower-level argument such as `--docs` or `--config`, the explicit value wins.
 
+### FAIL scenario
+
 Bash:
 
 ```bash
+rm -rf indexes/vendor-poc-demo-fail
+rm -rf logs/vendor-poc-demo-fail
 rqg gate --pack examples/vendor-poc-pack \
   --mock \
-  --index-dir runs/vendor-poc/gate-index \
-  --log-dir runs/vendor-poc/gate \
-  --reset-log-dir
+  --index-dir indexes/vendor-poc-demo-fail \
+  --reset-log-dir \
+  --log-dir logs/vendor-poc-demo-fail
 ```
 
 PowerShell:
 
 ```powershell
+Remove-Item -Recurse -Force indexes\vendor-poc-demo-fail -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force logs\vendor-poc-demo-fail -ErrorAction SilentlyContinue
 rqg gate --pack examples\vendor-poc-pack `
   --mock `
-  --index-dir runs\vendor-poc\gate-index `
-  --log-dir runs\vendor-poc\gate `
-  --reset-log-dir
+  --index-dir indexes\vendor-poc-demo-fail `
+  --reset-log-dir `
+  --log-dir logs\vendor-poc-demo-fail
 ```
 
 Expected result:
 
 - exit code `1`
-- `runs/vendor-poc/gate/gate-report.md`
-- `runs/vendor-poc/gate/gate-decision.json`
-- `runs/vendor-poc/gate/gate-report.json`
+- `logs/vendor-poc-demo-fail/gate-report.md`
+- `logs/vendor-poc-demo-fail/gate-decision.json`
+- `logs/vendor-poc-demo-fail/gate-report.json`
+- Executive Summary says production promotion is not recommended
 
-The non-zero exit is expected for this demo. It proves an S1 production-blocking issue is detected.
+### PASS scenario
+
+Bash:
+
+```bash
+rm -rf indexes/vendor-poc-demo-pass
+rm -rf logs/vendor-poc-demo-pass
+rqg gate --pack examples/vendor-poc-pack-pass \
+  --mock \
+  --index-dir indexes/vendor-poc-demo-pass \
+  --reset-log-dir \
+  --log-dir logs/vendor-poc-demo-pass
+```
+
+PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force indexes\vendor-poc-demo-pass -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force logs\vendor-poc-demo-pass -ErrorAction SilentlyContinue
+rqg gate --pack examples\vendor-poc-pack-pass `
+  --mock `
+  --index-dir indexes\vendor-poc-demo-pass `
+  --reset-log-dir `
+  --log-dir logs\vendor-poc-demo-pass
+```
+
+Expected result:
+
+- exit code `0`
+- `logs/vendor-poc-demo-pass/gate-report.md`
+- `logs/vendor-poc-demo-pass/gate-decision.json`
+- `logs/vendor-poc-demo-pass/gate-report.json`
+- Executive Summary includes `Recommended. This pack meets the configured gate thresholds.`
+
+The FAIL scenario proves an S1 production-blocking issue is detected. The PASS scenario shows the same pack structure can clear the configured thresholds once the case definition is aligned to the source document.
 
 ## 5. Review The Reports
 
 Bash:
 
 ```bash
-cat runs/vendor-poc/gate/gate-report.md
-cat runs/vendor-poc/gate/gate-decision.json
-python -m json.tool runs/vendor-poc/gate/gate-report.json
+cat logs/vendor-poc-demo-fail/gate-report.md
+cat logs/vendor-poc-demo-fail/gate-decision.json
+python -m json.tool logs/vendor-poc-demo-fail/gate-report.json
 ```
 
 PowerShell:
 
 ```powershell
-Get-Content runs\vendor-poc\gate\gate-report.md -Encoding UTF8
-python -m json.tool runs\vendor-poc\gate\gate-decision.json
-python -m json.tool runs\vendor-poc\gate\gate-report.json
+Get-Content logs\vendor-poc-demo-fail\gate-report.md -Encoding UTF8
+python -m json.tool logs\vendor-poc-demo-fail\gate-decision.json
+python -m json.tool logs\vendor-poc-demo-fail\gate-report.json
 ```
 
 Use the Markdown report for a human review conversation. Use `gate-report.json` for downstream consumers such as CI annotations, weekly review automation, dashboards, or customer evidence archives.
+
+For the passing scenario, inspect `logs/vendor-poc-demo-pass/gate-report.md` and confirm the Executive Summary says the pack meets the configured gate thresholds.
 
 Do not remove or rename existing `gate-report.json` fields in downstream integrations. Treat it as a machine-readable contract.
 
@@ -234,7 +292,7 @@ If Markdown output looks garbled on Windows PowerShell, run the UTF-8 setup comm
 
 ## 6. Read The S1 Failure
 
-In this pack, `VPOC001` is S1 and intentionally fails.
+In the FAIL pack, `VPOC001` is S1 and intentionally fails.
 
 Look for:
 

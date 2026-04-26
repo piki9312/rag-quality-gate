@@ -1,0 +1,44 @@
+pack:
+  name: demo-client-pack
+  version: "1.0"
+  pack_name: demo-client-pack
+  pack_version: "1.0"
+  tenant_name: acme-internal-demo
+  use_case: internal-support-rag
+  vertical: internal-operations
+  risk_profile: high
+  owner: client-demo-qa
+  environment: demo
+  source_pack: demo-client-pack
+  domain: "Internal Support RAG"
+  profile: "Client Demo"
+  review_steward: client-demo-qa
+  description: >
+    Small English Quality Pack for a client-facing internal support RAG walkthrough.
+    It demonstrates a clean PASS path across HR, IT support, security escalation,
+    remote work, and payroll guardrails.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+severity_policy:
+  s1_definition:
+    - customer-facing or employee-facing guidance that must not be wrong before production
+    - escalation, eligibility, or compliance guidance that blocks release when incorrect
+  s2_definition:
+    - normal regression or guardrail checks that should remain stable over time
+
+common_failure_patterns:
+  - name: keyword_miss
+    symptom: "Answer does not include required business terms"
+    first_action: "Review expected_keywords and confirm the answer mirrors the source policy"
+  - name: retrieval_miss
+    symptom: "Expected supporting evidence is not retrieved"
+    first_action: "Review ingestion, chunking, and expected_evidence references"
+  - name: schema_mismatch
+    symptom: "External RAG response does not map to results[].chunk_id/source/text"
+    first_action: "Adjust response mapping or adapter normalization before rerunning the gate"
+  - name: policy_gap
+    symptom: "The policy does not fully answer the support question"
+    first_action: "Escalate the gap to the policy owner and update source guidance before release"

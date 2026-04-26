@@ -1,0 +1,42 @@
+pack:
+  name: vendor-poc-pack-pass
+  version: "1.0"
+  pack_name: vendor-poc-pack-pass
+  pack_version: "1.0"
+  tenant_name: example-customer
+  use_case: customer-support-rag
+  vertical: customer-support
+  risk_profile: medium
+  owner: vendor-qa
+  environment: poc
+  source_pack: vendor-poc-pack-pass
+  domain: "Customer Support RAG"
+  profile: "Vendor PoC Pass"
+  review_steward: vendor-qa
+  description: >
+    Minimal English Quality Pack for a vendor-facing proof of concept.
+    This is the passing scenario used to demonstrate validate-pack,
+    PASS gate execution, and downstream report inspection.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+severity_policy:
+  s1_definition:
+    - customer-facing answer that must not be wrong before production
+    - escalation or support routing guidance
+  s2_definition:
+    - standard regression check
+    - guardrail or wording check that should be reviewed but may not block by itself
+
+common_failure_patterns:
+  - name: keyword_miss
+    symptom: "Answer does not include required customer-facing terms"
+    first_action: "Review expected_keywords, prompt wording, and retrieved evidence"
+  - name: retrieval_miss
+    symptom: "Expected evidence is not retrieved"
+    first_action: "Review document ingestion, chunking, and expected_evidence references"
+  - name: schema_mismatch
+    symptom: "External RAG response does not map to results[].chunk_id/source/text"
+    first_action: "Adjust response_mapping or the external adapter response"

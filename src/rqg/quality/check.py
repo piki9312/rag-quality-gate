@@ -722,6 +722,26 @@ def _format_threshold_reason(threshold: ThresholdResult) -> str:
     return reason
 
 
+def _executive_promotion_summary(status: str) -> str:
+    if status == "PASS":
+        return "Recommended. This pack meets the configured gate thresholds."
+    if status == "FAIL":
+        return "Not recommended. This pack should not be promoted to production."
+    return "Review required. This pack met hard thresholds but triggered warning conditions."
+
+
+def _main_failure_category_summary(failure_categories: dict[str, int]) -> str:
+    if not failure_categories:
+        return "None"
+
+    category, count = sorted(
+        failure_categories.items(),
+        key=lambda item: (-item[1], item[0]),
+    )[0]
+    case_label = "case" if count == 1 else "cases"
+    return f"{category} ({count} {case_label})"
+
+
 def build_gate_decision(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
@@ -847,7 +867,52 @@ def render_gate_markdown(
 ) -> str:
     """Render a gate check result as Markdown."""
     status = result.gate_status.upper()
+    next_actions = _build_structured_next_actions(
+        result.failure_categories, failure_actions, result.failure_case_ids
+    )
+    if result.judge_fallback_count > 0:
+        next_actions.append(
+            GateNextAction(
+                failure_category="judge_reliability",
+                count=result.judge_fallback_count,
+                action="Re-run judge-enabled evaluation and confirm model/API connectivity",
+            )
+        )
+    if result.embedding_fallback_used:
+        next_actions.append(
+            GateNextAction(
+                failure_category="embedding_reliability",
+                count=max(1, result.embedding_fallback_count),
+                action="Check embedding dependency/model loading and rebuild the retrieval index",
+            )
+        )
+    if result.needs_human_review:
+        next_actions.append(
+            GateNextAction(
+                failure_category="human_review",
+                count=1,
+                action="Route this run for manual review before approving the update",
+            )
+        )
+
+    s1_failure_count = max(0, result.s1_total - result.s1_passed)
     lines = [f"## RAG Quality Gate: {status}\n"]
+    lines.append("### Executive Summary")
+    lines.append(f"- Production promotion: {_executive_promotion_summary(status)}")
+    lines.append(f"- Gate status: {status}")
+    lines.append(
+        f"- S1 pass rate: {result.s1_rate:.1f}% ({s1_failure_count} S1 failure"
+        f"{'s' if s1_failure_count != 1 else ''})"
+    )
+    lines.append(f"- Overall pass rate: {result.overall_rate:.1f}%")
+    lines.append(
+        f"- Main failure category: {_main_failure_category_summary(result.failure_categories)}"
+    )
+    if next_actions:
+        lines.append(f"- Recommended next action: {next_actions[0].action}")
+    else:
+        lines.append("- Recommended next action: No immediate action required.")
+    lines.append("")
     lines.append(f"- Aggregation Policy: {result.aggregation_policy}")
 
     if history_decisions:
@@ -948,34 +1013,6 @@ def render_gate_markdown(
         lines.append("|----------|-------|")
         for category, count in result.failure_categories.items():
             lines.append(f"| {category} | {count} |")
-
-    next_actions = _build_structured_next_actions(
-        result.failure_categories, failure_actions, result.failure_case_ids
-    )
-    if result.judge_fallback_count > 0:
-        next_actions.append(
-            GateNextAction(
-                failure_category="judge_reliability",
-                count=result.judge_fallback_count,
-                action="Re-run judge-enabled evaluation and confirm model/API connectivity",
-            )
-        )
-    if result.embedding_fallback_used:
-        next_actions.append(
-            GateNextAction(
-                failure_category="embedding_reliability",
-                count=max(1, result.embedding_fallback_count),
-                action="Check embedding dependency/model loading and rebuild the retrieval index",
-            )
-        )
-    if result.needs_human_review:
-        next_actions.append(
-            GateNextAction(
-                failure_category="human_review",
-                count=1,
-                action="Route this run for manual review before approving the update",
-            )
-        )
 
     if next_actions:
         lines.append("\n### Next Actions")
