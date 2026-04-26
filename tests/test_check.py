@@ -20,8 +20,8 @@ from rqg.quality.check import (
     render_gate_markdown,
     run_check,
 )
-from rqg.quality.staleness import CaseStalenessItem
 from rqg.quality.models import QARunRecord
+from rqg.quality.staleness import CaseStalenessItem
 
 # ------------------------------------------------------------------
 # Fixtures
