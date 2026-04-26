@@ -210,9 +210,10 @@ class TestHTTPRAGAdapterNormalization:
         result = adapter._normalize([{"chunk_id": "c1", "source": " ", "text": "hello"}])
 
         assert result[0]["source"] == "external-rag"
-        assert "missing optional source_path 'source'; using external-rag" in result[0][
-            "metadata"
-        ]["mapping_warnings"]
+        assert (
+            "missing optional source_path 'source'; using external-rag"
+            in result[0]["metadata"]["mapping_warnings"]
+        )
 
     def test_normalize_invalid_score_raises(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError

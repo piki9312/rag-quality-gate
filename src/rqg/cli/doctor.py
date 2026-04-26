@@ -9,7 +9,6 @@ import os
 import platform
 import sys
 
-
 OPTIONAL_DEPENDENCIES: tuple[tuple[str, str], ...] = (
     ("httpx", "httpx"),
     ("faiss", "faiss"),

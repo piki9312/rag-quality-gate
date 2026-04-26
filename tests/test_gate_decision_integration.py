@@ -86,16 +86,12 @@ def assert_gate_report_bundle_contract(payload: dict) -> None:
     assert {"pass", "warn", "fail"}.issubset(history_summary["status_mix"])
     for key in ("pass", "warn", "fail"):
         assert isinstance(history_summary["status_mix"][key], int)
-    assert history_summary["week_start"] is None or isinstance(
-        history_summary["week_start"], str
-    )
+    assert history_summary["week_start"] is None or isinstance(history_summary["week_start"], str)
     assert isinstance(history_summary["compare_offset"], int)
     assert isinstance(history_summary["trend_window"], int)
     assert isinstance(history_summary["summary_lines"], list)
     assert history_summary["trend"] is None or isinstance(history_summary["trend"], dict)
-    assert history_summary["comparison"] is None or isinstance(
-        history_summary["comparison"], dict
-    )
+    assert history_summary["comparison"] is None or isinstance(history_summary["comparison"], dict)
     assert history_summary["failure_action_coverage"] is None or isinstance(
         history_summary["failure_action_coverage"], dict
     )

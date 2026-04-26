@@ -37,9 +37,7 @@ def store(ascii_tmp, monkeypatch):
     return RAGStore(index_dir=str(ascii_tmp / "idx"), auto_load=False)
 
 
-def test_explicit_local_fallback_embedding_mode_is_not_reported_as_degraded(
-    ascii_tmp, monkeypatch
-):
+def test_explicit_local_fallback_embedding_mode_is_not_reported_as_degraded(ascii_tmp, monkeypatch):
     class UnexpectedSentenceTransformer:
         def __init__(self, *a, **kw):
             raise AssertionError("SentenceTransformer should not be loaded")

@@ -9,7 +9,6 @@ from typing import Protocol
 
 from rqg.domain import GateDecision
 
-
 GATE_REPORT_SCHEMA_VERSION = "1.0"
 
 

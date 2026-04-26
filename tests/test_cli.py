@@ -26,11 +26,7 @@ def _subparser_option_strings(command: str) -> set[str]:
         if getattr(action, "choices", None) and command in action.choices
     )
     subparser = subparsers_action.choices[command]
-    return {
-        option
-        for action in subparser._actions
-        for option in action.option_strings
-    }
+    return {option for action in subparser._actions for option in action.option_strings}
 
 
 def _create_pack_dir(
@@ -51,7 +47,9 @@ def _create_pack_dir(
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "doc.md").write_text("# doc\n", encoding="utf-8")
     if include_quality_pack:
-        (pack_dir / "quality-pack.yml").write_text("pack:\n  review_steward: qa\n", encoding="utf-8")
+        (pack_dir / "quality-pack.yml").write_text(
+            "pack:\n  review_steward: qa\n", encoding="utf-8"
+        )
     if include_gate_config:
         (pack_dir / "gate.yml").write_text("s1_pass_rate: 100\n", encoding="utf-8")
 
@@ -745,7 +743,9 @@ class TestPhase1CLI:
 
     def test_eval_old_style_args_still_work_without_pack(self):
         with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
-            exit_code = main(["eval", "packs/hr/cases.csv", "--docs", "packs/hr/documents", "--mock"])
+            exit_code = main(
+                ["eval", "packs/hr/cases.csv", "--docs", "packs/hr/documents", "--mock"]
+            )
 
         assert exit_code == 0
         resolved_args = eval_mock.call_args.args[0]

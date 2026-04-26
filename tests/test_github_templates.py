@@ -195,7 +195,9 @@ def test_phase2_5_weekly_review_repo_workflows_use_fixed_title_and_labels() -> N
 def test_phase2_5_weekly_metrics_repo_workflow_has_optional_slack_summary() -> None:
     payload = _load_yaml(Path(".github/workflows/phase2-5-weekly-metrics.yml"))
 
-    step_names = [step.get("name", "") for step in payload["jobs"]["phase2-5-weekly-metrics"]["steps"]]
+    step_names = [
+        step.get("name", "") for step in payload["jobs"]["phase2-5-weekly-metrics"]["steps"]
+    ]
     assert "Send optional weekly review Slack summary" in step_names
 
     slack_step = _find_step(

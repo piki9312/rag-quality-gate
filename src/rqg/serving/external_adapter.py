@@ -164,7 +164,8 @@ def load_http_rag_adapter_config(path: str | Path) -> ExternalRAGAdapterConfig:
             **response_mapping_payload,
             "chunk_id_path": response_mapping_payload.get("chunk_id_path")
             or legacy_fields.get("chunk_id"),
-            "source_path": response_mapping_payload.get("source_path") or legacy_fields.get("source"),
+            "source_path": response_mapping_payload.get("source_path")
+            or legacy_fields.get("source"),
             "text_path": response_mapping_payload.get("text_path") or legacy_fields.get("text"),
             "score_path": response_mapping_payload.get("score_path") or legacy_fields.get("score"),
         }
@@ -453,9 +454,7 @@ class HTTPRAGAdapter:
         return normalized
 
 
-def _metadata_with_diagnostics(
-    raw_metadata: Any, diagnostics: list[str]
-) -> dict[str, Any] | None:
+def _metadata_with_diagnostics(raw_metadata: Any, diagnostics: list[str]) -> dict[str, Any] | None:
     metadata = raw_metadata if isinstance(raw_metadata, dict) else {}
     if diagnostics:
         metadata = {**metadata, "mapping_warnings": diagnostics}

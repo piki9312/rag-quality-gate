@@ -223,9 +223,7 @@ def validate_pack_onboarding(
             case_count = len(rows)
             normalized_rows = [normalize_legacy_row(row) for row in rows]
             active_case_count = sum(
-                1
-                for row in normalized_rows
-                if (row.get("status") or "active").strip() == "active"
+                1 for row in normalized_rows if (row.get("status") or "active").strip() == "active"
             )
             require_active_owner = bool(gate_config and gate_config.staleness_policy_enabled)
             for issue in validate_case_rows(
