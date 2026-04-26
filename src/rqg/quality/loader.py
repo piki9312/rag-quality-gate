@@ -145,6 +145,10 @@ def _load_cases_from_json(path: Path) -> list[QATestCase]:
                 expected_evidence=expected_evidence,
                 expected_answer=expected_answer,
                 category=str(item.get("category", "general")),
+                risk_domain=str(item.get("risk_domain") or item.get("category") or "general"),
+                required_action=str(item.get("required_action") or ""),
+                evidence_required=bool(item.get("evidence_required") or expected_evidence),
+                owner_role=str(item.get("owner_role") or ""),
                 owner=str(item.get("owner", "")),
                 min_case_score=min_case_score,
                 last_reviewed_at=str(item.get("last_reviewed_at", "")).strip(),
@@ -248,6 +252,13 @@ def load_cases(file_path: str) -> list[QATestCase]:
                 expected_evidence=expected_ev,
                 expected_answer=expected_answer,
                 category=row.get("category", "general"),
+                risk_domain=row.get("risk_domain", "").strip() or row.get("category", "general"),
+                required_action=(
+                    row.get("required_action", "").strip()
+                    or _infer_required_action(row.get("severity", "S2"))
+                ),
+                evidence_required=_as_bool(row.get("evidence_required", "")) or bool(expected_ev),
+                owner_role=row.get("owner_role", "").strip(),
                 source_doc=row.get("source_doc", ""),
                 owner=row.get("owner", ""),
                 min_case_score=min_cs,
@@ -257,3 +268,16 @@ def load_cases(file_path: str) -> list[QATestCase]:
             )
             cases.append(case)
     return cases
+
+
+def _infer_required_action(severity: object) -> str:
+    normalized = str(severity or "").strip().upper()
+    if normalized == "S1":
+        return "block"
+    if normalized == "S2":
+        return "allow_with_warning"
+    return "allow"
+
+
+def _as_bool(value: object) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "y", "required"}

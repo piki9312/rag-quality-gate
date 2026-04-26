@@ -38,7 +38,14 @@ def build_monthly_summary_payload(
 ) -> dict[str, Any]:
     monthly_decisions, month_start = filter_decisions_for_month(decisions, month=month, now=now)
     latest = monthly_decisions[-1] if monthly_decisions else None
-    blocked_runs = sum(1 for decision in monthly_decisions if decision.status == "fail")
+    blocked_runs = sum(
+        1
+        for decision in monthly_decisions
+        if decision.status == "fail" or decision.policy_status == "block"
+    )
+    needs_review_runs = sum(
+        1 for decision in monthly_decisions if decision.policy_status == "needs_human_review"
+    )
     s1_incidents_detected = int(
         sum(
             float(decision.metrics.get("s1_fail_count", 0.0) or 0.0)
@@ -72,16 +79,51 @@ def build_monthly_summary_payload(
     embedding_fallback_runs = sum(
         1 for decision in monthly_decisions if decision.embedding_fallback_used
     )
+    low_reliability_runs = sum(
+        1
+        for decision in monthly_decisions
+        if decision.judge_reliability == "low" or decision.retrieval_reliability == "low"
+    )
     quality_trend_summary = _build_quality_trend_summary(monthly_decisions)
+    passed_runs = sum(1 for decision in monthly_decisions if decision.status == "pass")
+    s2_warnings = int(
+        sum(
+            1
+            for decision in monthly_decisions
+            for reason in decision.reasons
+            if str(reason).startswith("WARN")
+        )
+    )
 
     return {
+        "month": month_start[:7],
         "month_start": month_start,
+        "pack_id": (
+            latest.pack.pack_id or latest.pack.pack_name
+            if latest is not None and latest.pack
+            else None
+        ),
         "total_runs": len(monthly_decisions),
+        "passed_runs": passed_runs,
         "blocked_runs": blocked_runs,
+        "needs_review_runs": needs_review_runs,
         "s1_incidents_detected": s1_incidents_detected,
+        "s2_warnings": s2_warnings,
+        "top_reasons": [
+            {"reason": reason, "count": count} for reason, count in reason_counts.most_common(5)
+        ],
         "top_reasons_trend": [
             {"reason": reason, "count": count} for reason, count in reason_counts.most_common(5)
         ],
+        "fallback_summary": {
+            "judge_fallback_count": sum(
+                decision.judge_fallback_count for decision in monthly_decisions
+            ),
+            "embedding_fallback_count": sum(
+                decision.embedding_fallback_count for decision in monthly_decisions
+            ),
+            "low_reliability_runs": low_reliability_runs,
+        },
         "fallback_trend": {
             "judge_fallback_runs": judge_fallback_runs,
             "judge_fallback_count": sum(
@@ -91,14 +133,18 @@ def build_monthly_summary_payload(
             "embedding_fallback_count": sum(
                 decision.embedding_fallback_count for decision in monthly_decisions
             ),
+            "low_reliability_runs": low_reliability_runs,
         },
-        "resolved_issues": resolved_issues,
-        "unresolved_issues": unresolved_issues,
+        "resolved_issues": len(resolved_issues),
+        "resolved_issue_reasons": resolved_issues,
+        "unresolved_issues": len(unresolved_issues),
+        "unresolved_issue_reasons": unresolved_issues,
         "recommended_actions": [
             action.model_dump(mode="json")
             for action in (latest.next_actions if latest is not None else [])
         ],
         "quality_trend_summary": quality_trend_summary,
+        "quality_trend": _quality_trend_label(monthly_decisions),
         "latest_status": latest.status.upper() if latest is not None else "UNKNOWN",
         "pack": latest.pack.model_dump(mode="json") if latest is not None and latest.pack else None,
     }
@@ -126,14 +172,14 @@ def render_monthly_summary_markdown(summary: dict[str, Any]) -> str:
         for item in top_reasons:
             lines.append(f"| {item.get('reason', '-')} | {int(item.get('count', 0) or 0)} |")
 
-    unresolved = summary.get("unresolved_issues", []) or []
+    unresolved = summary.get("unresolved_issue_reasons", []) or []
     lines.extend(["", "### Unresolved Issues", ""])
     if unresolved:
         lines.extend(f"- {item}" for item in unresolved)
     else:
         lines.append("- None")
 
-    resolved = summary.get("resolved_issues", []) or []
+    resolved = summary.get("resolved_issue_reasons", []) or []
     lines.extend(["", "### Resolved Issues", ""])
     if resolved:
         lines.extend(f"- {item}" for item in resolved)
@@ -170,3 +216,17 @@ def _build_quality_trend_summary(decisions: list[GateDecision]) -> str:
         f"S1 pass rate {s1_start:.1f}% -> {s1_end:.1f}%; "
         f"latest status={latest.status.upper()}"
     )
+
+
+def _quality_trend_label(decisions: list[GateDecision]) -> str:
+    if len(decisions) < 2:
+        return "stable"
+    first = decisions[0]
+    latest = decisions[-1]
+    overall_start = float(first.metrics.get("overall_pass_rate", 0.0) or 0.0)
+    overall_end = float(latest.metrics.get("overall_pass_rate", 0.0) or 0.0)
+    if overall_end > overall_start:
+        return "improving"
+    if overall_end < overall_start:
+        return "declining"
+    return "stable"

@@ -14,6 +14,13 @@ from rqg.domain import GateDecision, GateNextAction, GatePackMetadata
 
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
 from .models import QARunRecord
+from .reason_taxonomy import (
+    REASON_EMBEDDING_FALLBACK_USED,
+    REASON_JUDGE_FALLBACK_USED,
+    REASON_JUDGE_UNRELIABLE,
+    REASON_NEEDS_HUMAN_REVIEW,
+    canonical_reason,
+)
 from .staleness import CaseStalenessItem, summarize_case_staleness
 
 logger = logging.getLogger(__name__)
@@ -219,6 +226,7 @@ class CheckResult:
     embedding_fallback_count: int = 0
     embedding_fallback_used: bool = False
     embedding_fallback_reason: str | None = None
+    retrieval_reliability: str = "high"
     needs_human_review: bool = False
 
     @property
@@ -453,8 +461,15 @@ def run_check(
         judge_scored_runs=judge_relevance_scored,
         judge_fallback_count=judge_fallback_count,
     )
+    retrieval_empty_s1 = any(
+        record.severity == "S1" and record.retrieved_ids == [] for record in current
+    )
+    retrieval_reliability = "low" if retrieval_empty_s1 else "high"
     needs_human_review = (
-        judge_fallback_count > 0 or embedding_fallback_count > 0 or judge_relevance_scored < total
+        judge_fallback_count > 0
+        or embedding_fallback_count > 0
+        or judge_relevance_scored < total
+        or retrieval_empty_s1
     )
 
     # Threshold checks
@@ -676,6 +691,7 @@ def run_check(
         embedding_fallback_count=embedding_fallback_count,
         embedding_fallback_used=embedding_fallback_count > 0,
         embedding_fallback_reason=embedding_fallback_reason,
+        retrieval_reliability=retrieval_reliability,
         needs_human_review=needs_human_review,
     )
 
@@ -775,6 +791,16 @@ def build_gate_decision(
         )
     if result.needs_human_review:
         reasons.append("Human review required because run reliability signals were degraded")
+    reason_codes = [canonical_reason(category) for category in result.failure_categories]
+    if result.judge_fallback_count > 0:
+        reason_codes.append(REASON_JUDGE_FALLBACK_USED)
+    if result.judge_reliability == "low":
+        reason_codes.append(REASON_JUDGE_UNRELIABLE)
+    if result.embedding_fallback_used:
+        reason_codes.append(REASON_EMBEDDING_FALLBACK_USED)
+    if result.needs_human_review:
+        reason_codes.append(REASON_NEEDS_HUMAN_REVIEW)
+    reason_codes = list(dict.fromkeys(reason_codes))
 
     metrics = {
         "overall_pass_rate": result.overall_rate,
@@ -805,6 +831,15 @@ def build_gate_decision(
     if result.fresh_case_review_rate is not None:
         metrics["fresh_case_review_rate"] = result.fresh_case_review_rate
         metrics["stale_case_count"] = float(len(result.stale_cases))
+    fallback_summary: dict[str, object] = {
+        "judge_fallback_used": result.judge_fallback_count > 0,
+        "judge_fallback_count": result.judge_fallback_count,
+        "judge_failure_types": result.judge_failure_types,
+        "embedding_fallback_used": result.embedding_fallback_used,
+        "embedding_fallback_count": result.embedding_fallback_count,
+        "embedding_fallback_reason": result.embedding_fallback_reason,
+        "retrieval_reliability": result.retrieval_reliability,
+    }
     next_actions = _build_structured_next_actions(
         result.failure_categories, failure_actions, result.failure_case_ids
     )
@@ -832,11 +867,14 @@ def build_gate_decision(
                 action="Route this run for manual review before approving the update",
             )
         )
+    policy_status = _policy_status_for_result(result)
 
     return GateDecision(
         run_id=result.run_id,
         status=status,
+        policy_status=policy_status,
         reasons=reasons,
+        reason_codes=reason_codes,
         metrics=metrics,
         next_actions=next_actions,
         judge_fallback_used=result.judge_fallback_count > 0,
@@ -846,10 +884,38 @@ def build_gate_decision(
         embedding_fallback_used=result.embedding_fallback_used,
         embedding_fallback_count=result.embedding_fallback_count,
         embedding_fallback_reason=result.embedding_fallback_reason,
+        retrieval_reliability=result.retrieval_reliability,  # type: ignore[arg-type]
+        fallback_summary=fallback_summary,
         needs_human_review=result.needs_human_review,
+        approval=_approval_for_policy_status(policy_status),
         pack=GatePackMetadata.model_validate(pack_metadata or None) if pack_metadata else None,
         created_at=datetime.now(timezone.utc),
     )
+
+
+def _policy_status_for_result(result: CheckResult) -> str:
+    s1_fail_count = max(0, result.s1_total - result.s1_passed)
+    if s1_fail_count > 0 or not result.gate_passed:
+        return "block"
+    if result.needs_human_review:
+        return "needs_human_review"
+    if result.gate_status == "warn":
+        return "warn"
+    return "pass"
+
+
+def _approval_for_policy_status(policy_status: str) -> dict[str, object]:
+    if policy_status == "needs_human_review":
+        return {
+            "approval_required": True,
+            "approval_status": "pending",
+            "approver_role": "quality_owner",
+        }
+    return {
+        "approval_required": False,
+        "approval_status": "not_required",
+        "approver_role": None,
+    }
 
 
 # ------------------------------------------------------------------
@@ -900,6 +966,7 @@ def render_gate_markdown(
     lines.append("### Executive Summary")
     lines.append(f"- Production promotion: {_executive_promotion_summary(status)}")
     lines.append(f"- Gate status: {status}")
+    lines.append(f"- Policy status: {_policy_status_for_result(result).upper()}")
     lines.append(
         f"- S1 pass rate: {result.s1_rate:.1f}% ({s1_failure_count} S1 failure"
         f"{'s' if s1_failure_count != 1 else ''})"
@@ -971,6 +1038,7 @@ def render_gate_markdown(
     lines.append(f"- Embedding fallback: {'YES' if result.embedding_fallback_used else 'NO'}")
     if result.embedding_fallback_reason:
         lines.append(f"- Embedding fallback reason: {result.embedding_fallback_reason}")
+    lines.append(f"- Retrieval reliability: {result.retrieval_reliability.upper()}")
     lines.append(f"- Needs human review: {'YES' if result.needs_human_review else 'NO'}")
 
     if result.fresh_case_review_rate is not None and result.stale_after_days > 0:

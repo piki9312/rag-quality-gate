@@ -1,0 +1,10 @@
+cases:
+  CS-S1-REFUND-001:
+    required_evidence:
+      - refund_policy.md#digital-products
+  CS-S1-CANCEL-001:
+    required_evidence:
+      - cancellation_policy.md#renewal-deadline
+  CS-S1-PRICING-001:
+    required_evidence:
+      - pricing_faq.md#pro-plan

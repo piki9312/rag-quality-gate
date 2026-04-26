@@ -563,6 +563,9 @@ def _serialize_reliability(decision: GateDecision) -> dict[str, object]:
         "embedding_fallback_used": decision.embedding_fallback_used,
         "embedding_fallback_count": decision.embedding_fallback_count,
         "embedding_fallback_reason": decision.embedding_fallback_reason,
+        "retrieval_reliability": decision.retrieval_reliability,
+        "fallback_summary": decision.fallback_summary,
+        "policy_status": decision.policy_status,
         "needs_human_review": decision.needs_human_review,
     }
 

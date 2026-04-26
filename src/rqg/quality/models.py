@@ -39,6 +39,10 @@ class QATestCase:
     expected_evidence: list[str] = field(default_factory=list)
     expected_keywords: list[str] = field(default_factory=list)
     category: str = "general"
+    risk_domain: str = ""
+    required_action: str = ""
+    evidence_required: bool = False
+    owner_role: str = ""
     source_doc: str = ""
     owner: str = ""
     min_case_score: float = 0.0
@@ -138,6 +142,8 @@ class QARunRecord(BaseModel):
     case_id: str = Field(...)
     severity: str = Field(...)
     category: str = Field(default="general")
+    risk_domain: str | None = Field(None)
+    required_action: str | None = Field(None)
     passed: bool = Field(...)
     failure_type: str | None = Field(None)
     failure_category: str | None = Field(None)
@@ -178,6 +184,8 @@ class QARunRecord(BaseModel):
             case_id=result.case_id,
             severity=result.severity,
             category=case.category,
+            risk_domain=case.risk_domain or case.category,
+            required_action=case.required_action or _infer_required_action(case.severity),
             passed=result.passed,
             failure_type=result.failure_type,
             failure_category=result.failure_category,
@@ -207,3 +215,12 @@ class QARunRecord(BaseModel):
             embedding_fallback_used=result.embedding_fallback_used or None,
             embedding_fallback_reason=result.embedding_fallback_reason,
         )
+
+
+def _infer_required_action(severity: str) -> str:
+    normalized = str(severity or "").strip().upper()
+    if normalized == "S1":
+        return "block"
+    if normalized == "S2":
+        return "allow_with_warning"
+    return "allow"

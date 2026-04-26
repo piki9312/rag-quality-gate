@@ -1,0 +1,57 @@
+pack:
+  pack_id: customer_support_pack
+  name: customer-support-ai-quality-pack
+  version: "0.1"
+  pack_name: Customer Support AI Quality Pack
+  tenant_name: demo_customer
+  use_case: customer_support_faq
+  vertical: customer_support
+  risk_profile: high_external_response
+  environment: demo
+  owner: proofgate-demo
+  review_steward: proofgate-demo
+  pack_version: "0.1.0"
+  source_pack: null
+  created_from_template: true
+  description: Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+risk_domains:
+  - refund
+  - cancellation
+  - pricing
+  - contract_terms
+  - deadline
+  - eligibility
+
+s1_policy:
+  description: Customer-facing answers that may cause financial, contractual, or rights-related harm.
+  required_action_on_fail: block
+  required_action_on_uncertain: needs_human_review
+
+reporting:
+  monthly_summary_enabled: true
+  notify_on_s1_fail: true
+
+common_failure_patterns:
+  - name: retrieval_fail
+    symptom: Required policy evidence was not retrieved for a high-risk answer.
+    first_action: Review document ingestion, chunk IDs, and expected_evidence for the failed customer support case.
+  - name: evidence_mismatch
+    symptom: The answer contradicts or omits the required refund, cancellation, pricing, or contract evidence.
+    first_action: Review the cited policy text, update the FAQ prompt or document, and rerun the gate.
+  - name: answer_quality_fail
+    symptom: The answer missed business-critical terms for a customer-facing high-risk response.
+    first_action: Inspect the actual answer, update prompt constraints, and keep S1 cases blocked until fixed.
+  - name: judge_fallback_used
+    symptom: The judge could not complete normally and fallback scoring was used.
+    first_action: Re-run judge-enabled evaluation and route the run for human review before release.
+  - name: embedding_fallback_used
+    symptom: Embedding fallback was used during retrieval.
+    first_action: Confirm embedding dependency health and rebuild the index before approving the update.
+  - name: needs_human_review
+    symptom: Proof Gate detected degraded reliability or an uncertain S1 decision.
+    first_action: Assign the run to the quality owner and record approval or rejection before customer release.

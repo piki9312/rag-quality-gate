@@ -24,6 +24,7 @@ class GateNextAction(BaseModel):
 class GatePackMetadata(BaseModel):
     """Pack metadata carried alongside gate decisions for reuse and UI."""
 
+    pack_id: str = ""
     name: str = ""
     version: str = ""
     review_steward: str = ""
@@ -35,10 +36,23 @@ class GatePackMetadata(BaseModel):
     owner: str = ""
     environment: str = ""
     pack_version: str = ""
-    source_pack: str = ""
+    source_pack: str | None = ""
     created_from_template: bool = False
 
     model_config = ConfigDict(extra="allow")
+
+
+class GateApprovalInfo(BaseModel):
+    """Forward-compatible approval stub for external-send governance."""
+
+    approval_required: bool = False
+    approval_status: Literal["not_required", "pending", "approved", "rejected"] = "not_required"
+    approver_role: str | None = None
+    approved_by: str | None = None
+    approved_at: str | None = None
+    approval_reason: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class GateDecision(BaseModel):
@@ -46,7 +60,9 @@ class GateDecision(BaseModel):
 
     run_id: str
     status: Literal["pass", "warn", "fail"]
+    policy_status: Literal["pass", "warn", "block", "needs_human_review"] = "pass"
     reasons: list[str] = Field(default_factory=list)
+    reason_codes: list[str] = Field(default_factory=list)
     metrics: dict[str, float]
     next_actions: list[GateNextAction] = Field(default_factory=list)
     judge_fallback_used: bool = False
@@ -56,7 +72,10 @@ class GateDecision(BaseModel):
     embedding_fallback_used: bool = False
     embedding_fallback_count: int = Field(default=0, ge=0)
     embedding_fallback_reason: str | None = None
+    retrieval_reliability: Literal["high", "medium", "low"] = "high"
+    fallback_summary: dict[str, object] = Field(default_factory=dict)
     needs_human_review: bool = False
+    approval: GateApprovalInfo = Field(default_factory=GateApprovalInfo)
     pack: GatePackMetadata | None = None
     created_at: datetime
 

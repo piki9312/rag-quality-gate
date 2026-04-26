@@ -3,7 +3,7 @@
 from .connection_validation import ConnectionValidationErrorType, ConnectionValidationResult
 from .document_snapshot import DocumentSnapshot
 from .eval_case import EvalCase
-from .gate_decision import GateDecision, GateNextAction, GatePackMetadata
+from .gate_decision import GateApprovalInfo, GateDecision, GateNextAction, GatePackMetadata
 from .impact_report import ImpactDetail, ImpactReport
 
 __all__ = [
@@ -14,6 +14,7 @@ __all__ = [
     "GateDecision",
     "GateNextAction",
     "GatePackMetadata",
+    "GateApprovalInfo",
     "ImpactDetail",
     "ImpactReport",
 ]

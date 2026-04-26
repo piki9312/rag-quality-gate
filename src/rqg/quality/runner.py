@@ -28,6 +28,7 @@ from .evaluators.reference import extract_references, reference_accuracy
 from .evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
 from .failure_reason import classify_failure_category
 from .models import EvalResult, EvalRun, QARunRecord, QATestCase
+from .reason_taxonomy import classify_judge_failure_type
 from .text_utils import (
     normalize_text,
     overlap_f1,
@@ -458,7 +459,7 @@ class RAGQualityRunner:
                 judge_relevance = judge_result.relevance
                 judge_fallback_used = judge_result.fallback_used
                 judge_fallback_reason = judge_result.fallback_reason
-                judge_failure_type = _classify_judge_failure_type(judge_fallback_reason)
+                judge_failure_type = classify_judge_failure_type(judge_fallback_reason)
                 if judge_result.usage and not self.mock_llm:
                     judge_cost = judge_result.usage.get("estimated_cost_usd", 0.0) or 0.0
                     cost_usd += judge_cost
@@ -650,18 +651,3 @@ class RAGQualityRunner:
                 f.write(record.model_dump_json() + "\n")
 
         return jsonl_file
-
-
-def _classify_judge_failure_type(reason: str | None) -> str | None:
-    normalized = str(reason or "").strip().lower()
-    if not normalized:
-        return None
-    if "parse" in normalized:
-        return "parse"
-    if "config" in normalized:
-        return "config"
-    if "infra" in normalized or "timeout" in normalized or "connection" in normalized:
-        return "infra"
-    if "api" in normalized:
-        return "api"
-    return "api"

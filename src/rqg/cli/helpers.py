@@ -186,11 +186,16 @@ def pack_profile_templates() -> dict[str, tuple[Path, str]]:
             root_dir / "packs" / "wiki",
             "Wiki/FAQ internal-documents profile",
         ),
+        "customer_support": (
+            root_dir / "packs" / "customer_support_pack",
+            "Customer support FAQ Proof Gate profile",
+        ),
     }
 
 
 PACK_PROFILE_ALIASES: dict[str, str] = {
     "sample": "demo_cycle",
+    "customer_support_pack": "customer_support",
 }
 
 

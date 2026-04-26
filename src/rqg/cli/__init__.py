@@ -387,6 +387,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_monthly_summary.add_argument("--log-dir", default="runs/quality")
     p_monthly_summary.add_argument(
+        "--pack",
+        default=None,
+        help="Optional pack directory; defaults log-dir to runs/<pack-name> when --log-dir is not set explicitly",
+    )
+    p_monthly_summary.add_argument(
         "--month",
         default=None,
         help="Target month in YYYY-MM format (default: current UTC month)",
@@ -401,6 +406,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional JSON output path (default: <log-dir>/monthly-summary.json)",
     )
+    p_report_monthly = sub.add_parser(
+        "report-monthly",
+        help="Alias for monthly-summary using Proof Gate report naming",
+    )
+    p_report_monthly.add_argument("--log-dir", default=None)
+    p_report_monthly.add_argument("--pack", default=None)
+    p_report_monthly.add_argument("--month", default=None)
+    p_report_monthly.add_argument("--markdown-output", default=None)
+    p_report_monthly.add_argument("--json-output", default=None)
 
     # --- export-weekly-review ---
     p_export_weekly_review = sub.add_parser(
@@ -744,7 +758,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_init_pack.add_argument(
         "--profile",
-        choices=["demo_cycle", "sample", "hr", "wiki"],
+        choices=["demo_cycle", "sample", "hr", "wiki", "customer_support", "customer_support_pack"],
         default="demo_cycle",
         help="Template profile to scaffold (default: demo_cycle; alias: sample)",
     )
@@ -788,7 +802,7 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_check(args)
     elif args.command == "history":
         return cmd_history(args)
-    elif args.command == "monthly-summary":
+    elif args.command in {"monthly-summary", "report-monthly"}:
         return cmd_monthly_summary(args)
     elif args.command == "export-weekly-review":
         return cmd_export_weekly_review(args)
