@@ -163,4 +163,4 @@ python -m json.tool runs\quality\gate-decision.json
 python -m json.tool runs\quality\gate-report.json
 ```
 
-`gate-report.json` is the machine-readable bundle for downstream consumers. Keep existing fields stable when integrating it into CI, dashboards, or review automation.
+`gate-report.json` is the machine-readable bundle for downstream consumers. It includes a top-level `schema_version` field, currently `"1.0"`, so future contract changes can be versioned. Keep existing fields stable when integrating it into CI, dashboards, or review automation, and ignore unknown fields you do not use.

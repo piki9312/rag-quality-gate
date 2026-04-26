@@ -1,0 +1,11 @@
+{
+  "response": "Employees reset passwords through the IT self-service portal.",
+  "citations": [
+    {
+      "docId": "it-policy#password-reset",
+      "body": "Employees reset passwords through the IT self-service portal.",
+      "link": "https://docs.example.invalid/it/password-reset",
+      "confidence": 0.94
+    }
+  ]
+}

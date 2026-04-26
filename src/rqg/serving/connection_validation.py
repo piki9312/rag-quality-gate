@@ -91,6 +91,12 @@ def validate_http_rag_connection(
             "Check query, top_k, filters, index freshness, and response_mapping if "
             "the response payload stores contexts under a different field."
         )
+    for item in results[:5]:
+        metadata = item.get("metadata")
+        if isinstance(metadata, dict):
+            warnings = metadata.get("mapping_warnings")
+            if isinstance(warnings, list):
+                issues.extend(str(warning) for warning in warnings)
 
     return ConnectionValidationResult(
         endpoint=endpoint,

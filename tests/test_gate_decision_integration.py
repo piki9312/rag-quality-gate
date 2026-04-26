@@ -14,11 +14,13 @@ from rqg.quality.staleness import CaseStalenessItem
 def assert_gate_report_bundle_contract(payload: dict) -> None:
     """Assert the stable gate-report.json contract while allowing additive fields."""
     assert {
+        "schema_version",
         "decision",
         "history_summary",
         "report_markdown",
         "artifact_paths",
     }.issubset(payload)
+    assert payload["schema_version"] == "1.0"
 
     decision = payload["decision"]
     assert isinstance(decision, dict)

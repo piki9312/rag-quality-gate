@@ -34,7 +34,8 @@ Bash:
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
-pip install -e .
+pip install -e ".[embedding]"
+export EMB_MODEL=local-fallback-hash-embedding
 ```
 
 PowerShell:
@@ -43,7 +44,8 @@ PowerShell:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -U pip
-pip install -e .
+pip install -e ".[embedding]"
+$env:EMB_MODEL = "local-fallback-hash-embedding"
 ```
 
 If PowerShell blocks activation scripts:
@@ -61,15 +63,22 @@ chcp 65001
 $OutputEncoding = [System.Text.Encoding]::UTF8
 ```
 
-Use the base install for this client-facing walkthrough. It is enough for `validate-pack`, `check`, `gate`, and report viewing, and it avoids installing `sentence-transformers`.
+This walkthrough uses local documents and builds a FAISS index, so it needs the
+`embedding` extra. Use the base install only for `validate-pack`, checking
+existing logs, and report viewing. `EMB_MODEL=local-fallback-hash-embedding`
+keeps the first-run demo deterministic and avoids downloading a
+sentence-transformers model during a client walkthrough.
 
 Install extras only when needed:
 
 ```bash
+# Pack validation, checking existing logs, and report viewing.
+pip install -e .
+
 # External RAG HTTP adapter and connection validation.
 pip install -e ".[external]"
 
-# Local embedding, FAISS index, and sentence-transformers features.
+# Local document gate demos, FAISS index, and sentence-transformers features.
 pip install -e ".[embedding]"
 
 # Developer formatting/test tools only.
@@ -282,11 +291,11 @@ python -m json.tool logs\vendor-poc-demo-fail\gate-decision.json
 python -m json.tool logs\vendor-poc-demo-fail\gate-report.json
 ```
 
-Use the Markdown report for a human review conversation. Use `gate-report.json` for downstream consumers such as CI annotations, weekly review automation, dashboards, or customer evidence archives.
+Use the Markdown report for a human review conversation. Use `gate-report.json` for downstream consumers such as CI annotations, weekly review automation, dashboards, or customer evidence archives. The bundle includes a top-level `schema_version` field, currently `"1.0"`, so future contract changes can be versioned.
 
 For the passing scenario, inspect `logs/vendor-poc-demo-pass/gate-report.md` and confirm the Executive Summary says the pack meets the configured gate thresholds.
 
-Do not remove or rename existing `gate-report.json` fields in downstream integrations. Treat it as a machine-readable contract.
+Do not remove or rename existing `gate-report.json` fields in downstream integrations. Treat it as a machine-readable contract. Existing consumers should ignore unknown top-level fields they do not use.
 
 If Markdown output looks garbled on Windows PowerShell, run the UTF-8 setup commands in the prerequisites section or open the file in VS Code.
 

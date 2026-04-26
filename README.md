@@ -2,6 +2,54 @@
 
 [日本語](#日本語--japanese) | [English](#english)
 
+## Choose Your Path
+
+Install the lightweight package first when you only need pack validation, existing
+report inspection, or external-RAG setup checks:
+
+```bash
+pip install -e .
+rqg doctor
+```
+
+The local document demos below build a FAISS index from `documents/`, so install
+the embedding extra before running them:
+
+```bash
+pip install -e ".[embedding]"
+```
+
+For deterministic first-run demos without downloading a sentence-transformers
+model, use the built-in local hash embedding mode:
+
+```bash
+export EMB_MODEL=local-fallback-hash-embedding
+```
+
+PowerShell:
+
+```powershell
+$env:EMB_MODEL = "local-fallback-hash-embedding"
+```
+
+Use isolated `--index-dir` and `--log-dir` values for each demo run. Reusing a shared
+index across different packs can cause false retrieval misses because old chunks may
+be searched together with the current demo corpus.
+
+| Path | Use this when | Pack or template | Command |
+|---|---|---|---|
+| Client-facing PASS demo | You want the fastest clean walkthrough for a customer or stakeholder. | `examples/demo-client-pack` | `rqg gate --pack examples/demo-client-pack --mock --reset-log-dir --index-dir indexes/demo-client-pack --log-dir logs/demo-client-pack` |
+| Intentional FAIL demo | You want to show production blocking, S1 failure interpretation, and next actions. | `examples/vendor-poc-pack` | `rqg gate --pack examples/vendor-poc-pack --mock --reset-log-dir --index-dir indexes/vendor-poc-pack --log-dir logs/vendor-poc-pack` |
+| Fixed PASS scenario | You want to show remediation from the FAIL scenario to a passing gate. | `examples/vendor-poc-pack-pass` | `rqg gate --pack examples/vendor-poc-pack-pass --mock --reset-log-dir --index-dir indexes/vendor-poc-pack-pass --log-dir logs/vendor-poc-pack-pass` |
+| Customer PoC template | You are starting a customer-specific Proof Gate repository. | `templates/customer-rqg-template` | Copy this directory into the customer repo, then replace documents, cases, and pack metadata. |
+
+On Windows PowerShell, run the UTF-8 setup from
+[docs/user-guide/windows-powershell.md](docs/user-guide/windows-powershell.md)
+before viewing Markdown or JSON reports if console output looks garbled.
+
+For customer-owned or vendor-owned RAG APIs that already exist, use the
+[external RAG walkthrough](docs/demo/external-rag-walkthrough.md).
+
 ## 日本語 / Japanese
 
 Proof Gate は、RAG/Agent の品質を毎回同じやり方で検証し、高リスク更新の事故をリリース前に検知・遮断するための実運用向け品質ゲート基盤です。
@@ -129,7 +177,8 @@ RQG は評価の先にある **運用サイクル全体** をカバーします�
 ### パターン A: ワンコマンド体験（30秒）
 
 ```bash
-pip install -e .
+pip install -e ".[embedding]"
+export EMB_MODEL=local-fallback-hash-embedding
 rqg gate --pack packs/hr --mock --index-dir index --log-dir runs/quality
 cat runs/quality/gate-report.md
 ```
@@ -348,7 +397,8 @@ The product core remains horizontal. The vertical pack is an adoption and value-
 Bash:
 
 ```bash
-pip install -e .
+pip install -e ".[embedding]"
+export EMB_MODEL=local-fallback-hash-embedding
 rqg gate --pack packs/hr --mock --index-dir index --log-dir runs/quality
 cat runs/quality/gate-report.md
 ```
@@ -356,7 +406,8 @@ cat runs/quality/gate-report.md
 PowerShell:
 
 ```powershell
-pip install -e .
+pip install -e ".[embedding]"
+$env:EMB_MODEL = "local-fallback-hash-embedding"
 rqg gate --pack packs\hr --mock --index-dir index --log-dir runs\quality
 Get-Content runs\quality\gate-report.md -Encoding UTF8
 ```
@@ -366,13 +417,13 @@ Get-Content runs\quality\gate-report.md -Encoding UTF8
 Use the smallest install profile that matches the job:
 
 ```bash
-# Client-facing demo, validate-pack/check/gate, and report viewing.
+# Pack validation, checking existing logs, and report viewing.
 pip install -e .
 
 # External RAG HTTP adapter and connection validation.
 pip install -e ".[external]"
 
-# Local embedding, FAISS index, and sentence-transformers features.
+# Local document gate demos, FAISS index, and sentence-transformers features.
 pip install -e ".[embedding]"
 
 # Developer tools only: tests and formatting commands.
@@ -382,7 +433,9 @@ pip install -e ".[dev]"
 pip install -e ".[all]"
 ```
 
-Full test runs that exercise local FAISS-backed retrieval should use `pip install -e ".[all]"`. The lightweight client demo does not require `sentence-transformers`.
+Full test runs that exercise local FAISS-backed retrieval should use `pip install -e ".[all]"`. `--mock` disables the LLM call, but local document retrieval still needs the embedding extra because it builds or reads a FAISS index.
+
+For client-facing local demos, set `EMB_MODEL=local-fallback-hash-embedding` to avoid first-run model downloads and keep the reliability section clean.
 
 ### Pattern B: Full Demo (5-10 minutes)
 

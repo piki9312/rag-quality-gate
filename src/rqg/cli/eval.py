@@ -76,6 +76,19 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
     rag_endpoint = getattr(args, "rag_endpoint", None)
     rag_api_key_env = getattr(args, "rag_api_key_env", None)
+    adapter_config_path = getattr(args, "adapter_config", None)
+    adapter_config = None
+
+    if adapter_config_path:
+        from ..serving.external_adapter import ExternalRAGError, load_http_rag_adapter_config
+
+        try:
+            adapter_config = load_http_rag_adapter_config(adapter_config_path)
+        except ExternalRAGError as exc:
+            print(f"[ERROR] Failed to load adapter config: {exc}", file=sys.stderr)
+            return 1
+        rag_endpoint = adapter_config.endpoint
+        rag_api_key_env = rag_api_key_env or adapter_config.api_key_env
 
     # Load config file for rag settings if not specified on CLI
     if rag_endpoint is None:
@@ -86,12 +99,20 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
     if rag_endpoint:
         # External RAG mode — retrieval stays external even when --mock is used for the LLM.
-        from ..serving.external_adapter import HTTPRAGAdapter
+        from ..serving.external_adapter import ExternalRAGError, HTTPRAGAdapter
 
-        store = HTTPRAGAdapter(
-            endpoint=rag_endpoint,
-            api_key_env=rag_api_key_env,
-        )
+        try:
+            store = HTTPRAGAdapter(
+                endpoint=rag_endpoint,
+                api_key_env=rag_api_key_env,
+                timeout_sec=adapter_config.timeout_sec if adapter_config else 30.0,
+                method=adapter_config.method if adapter_config else "POST",
+                request_mapping=adapter_config.request_mapping if adapter_config else None,
+                response_mapping=adapter_config.response_mapping if adapter_config else None,
+            )
+        except ExternalRAGError as exc:
+            print(f"[ERROR] Failed to initialize external RAG adapter: {exc}", file=sys.stderr)
+            return 1
     else:
         # Local FAISS mode (default)
         from ..serving.rag import RAGStore
@@ -152,6 +173,6 @@ def cmd_eval(args: argparse.Namespace) -> int:
     # JSONL 保存
     if args.log_dir:
         jsonl_file = RAGQualityRunner.save_jsonl(run, cases, args.log_dir)
-        print(f"\nSaved → {jsonl_file}")
+        print(f"\nSaved -> {jsonl_file}")
 
     return 0 if run.failed == 0 else 1

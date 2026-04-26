@@ -37,6 +37,30 @@ def store(ascii_tmp, monkeypatch):
     return RAGStore(index_dir=str(ascii_tmp / "idx"), auto_load=False)
 
 
+def test_explicit_local_fallback_embedding_mode_is_not_reported_as_degraded(
+    ascii_tmp, monkeypatch
+):
+    class UnexpectedSentenceTransformer:
+        def __init__(self, *a, **kw):
+            raise AssertionError("SentenceTransformer should not be loaded")
+
+    monkeypatch.setattr("rqg.serving.rag.SentenceTransformer", UnexpectedSentenceTransformer)
+
+    store = RAGStore(
+        index_dir=str(ascii_tmp / "idx"),
+        emb_model="local-fallback-hash-embedding",
+        auto_load=False,
+    )
+
+    assert store.model is None
+    assert store.embedding_fallback_used is False
+    assert store.embedding_fallback_reason is None
+    assert store.get_reliability_snapshot() == {
+        "embedding_fallback_used": False,
+        "embedding_fallback_reason": None,
+    }
+
+
 # ------------------------------------------------------------------
 # chunk_text
 # ------------------------------------------------------------------

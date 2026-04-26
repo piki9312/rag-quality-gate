@@ -13,7 +13,8 @@ def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
     # Skip index-dir validation when using external RAG
     rag_endpoint = getattr(args, "rag_endpoint", None)
-    if not rag_endpoint and not validate_index_dir(args.index_dir):
+    adapter_config = getattr(args, "adapter_config", None)
+    if not rag_endpoint and not adapter_config and not validate_index_dir(args.index_dir):
         return 1
 
     gate_log_dir = args.log_dir
@@ -38,6 +39,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             mock=args.mock,
             rag_endpoint=getattr(args, "rag_endpoint", None),
             rag_api_key_env=getattr(args, "rag_api_key_env", None),
+            adapter_config=getattr(args, "adapter_config", None),
             verbose=args.verbose,
         )
     )
