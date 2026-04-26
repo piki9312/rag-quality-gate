@@ -77,7 +77,9 @@ def _write_pack(
         )
 
 
-def _replace_cases(pack_dir: Path, rows: list[dict[str, str]], fieldnames: list[str] | None = None) -> None:
+def _replace_cases(
+    pack_dir: Path, rows: list[dict[str, str]], fieldnames: list[str] | None = None
+) -> None:
     import csv
 
     fieldnames = fieldnames or [

@@ -1,23 +1,34 @@
 # Copy this file to adapter/adapter_config.yml in a customer repo and replace
-# every placeholder value before using it in deployment or proxy configuration.
+# every placeholder value before using it in deployment or CI.
+#
+# Do not commit live tokens. Keep secrets in environment variables or GitHub
+# Actions secrets.
 
 adapter:
-  endpoint: https://rag.customer-example.com/search
+  type: http
+  endpoint: https://rag.customer-example.com/rag/ask
   method: POST
-  timeout_sec: 30
+  timeout_seconds: 30
   auth:
-    scheme: bearer
-    token_env: CUSTOMER_RAG_BEARER_TOKEN
-  request_template:
-    query: "{query}"
-    top_k: "{top_k}"
-  response_mapping:
-    results_path: results
-    fields:
-      chunk_id: chunk_id
-      source: source
-      text: text
-      score: score
+    type: bearer
+    token_env: CUSTOMER_RAG_API_TOKEN
 
-# The runtime adapter expects retrieval results that can be normalized to:
-# results[].chunk_id, results[].source, results[].text, and optional results[].score
+request_mapping:
+  # Field name sent to the customer RAG API for the user question.
+  question_field: question
+
+response_mapping:
+  # Simple dot paths are supported, for example: answer, data.answer,
+  # sources, results.items, id, content.
+  answer_path: answer
+  results_path: sources
+  chunk_id_path: id
+  source_path: url
+  text_path: content
+  score_path: score
+
+# The runtime adapter normalizes mapped results to RQG's internal context shape:
+# - chunk_id: optional in the upstream response; generated if missing
+# - source: optional in the upstream response; "external-rag" if missing
+# - text: required; this is the retrieved context used by eval/check
+# - score: optional

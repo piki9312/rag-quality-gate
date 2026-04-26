@@ -9,6 +9,8 @@ from typing import Protocol
 
 from rqg.domain import GateDecision
 
+GATE_REPORT_SCHEMA_VERSION = "1.0"
+
 
 @dataclass(frozen=True, slots=True)
 class GateReportArtifacts:
@@ -72,6 +74,7 @@ class BundleJsonReportAdapter:
 def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str, object]:
     """Build a consolidated machine-readable gate report bundle."""
     return {
+        "schema_version": GATE_REPORT_SCHEMA_VERSION,
         "decision": artifacts.decision.model_dump(mode="json"),
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,

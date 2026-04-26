@@ -521,7 +521,7 @@ def _append_vendor_required_field_error(
     active_prefix = "Active case: " if level == "error" else ""
     messages = {
         "expected_answer": _vendor_message(
-            problem=f"{active_prefix}{eval_mode} case is missing expected_answer.",
+            problem=f"{active_prefix}expected_answer is missing for {eval_mode} case.",
             why=(
                 "The gate needs a reviewer-approved target answer to detect regressions "
                 "in high-risk FAQ/RAG responses."
@@ -545,7 +545,7 @@ def _append_vendor_required_field_error(
             example="expected_evidence=leave_policy.md#sec-1",
         ),
         "expected_keywords": _vendor_message(
-            problem=f"{active_prefix}{eval_mode} case is missing expected_keywords.",
+            problem=f"{active_prefix}expected_keywords is missing for {eval_mode} case.",
             why=(
                 "Keywords are the lightweight acceptance checks that catch answer drift "
                 "before customer delivery."
@@ -612,7 +612,7 @@ def validate_case_row(
             ValidationError(
                 cid,
                 "severity",
-                f"無効なseverity: '{severity}' (許容値: {', '.join(sorted(VALID_SEVERITIES))})",
+                f"Unknown severity: '{severity}' (allowed values: {', '.join(sorted(VALID_SEVERITIES))})",
             )
         )
 

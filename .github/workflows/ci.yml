@@ -10,6 +10,51 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  install-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: base
+            install-command: pip install -e .
+            smoke-command: |
+              rqg --help
+              rqg doctor
+              rqg validate-pack --pack examples/demo-client-pack
+          - name: external
+            install-command: pip install -e ".[external]"
+            smoke-command: |
+              rqg --help
+              rqg doctor
+              python -c "import httpx; from rqg.serving.external_adapter import HTTPRAGAdapter; print('external adapter import ok')"
+          - name: embedding
+            install-command: pip install -e ".[embedding]"
+            smoke-command: |
+              rqg --help
+              rqg doctor
+              rqg gate --pack examples/demo-client-pack --mock --reset-log-dir --index-dir indexes/ci-demo-client-pack --log-dir logs/ci-demo-client-pack
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ${{ matrix.name }} dependencies
+        run: |
+          python -m pip install --upgrade pip
+          ${{ matrix.install-command }}
+
+      - name: Smoke ${{ matrix.name }} install
+        env:
+          # The base smoke exists to protect the client-facing lightweight onboarding flow.
+          # It must not accidentally rely on embedding, serving, or dev-only dependencies.
+          EMB_MODEL: local-fallback-hash-embedding
+        run: ${{ matrix.smoke-command }}
+
   test:
     runs-on: ubuntu-latest
     strategy:

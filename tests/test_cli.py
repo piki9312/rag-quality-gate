@@ -26,11 +26,7 @@ def _subparser_option_strings(command: str) -> set[str]:
         if getattr(action, "choices", None) and command in action.choices
     )
     subparser = subparsers_action.choices[command]
-    return {
-        option
-        for action in subparser._actions
-        for option in action.option_strings
-    }
+    return {option for action in subparser._actions for option in action.option_strings}
 
 
 def _create_pack_dir(
@@ -51,7 +47,9 @@ def _create_pack_dir(
         docs_dir.mkdir(parents=True, exist_ok=True)
         (docs_dir / "doc.md").write_text("# doc\n", encoding="utf-8")
     if include_quality_pack:
-        (pack_dir / "quality-pack.yml").write_text("pack:\n  review_steward: qa\n", encoding="utf-8")
+        (pack_dir / "quality-pack.yml").write_text(
+            "pack:\n  review_steward: qa\n", encoding="utf-8"
+        )
     if include_gate_config:
         (pack_dir / "gate.yml").write_text("s1_pass_rate: 100\n", encoding="utf-8")
 
@@ -67,6 +65,7 @@ class TestCLIHelp:
         )
         assert result.returncode == 0
         assert "ingest" in result.stdout
+        assert "doctor" in result.stdout
         assert "eval" in result.stdout
         assert "gate" in result.stdout
         assert "check" in result.stdout
@@ -86,6 +85,23 @@ class TestCLIHelp:
         assert "validate-connection" in result.stdout
         assert "serve-http-rag" in result.stdout
         assert "serve-dashboard" in result.stdout
+
+    def test_doctor_command_succeeds(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "rqg.cli", "doctor"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        assert "RQG Doctor" in result.stdout
+        assert "Python:" in result.stdout
+        assert "Platform:" in result.stdout
+        assert "RQG version:" in result.stdout
+        assert "EMB_MODEL:" in result.stdout
+        assert "Optional dependencies:" in result.stdout
+        assert "httpx:" in result.stdout
+        assert "sentence_transformers:" in result.stdout
+        assert "Recommended installs" in result.stdout
 
     def test_eval_help(self):
         result = subprocess.run(
@@ -113,6 +129,7 @@ class TestCLIParserContract:
             "--mock",
             "--rag-endpoint",
             "--rag-api-key-env",
+            "--adapter-config",
         }.issubset(options)
 
     def test_gate_option_contract(self):
@@ -128,6 +145,7 @@ class TestCLIParserContract:
             "--mock",
             "--rag-endpoint",
             "--rag-api-key-env",
+            "--adapter-config",
             "--config",
             "--days",
             "--aggregation-policy",
@@ -238,6 +256,50 @@ class TestCLIParsing:
         assert args.command == "eval"
         assert args.pack is None
         assert args.reset_log_dir is False
+
+    def test_doctor_parse_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["doctor"])
+        assert args.command == "doctor"
+
+    def test_doctor_outputs_environment_report(self, monkeypatch, capsys):
+        from rqg.cli.doctor import build_doctor_report, cmd_doctor
+
+        monkeypatch.setenv("EMB_MODEL", "local-fallback-hash-embedding")
+        report = build_doctor_report()
+        assert "RQG Doctor" in report
+        assert "- Python:" in report
+        assert "- Platform:" in report
+        assert "- RQG version:" in report
+        assert "- EMB_MODEL: local-fallback-hash-embedding" in report
+        assert "- httpx:" in report
+        assert "- faiss:" in report
+        assert "- sentence_transformers:" in report
+        assert "- fastapi:" in report
+        assert "- uvicorn:" in report
+        assert "Recommended installs" in report
+        assert "- base: pip install -e ." in report
+        assert '- external: pip install -e ".[external]"' in report
+        assert '- embedding: pip install -e ".[embedding]"' in report
+        assert '- dev: pip install -e ".[dev]"' in report
+        assert '- all: pip install -e ".[all]"' in report
+
+        exit_code = cmd_doctor(SimpleNamespace())
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "RQG Doctor" in captured.out
+
+    def test_doctor_windows_utf8_note(self, monkeypatch):
+        from rqg.cli import doctor
+
+        monkeypatch.setattr(doctor.platform, "system", lambda: "Windows")
+        report = doctor.build_doctor_report()
+        assert "Windows PowerShell UTF-8 setup:" in report
+        assert "chcp 65001" in report
+        assert "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8" in report
+        assert "$OutputEncoding = [System.Text.Encoding]::UTF8" in report
 
     def test_eval_accepts_pack_option_without_positional_cases(self):
         from rqg.cli import build_parser
@@ -681,7 +743,9 @@ class TestPhase1CLI:
 
     def test_eval_old_style_args_still_work_without_pack(self):
         with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:
-            exit_code = main(["eval", "packs/hr/cases.csv", "--docs", "packs/hr/documents", "--mock"])
+            exit_code = main(
+                ["eval", "packs/hr/cases.csv", "--docs", "packs/hr/documents", "--mock"]
+            )
 
         assert exit_code == 0
         resolved_args = eval_mock.call_args.args[0]

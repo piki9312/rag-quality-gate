@@ -25,6 +25,7 @@ from .casegen import (
     cmd_validate_cases,
 )
 from .check import cmd_check
+from .doctor import cmd_doctor
 from .eval import cmd_eval, cmd_ingest
 from .export_weekly_review import cmd_export_weekly_review
 from .gate import cmd_gate
@@ -156,6 +157,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command")
 
+    # --- doctor ---
+    sub.add_parser(
+        "doctor",
+        help="Print lightweight install and environment diagnostics",
+    )
+
     # --- ingest ---
     p_ingest = sub.add_parser("ingest", help="Ingest documents into RAG store")
     p_ingest.add_argument("docs_dir", metavar="docs", help="Directory containing documents")
@@ -189,6 +196,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Environment variable name containing API key for external RAG endpoint.",
     )
+    p_eval.add_argument(
+        "--adapter-config",
+        default=None,
+        help="Path to external RAG adapter_config.yml with request/response mapping.",
+    )
 
     # --- gate ---
     p_gate = sub.add_parser("gate", help="Run eval + check in one command")
@@ -217,6 +229,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--rag-api-key-env",
         default=None,
         help="Environment variable name containing API key for external RAG endpoint.",
+    )
+    p_gate.add_argument(
+        "--adapter-config",
+        default=None,
+        help="Path to external RAG adapter_config.yml with request/response mapping.",
     )
     p_gate.add_argument("--config", help="Path to .rqg.yml config")
     p_gate.add_argument("--days", type=int, default=1)
@@ -759,7 +776,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    if args.command == "ingest":
+    if args.command == "doctor":
+        return cmd_doctor(args)
+    elif args.command == "ingest":
         return cmd_ingest(args)
     elif args.command == "eval":
         return cmd_eval(args)

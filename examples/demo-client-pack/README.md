@@ -23,6 +23,19 @@ Expected result: 0 errors and 0 warnings.
 
 Use a dedicated index directory for this pack so retrieval only sees this pack's documents. Starting from a clean isolated index avoids false failures when a shared default index already points to another corpus.
 
+This local document demo builds a FAISS index, so install the embedding extra first:
+
+```bash
+pip install -e ".[embedding]"
+export EMB_MODEL=local-fallback-hash-embedding
+```
+
+PowerShell:
+
+```powershell
+$env:EMB_MODEL = "local-fallback-hash-embedding"
+```
+
 Bash:
 
 ```bash

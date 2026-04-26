@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_EMB_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 FALLBACK_EMB_DIM = 256
+LOCAL_FALLBACK_EMB_MODEL = "local-fallback-hash-embedding"
+LOCAL_FALLBACK_EMB_MODEL_ALIASES = {"local-fallback", LOCAL_FALLBACK_EMB_MODEL}
 
 
 def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> list[str]:
@@ -111,12 +113,16 @@ class FaissRAGStore:
     # ------------------------------------------------------------------
 
     def _load_embedding_model(self):
+        if self.emb_model_name in LOCAL_FALLBACK_EMB_MODEL_ALIASES:
+            self.emb_model_name = LOCAL_FALLBACK_EMB_MODEL
+            return None
+
         if SentenceTransformer is None:
             logger.warning(
                 "sentence-transformers not installed; using local fallback embeddings. "
                 "Install with: pip install rag-quality-gate[embedding]"
             )
-            self.emb_model_name = "local-fallback-hash-embedding"
+            self.emb_model_name = LOCAL_FALLBACK_EMB_MODEL
             self.embedding_fallback_used = True
             self.embedding_fallback_reason = "dependency_missing"
             return None
@@ -128,7 +134,7 @@ class FaissRAGStore:
                 self.emb_model_name,
                 exc,
             )
-            self.emb_model_name = "local-fallback-hash-embedding"
+            self.emb_model_name = LOCAL_FALLBACK_EMB_MODEL
             self.embedding_fallback_used = True
             self.embedding_fallback_reason = "model_load_error"
             return None

@@ -146,9 +146,10 @@ def render_monthly_summary_markdown(summary: dict[str, Any]) -> str:
         lines.append("| Failure Category | Count | Action |")
         lines.append("|---|---|---|")
         for action in actions:
-            lines.append(
-                f"| {action.get('failure_category', '-')} | {int(action.get('count', 0) or 0)} | {str(action.get('action', '-')).replace('|', '\\|')} |"
-            )
+            failure_category = action.get("failure_category", "-")
+            count = int(action.get("count", 0) or 0)
+            action_text = str(action.get("action", "-")).replace("|", "\\|")
+            lines.append(f"| {failure_category} | {count} | {action_text} |")
     else:
         lines.append("- No recommended actions in the latest run.")
 

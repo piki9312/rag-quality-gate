@@ -178,20 +178,20 @@ class TestHTTPRAGAdapterNormalization:
         with pytest.raises(ExternalRAGSchemaError, match="must be a dict"):
             adapter._normalize([42])
 
-    def test_normalize_missing_required_keys_raises(self, adapter):
+    def test_normalize_missing_text_raises(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError
 
-        with pytest.raises(ExternalRAGSchemaError, match="missing required keys"):
-            adapter._normalize([{"chunk_id": "c1", "text": "t"}])  # missing source
+        with pytest.raises(ExternalRAGSchemaError, match="missing text_path"):
+            adapter._normalize([{"chunk_id": "c1", "source": "d.md"}])
 
-    def test_normalize_missing_required_keys_reports_mapping_hint(self, adapter):
+    def test_normalize_missing_text_reports_mapping_hint(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError
 
         with pytest.raises(ExternalRAGSchemaError) as exc_info:
             adapter._normalize([{"id": "c1", "body": "hello"}])
 
         message = str(exc_info.value)
-        assert "missing required keys" in message
+        assert "missing text_path 'text'" in message
         assert "Available fields: body, id" in message
         assert "response_mapping" in message
 
@@ -202,19 +202,18 @@ class TestHTTPRAGAdapterNormalization:
             adapter._normalize([{"chunk_id": "c1", "source": "policy.md", "text": ""}])
 
         message = str(exc_info.value)
-        assert "empty required fields" in message
+        assert "empty text_path 'text'" in message
         assert "text" in message
         assert "response_mapping" in message
 
-    def test_normalize_empty_source_raises_schema_error(self, adapter):
-        from rqg.serving.external_adapter import ExternalRAGSchemaError
+    def test_normalize_empty_source_emits_mapping_warning(self, adapter):
+        result = adapter._normalize([{"chunk_id": "c1", "source": " ", "text": "hello"}])
 
-        with pytest.raises(ExternalRAGSchemaError) as exc_info:
-            adapter._normalize([{"chunk_id": "c1", "source": " ", "text": "hello"}])
-
-        message = str(exc_info.value)
-        assert "empty required fields" in message
-        assert "source" in message
+        assert result[0]["source"] == "external-rag"
+        assert (
+            "missing optional source_path 'source'; using external-rag"
+            in result[0]["metadata"]["mapping_warnings"]
+        )
 
     def test_normalize_invalid_score_raises(self, adapter):
         from rqg.serving.external_adapter import ExternalRAGSchemaError
@@ -715,3 +714,96 @@ class TestCmdEvalExternalRAGE2E:
         # Should complete successfully (mock LLM always produces an answer)
         assert exit_code in (0, 1)  # 0=all pass, 1=some fail — both are valid non-crash
         assert mock_post.called
+
+    def test_cmd_eval_external_rag_adapter_config_mapping(self, tmp_path):
+        import argparse
+        import csv
+
+        from rqg.cli.eval import cmd_eval
+
+        cases_file = tmp_path / "cases.csv"
+        with open(cases_file, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "case_id",
+                    "name",
+                    "question",
+                    "severity",
+                    "expected_keywords",
+                    "expected_evidence",
+                    "expected_answer",
+                    "category",
+                ],
+            )
+            writer.writeheader()
+            writer.writerow(
+                {
+                    "case_id": "QA001",
+                    "name": "Password reset",
+                    "question": "How do employees reset passwords?",
+                    "severity": "S1",
+                    "expected_keywords": "IT;reset",
+                    "expected_evidence": "doc-1",
+                    "expected_answer": "Employees reset passwords through IT.",
+                    "category": "it",
+                }
+            )
+
+        config_path = tmp_path / "adapter_config.yml"
+        config_path.write_text(
+            """
+adapter:
+  type: http
+  endpoint: https://rag.example.com/ask
+  method: POST
+  timeout_seconds: 30
+request_mapping:
+  question_field: question
+response_mapping:
+  answer_path: answer
+  results_path: sources
+  chunk_id_path: id
+  source_path: url
+  text_path: content
+  score_path: score
+""".strip(),
+            encoding="utf-8",
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "answer": "Employees reset passwords through IT.",
+            "sources": [
+                {
+                    "id": "doc-1",
+                    "url": "it-policy.md",
+                    "content": "Employees reset passwords through IT.",
+                    "score": 0.95,
+                }
+            ],
+        }
+
+        args = argparse.Namespace(
+            cases=str(cases_file),
+            docs=None,
+            index_dir=str(tmp_path / "index"),
+            log_dir=str(tmp_path / "logs"),
+            reset_log_dir=False,
+            context_k=3,
+            mock=True,
+            rag_endpoint=None,
+            rag_api_key_env=None,
+            adapter_config=str(config_path),
+            verbose=False,
+        )
+
+        with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp) as mock_post:
+            exit_code = cmd_eval(args)
+
+        assert exit_code in (0, 1)
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["question"] == "How do employees reset passwords?"
+        assert "query" not in payload
+        assert isinstance(payload["top_k"], int)

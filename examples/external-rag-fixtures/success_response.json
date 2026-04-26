@@ -1,0 +1,17 @@
+{
+  "answer": "Employees reset passwords through the IT self-service portal.",
+  "sources": [
+    {
+      "id": "it-policy#password-reset",
+      "content": "Employees reset passwords through the IT self-service portal. If self-service fails, contact the IT help desk.",
+      "url": "https://docs.example.invalid/it/password-reset",
+      "score": 0.94
+    },
+    {
+      "id": "it-faq#account-access",
+      "content": "Account access issues should be handled by the IT help desk after self-service reset has been attempted.",
+      "url": "https://docs.example.invalid/it/account-access",
+      "score": 0.82
+    }
+  ]
+}
