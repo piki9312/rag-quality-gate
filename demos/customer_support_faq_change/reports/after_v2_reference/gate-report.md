@@ -8,7 +8,7 @@
 ## 2. 実行概要
 - client_name: demo_customer
 - app_name: Customer Support AI Quality Pack
-- run_id: 36d43c04-53a
+- run_id: cb0a524f-087
 - current_cases: 9
 - baseline_runs: 0
 - aggregation_policy: latest_run
@@ -32,15 +32,15 @@
 ## 6. ケース別結果
 | Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |
 |---------|------|----------|----------|-----------|-------------|
-| customer_support_faq_001 | Campaign refund window | S1 | ok | pass | - |
-| customer_support_faq_006 | Free-trial cancellation | S1 | ok | pass | - |
-| customer_support_faq_007 | Mid-term annual cancellation | S1 | ok | pass | - |
-| customer_support_faq_004 | Chargeback and refund overlap | S2 | ok | pass | - |
-| customer_support_faq_005 | Monthly cancellation timing | S2 | ok | pass | - |
-| customer_support_faq_010 | Plan price display | S2 | ok | pass | - |
-| customer_support_faq_011 | Annual discount disclosure | S2 | ok | pass | - |
-| customer_support_faq_014 | Auto-renewal notice | S2 | ok | pass | - |
-| customer_support_faq_016 | Contract amendment timing | S2 | ok | pass | - |
+| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ok | pass | - |
+| customer_support_faq_006 | 無料トライアル解約の締切 | S1 | ok | pass | - |
+| customer_support_faq_007 | 年額プラン中途解約の扱い | S1 | ok | pass | - |
+| customer_support_faq_004 | チャージバックと返金審査の関係 | S2 | ok | pass | - |
+| customer_support_faq_005 | 月額プランの解約反映タイミング | S2 | ok | pass | - |
+| customer_support_faq_010 | 料金ページの表示場所 | S2 | ok | pass | - |
+| customer_support_faq_011 | 年額割引の案内条件 | S2 | ok | pass | - |
+| customer_support_faq_014 | 自動更新通知の送信時期 | S2 | ok | pass | - |
+| customer_support_faq_016 | 契約変更の反映条件 | S2 | ok | pass | - |
 
 ## 7. 推奨アクション
 - 現時点で追加対応は不要です。
@@ -69,7 +69,7 @@
 - Aggregation Policy: latest_run
 
 ### Recent History Summary
-- Latest status: PASS (36d43c04-53a)
+- Latest status: PASS (cb0a524f-087)
 - Current streak: PASS x1
 - Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)
 - S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)
@@ -86,8 +86,8 @@
 ### Observed Metrics
 | Metric | Average | Scored Runs |
 |--------|---------|-------------|
-| Avg faithfulness | 66.6% | 9 |
-| Avg judge relevance | 49.2% | 9 |
+| Avg faithfulness | 84.2% | 9 |
+| Avg judge relevance | 67.2% | 9 |
 | Avg evidence recall | 100.0% | 9 |
 
 ### Reliability

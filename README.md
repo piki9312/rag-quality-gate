@@ -1,10 +1,12 @@
 # Proof Gate
 
-## Proof Gate PoC Focus
+## Proof Gate付きRAG AI導入診断PoC
 
-This repository is being shaped into **Proof Gate**: a customer-facing FAQ RAG quality gate that detects serious refund, cancellation, pricing, contract, deadline, and eligibility mistakes before release. The 0-3 month PoC path is intentionally narrow: `customer_support_pack`, gate decisions, reliability/fallback visibility, notifications, a minimal dashboard, and monthly quality reports.
+Proof Gate は、顧客対応AI/RAGを安全に導入・本番運用するための診断・構築・継続監視のための品質ゲートです。
 
-Start the reproducible customer support demo with:
+このリポジトリでは、初期の RAG AI導入診断PoC を、顧客向けFAQ領域に絞って再現しやすくしています。主な導線は `customer_support_pack`、Gateレポート、before / afterデモ、月額Monitor の説明、最小限の dashboard、月次レポートです。
+
+再現しやすいカスタマーサポートデモは次で作成できます。
 
 ```powershell
 .\.venv\Scripts\python -m pip install -e ".[dev]"
@@ -12,9 +14,18 @@ Start the reproducible customer support demo with:
 .\.venv\Scripts\python -m rqg.cli serve-dashboard --workspace-dir . --runs-dir packs\customer_support_pack\reports\demo_runs --port 8012
 ```
 
-Then open `/packs`, `/runs`, `/runs/csp-block-refund-202604`, `/runs/csp-needs-review-fallback-202604`, `/cases/failures`, and `/reports/monthly` on `http://127.0.0.1:8012`.
+そのあと `http://127.0.0.1:8012` で `/packs`、`/runs`、`/runs/csp-block-refund-202604`、`/runs/csp-needs-review-fallback-202604`、`/cases/failures`、`/reports/monthly` を開きます。
 
-See [docs/user-guide/proof-gate-poc.md](docs/user-guide/proof-gate-poc.md) and [packs/customer_support_pack/README.md](packs/customer_support_pack/README.md) for the demo flow, reliability fields, monthly report, UI routes, and pack clone workflow. The shortest demo uses committed artifacts; the live `rqg gate` flow is documented there as the optional follow-up.
+## 顧客・営業向けの最短導線
+
+日本企業向けに最短で見せる場合は、次の順で読むと自然です。
+
+1. [docs/user-guide/proof-gate-poc.md](docs/user-guide/proof-gate-poc.md) で、Proof Gate付きRAG AI導入診断PoC の全体像をつかむ。
+2. [demos/customer_support_faq_change/README.md](demos/customer_support_faq_change/README.md) で、FAQ・規約変更による重大誤回答を検知し、修正後に改善確認する before / afterデモの流れを見る。
+3. [docs/sales/customer-support-faq-change-demo.md](docs/sales/customer-support-faq-change-demo.md) で、顧客説明や提案時の話し方を確認する。
+4. [packs/customer_support_pack/README.md](packs/customer_support_pack/README.md) で、高リスク質問、S1重大失敗、Gateレポート、月額Monitorの見方を確認する。
+
+最短のデモはコミット済みartifactを前提に進められます。ライブの `rqg gate` フローは、上記ドキュメント内で任意の後追い説明として扱っています。
 
 [日本語](#日本語--japanese) | [English](#english)
 
@@ -68,7 +79,7 @@ For customer-owned or vendor-owned RAG APIs that already exist, use the
 
 ## 日本語 / Japanese
 
-Proof Gate は、RAG/Agent の品質を毎回同じやり方で検証し、高リスク更新の事故をリリース前に検知・遮断するための実運用向け品質ゲート基盤です。
+Proof Gate は、顧客対応AI/RAGを安全に導入・本番運用するための診断・構築・継続監視を支える実運用向け品質ゲート基盤です。
 
 この製品は AI を賢くするものではなく、AI を安全に更新・運用するための品質管理レイヤです。
 
@@ -258,6 +269,13 @@ rqg gate --pack packs/my_pack \
 ## ドキュメント案内
 
 README は製品概要と導入に絞っています。技術仕様・運用設計の詳細は docs を参照してください。
+
+顧客・営業・PoC 実行者向けには、まず次の順で見るのが最短です。
+
+1. [docs/user-guide/proof-gate-poc.md](docs/user-guide/proof-gate-poc.md)
+2. [demos/customer_support_faq_change/README.md](demos/customer_support_faq_change/README.md)
+3. [docs/sales/customer-support-faq-change-demo.md](docs/sales/customer-support-faq-change-demo.md)
+4. [packs/customer_support_pack/README.md](packs/customer_support_pack/README.md)
 
 - docs ポータル（日英）: docs/README.md
 

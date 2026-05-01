@@ -1,35 +1,33 @@
 {
   "schema_version": "1.0",
   "decision": {
-    "run_id": "26a2571d-47c",
+    "run_id": "ce7d3eb4-63a",
     "status": "fail",
     "policy_status": "block",
     "reasons": [
       "S1 pass rate: 0.0 < 100.0 (0/3)",
-      "Overall pass rate: 11.1 < 85.0 (1/9)",
-      "case:customer_support_faq_001: 0.0 < 100.0 (Campaign refund window)",
-      "case:customer_support_faq_004: 0.0 < 85.0 (Chargeback and refund overlap)",
-      "case:customer_support_faq_005: 0.0 < 85.0 (Monthly cancellation timing)",
-      "case:customer_support_faq_006: 0.0 < 100.0 (Free-trial cancellation)",
-      "case:customer_support_faq_007: 0.0 < 100.0 (Mid-term annual cancellation)",
-      "case:customer_support_faq_011: 0.0 < 85.0 (Annual discount disclosure)",
-      "case:customer_support_faq_014: 0.0 < 85.0 (Auto-renewal notice)",
-      "case:customer_support_faq_016: 0.0 < 85.0 (Contract amendment timing)"
+      "Overall pass rate: 33.3 < 85.0 (3/9)",
+      "case:customer_support_faq_001: 0.0 < 100.0 (キャンペーン商品の返金条件)",
+      "case:customer_support_faq_004: 0.0 < 85.0 (チャージバックと返金審査の関係)",
+      "case:customer_support_faq_006: 0.0 < 100.0 (無料トライアル解約の締切)",
+      "case:customer_support_faq_007: 0.0 < 100.0 (年額プラン中途解約の扱い)",
+      "case:customer_support_faq_011: 0.0 < 85.0 (年額割引の案内条件)",
+      "case:customer_support_faq_016: 0.0 < 85.0 (契約変更の反映条件)"
     ],
     "reason_codes": [
       "answer_quality_fail"
     ],
     "metrics": {
-      "overall_pass_rate": 11.11111111111111,
+      "overall_pass_rate": 33.33333333333333,
       "s1_pass_rate": 0.0,
       "s1_fail_count": 3.0,
       "current_runs": 9.0,
       "baseline_runs": 0.0,
       "judge_fallback_count": 0.0,
       "embedding_fallback_count": 0.0,
-      "avg_faithfulness": 64.77777777777777,
+      "avg_faithfulness": 73.22222222222223,
       "faithfulness_scored_runs": 9.0,
-      "avg_judge_relevance": 48.44444444444444,
+      "avg_judge_relevance": 64.99999999999999,
       "judge_relevance_scored_runs": 9.0,
       "avg_evidence_recall": 100.0,
       "evidence_recall_scored_runs": 9.0,
@@ -39,18 +37,16 @@
     "next_actions": [
       {
         "failure_category": "synthesis",
-        "count": 8,
+        "count": 6,
         "action": "Define next action in weekly review issue",
         "owner": "T.B.D.",
         "due": "T.B.D.",
         "affected_case_ids": [
           "customer_support_faq_001",
           "customer_support_faq_004",
-          "customer_support_faq_005",
           "customer_support_faq_006",
           "customer_support_faq_007",
           "customer_support_faq_011",
-          "customer_support_faq_014",
           "customer_support_faq_016"
         ]
       }
@@ -98,7 +94,7 @@
       "created_from_template": true,
       "description": "Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks."
     },
-    "created_at": "2026-05-01T07:54:53.403090Z"
+    "created_at": "2026-05-01T09:00:50.264876Z"
   },
   "history_summary": {
     "entries": 1,
@@ -111,17 +107,17 @@
     "compare_offset": 1,
     "trend_window": 5,
     "summary_lines": [
-      "- Latest status: FAIL (26a2571d-47c)",
+      "- Latest status: FAIL (ce7d3eb4-63a)",
       "- Current streak: FAIL x1",
-      "- Overall pass rate trend: 11.1% -> 11.1% (0.0 pts)",
+      "- Overall pass rate trend: 33.3% -> 33.3% (0.0 pts)",
       "- S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)",
       "- Failure action coverage (last 1): 0/1 categories (0.0%)",
-      "- Uncovered categories: synthesis (8 cases)",
+      "- Uncovered categories: synthesis (6 cases)",
       "- Judge reliability: HIGH",
       "- Needs human review: NO"
     ],
     "trend": {
-      "latest_run_id": "26a2571d-47c",
+      "latest_run_id": "ce7d3eb4-63a",
       "latest_status": "FAIL",
       "streak_count": 1,
       "status_sequence": [
@@ -131,8 +127,8 @@
         {
           "key": "overall_pass_rate",
           "label": "Overall pass rate",
-          "current": 11.11111111111111,
-          "previous": 11.11111111111111,
+          "current": 33.33333333333333,
+          "previous": 33.33333333333333,
           "delta": 0.0,
           "unit": "pct"
         },
@@ -155,16 +151,16 @@
         {
           "key": "avg_faithfulness",
           "label": "Avg faithfulness",
-          "current": 64.77777777777777,
-          "previous": 64.77777777777777,
+          "current": 73.22222222222223,
+          "previous": 73.22222222222223,
           "delta": 0.0,
           "unit": "pct"
         },
         {
           "key": "avg_judge_relevance",
           "label": "Avg judge relevance",
-          "current": 48.44444444444444,
-          "previous": 48.44444444444444,
+          "current": 64.99999999999999,
+          "previous": 64.99999999999999,
           "delta": 0.0,
           "unit": "pct"
         },
@@ -211,17 +207,15 @@
       "uncovered_categories": [
         {
           "failure_category": "synthesis",
-          "total_count": 8,
-          "last_seen_run_id": "26a2571d-47c",
+          "total_count": 6,
+          "last_seen_run_id": "ce7d3eb4-63a",
           "covered": false,
           "affected_case_ids": [
             "customer_support_faq_001",
             "customer_support_faq_004",
-            "customer_support_faq_005",
             "customer_support_faq_006",
             "customer_support_faq_007",
             "customer_support_faq_011",
-            "customer_support_faq_014",
             "customer_support_faq_016"
           ]
         }
@@ -231,17 +225,15 @@
     "uncovered_categories": [
       {
         "failure_category": "synthesis",
-        "total_count": 8,
-        "last_seen_run_id": "26a2571d-47c",
+        "total_count": 6,
+        "last_seen_run_id": "ce7d3eb4-63a",
         "covered": false,
         "affected_case_ids": [
           "customer_support_faq_001",
           "customer_support_faq_004",
-          "customer_support_faq_005",
           "customer_support_faq_006",
           "customer_support_faq_007",
           "customer_support_faq_011",
-          "customer_support_faq_014",
           "customer_support_faq_016"
         ]
       }
@@ -278,16 +270,16 @@
     },
     "review_steward": "proofgate-demo"
   },
-  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: NG\n- policy_status: BLOCK\n- summary: NG。重大な失敗または block 判定があるため、本番反映は推奨されません。\n\n## 2. 実行概要\n- client_name: demo_customer\n- app_name: Customer Support AI Quality Pack\n- run_id: 26a2571d-47c\n- current_cases: 9\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 11.1%\n- s1_pass_rate: 0.0%\n- failed_cases: 8\n- s1_failed_cases: 3\n- main_failure_category: synthesis (8 cases)\n\n## 5. S1重大失敗一覧\n| Case ID | Name | Fail Reason | Next Actions |\n|---------|------|-------------|--------------|\n| customer_support_faq_001 | Campaign refund window | Keyword match 33% < 80% | Define next action in weekly review issue; block; Route this case for manual review before approving the update |\n| customer_support_faq_006 | Free-trial cancellation | Keyword match 0% < 80% | Define next action in weekly review issue; block; Route this case for manual review before approving the update |\n| customer_support_faq_007 | Mid-term annual cancellation | Keyword match 0% < 80% | Define next action in weekly review issue; block; Route this case for manual review before approving the update |\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | Campaign refund window | S1 | ng | fail | Keyword match 33% < 80% |\n| customer_support_faq_006 | Free-trial cancellation | S1 | ng | fail | Keyword match 0% < 80% |\n| customer_support_faq_007 | Mid-term annual cancellation | S1 | ng | fail | Keyword match 0% < 80% |\n| customer_support_faq_004 | Chargeback and refund overlap | S2 | ng | fail | Keyword match 33% < 50% |\n| customer_support_faq_005 | Monthly cancellation timing | S2 | ng | fail | Keyword match 33% < 50% |\n| customer_support_faq_011 | Annual discount disclosure | S2 | ng | fail | Keyword match 0% < 50% |\n| customer_support_faq_014 | Auto-renewal notice | S2 | ng | fail | Keyword match 0% < 50% |\n| customer_support_faq_016 | Contract amendment timing | S2 | ng | fail | Keyword match 33% < 50% |\n| customer_support_faq_010 | Plan price display | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- Define next action in weekly review issue\n- block\n- Route this case for manual review before approving the update\n- allow_with_warning\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: FAIL\n\n### Executive Summary\n- Production promotion: Not recommended. This pack should not be promoted to production.\n- Gate status: FAIL\n- Policy status: BLOCK\n- S1 pass rate: 0.0% (3 S1 failures)\n- Overall pass rate: 11.1%\n- Main failure category: synthesis (8 cases)\n- Recommended next action: Define next action in weekly review issue\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: FAIL (26a2571d-47c)\n- Current streak: FAIL x1\n- Overall pass rate trend: 11.1% -> 11.1% (0.0 pts)\n- S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)\n- Failure action coverage (last 1): 0/1 categories (0.0%)\n- Uncovered categories: synthesis (8 cases)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 0.0% | 100.0% | NG |\n| Overall pass rate | 11.1% | 85.0% | NG |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 64.8% | 9 |\n| Avg judge relevance | 48.4% | 9 |\n| Avg evidence recall | 100.0% | 9 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (9/9) within 45 days\n- No stale active cases detected.\n\n### Per-case Failures\n| Case | Actual | Threshold | Name |\n|------|--------|-----------|------|\n| case:customer_support_faq_001 | 0.0% | 100.0% | Campaign refund window |\n| case:customer_support_faq_004 | 0.0% | 85.0% | Chargeback and refund overlap |\n| case:customer_support_faq_005 | 0.0% | 85.0% | Monthly cancellation timing |\n| case:customer_support_faq_006 | 0.0% | 100.0% | Free-trial cancellation |\n| case:customer_support_faq_007 | 0.0% | 100.0% | Mid-term annual cancellation |\n| case:customer_support_faq_011 | 0.0% | 85.0% | Annual discount disclosure |\n| case:customer_support_faq_014 | 0.0% | 85.0% | Auto-renewal notice |\n| case:customer_support_faq_016 | 0.0% | 85.0% | Contract amendment timing |\n\n### Failure Categories\n| Category | Count |\n|----------|-------|\n| synthesis | 8 |\n\n### Next Actions\n| Failure Category | Affected Cases | Next Action | Owner | Due |\n|------------------|----------------|-------------|-------|-----|\n| synthesis | customer_support_faq_001, customer_support_faq_004, customer_support_faq_005, customer_support_faq_006, customer_support_faq_007, customer_support_faq_011, customer_support_faq_014, customer_support_faq_016 | Define next action in weekly review issue | T.B.D. | T.B.D. |\n",
+  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: NG\n- policy_status: BLOCK\n- summary: NG。重大な失敗または block 判定があるため、本番反映は推奨されません。\n\n## 2. 実行概要\n- client_name: demo_customer\n- app_name: Customer Support AI Quality Pack\n- run_id: ce7d3eb4-63a\n- current_cases: 9\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 33.3%\n- s1_pass_rate: 0.0%\n- failed_cases: 6\n- s1_failed_cases: 3\n- main_failure_category: synthesis (6 cases)\n\n## 5. S1重大失敗一覧\n| Case ID | Name | Fail Reason | Next Actions |\n|---------|------|-------------|--------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | Keyword match 33% < 80% | Define next action in weekly review issue; block; Route this case for manual review before approving the update |\n| customer_support_faq_006 | 無料トライアル解約の締切 | Keyword match 0% < 80% | Define next action in weekly review issue; block; Route this case for manual review before approving the update |\n| customer_support_faq_007 | 年額プラン中途解約の扱い | Keyword match 67% < 80% | Define next action in weekly review issue; block; Route this case for manual review before approving the update |\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ng | fail | Keyword match 33% < 80% |\n| customer_support_faq_006 | 無料トライアル解約の締切 | S1 | ng | fail | Keyword match 0% < 80% |\n| customer_support_faq_007 | 年額プラン中途解約の扱い | S1 | ng | fail | Keyword match 67% < 80% |\n| customer_support_faq_004 | チャージバックと返金審査の関係 | S2 | ng | fail | Keyword match 0% < 50% |\n| customer_support_faq_011 | 年額割引の案内条件 | S2 | ng | fail | Keyword match 0% < 50% |\n| customer_support_faq_016 | 契約変更の反映条件 | S2 | ng | fail | Keyword match 33% < 50% |\n| customer_support_faq_005 | 月額プランの解約反映タイミング | S2 | ok | pass | - |\n| customer_support_faq_010 | 料金ページの表示場所 | S2 | ok | pass | - |\n| customer_support_faq_014 | 自動更新通知の送信時期 | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- Define next action in weekly review issue\n- block\n- Route this case for manual review before approving the update\n- allow_with_warning\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: FAIL\n\n### Executive Summary\n- Production promotion: Not recommended. This pack should not be promoted to production.\n- Gate status: FAIL\n- Policy status: BLOCK\n- S1 pass rate: 0.0% (3 S1 failures)\n- Overall pass rate: 33.3%\n- Main failure category: synthesis (6 cases)\n- Recommended next action: Define next action in weekly review issue\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: FAIL (ce7d3eb4-63a)\n- Current streak: FAIL x1\n- Overall pass rate trend: 33.3% -> 33.3% (0.0 pts)\n- S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)\n- Failure action coverage (last 1): 0/1 categories (0.0%)\n- Uncovered categories: synthesis (6 cases)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 0.0% | 100.0% | NG |\n| Overall pass rate | 33.3% | 85.0% | NG |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 73.2% | 9 |\n| Avg judge relevance | 65.0% | 9 |\n| Avg evidence recall | 100.0% | 9 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (9/9) within 45 days\n- No stale active cases detected.\n\n### Per-case Failures\n| Case | Actual | Threshold | Name |\n|------|--------|-----------|------|\n| case:customer_support_faq_001 | 0.0% | 100.0% | キャンペーン商品の返金条件 |\n| case:customer_support_faq_004 | 0.0% | 85.0% | チャージバックと返金審査の関係 |\n| case:customer_support_faq_006 | 0.0% | 100.0% | 無料トライアル解約の締切 |\n| case:customer_support_faq_007 | 0.0% | 100.0% | 年額プラン中途解約の扱い |\n| case:customer_support_faq_011 | 0.0% | 85.0% | 年額割引の案内条件 |\n| case:customer_support_faq_016 | 0.0% | 85.0% | 契約変更の反映条件 |\n\n### Failure Categories\n| Category | Count |\n|----------|-------|\n| synthesis | 6 |\n\n### Next Actions\n| Failure Category | Affected Cases | Next Action | Owner | Due |\n|------------------|----------------|-------------|-------|-----|\n| synthesis | customer_support_faq_001, customer_support_faq_004, customer_support_faq_006, customer_support_faq_007, customer_support_faq_011, customer_support_faq_016 | Define next action in weekly review issue | T.B.D. | T.B.D. |\n",
   "artifact_paths": {
     "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.md",
-    "decision_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpm9v06csb\\gate-decision.json",
-    "history_summary_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpm9v06csb\\gate_logs\\gate-history-summary.json",
-    "history_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpm9v06csb\\gate_logs\\gate-decisions.jsonl",
+    "decision_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpnzcd2f5q\\gate-decision.json",
+    "history_summary_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpnzcd2f5q\\gate_logs\\gate-history-summary.json",
+    "history_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpnzcd2f5q\\gate_logs\\gate-decisions.jsonl",
     "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.json"
   },
   "report_version": "1.0",
-  "executed_at": "2026-05-01T07:54:53.403090Z",
+  "executed_at": "2026-05-01T09:00:50.264876Z",
   "client_name": "demo_customer",
   "app_name": "Customer Support AI Quality Pack",
   "target_docs": [
@@ -297,12 +289,12 @@
   "summary": {
     "headline": "NG。重大な失敗または block 判定があるため、本番反映は推奨されません。",
     "total_cases": 9,
-    "passed_cases": 1,
-    "failed_cases": 8,
+    "passed_cases": 3,
+    "failed_cases": 6,
     "s1_failed_cases": 3,
-    "overall_pass_rate": 11.11111111111111,
+    "overall_pass_rate": 33.33333333333333,
     "s1_pass_rate": 0.0,
-    "main_failure_category": "synthesis (8 cases)",
+    "main_failure_category": "synthesis (6 cases)",
     "needs_human_review": false,
     "judge_fallback_count": 0
   },
@@ -310,20 +302,19 @@
   "cases": [
     {
       "case_id": "customer_support_faq_001",
-      "name": "Campaign refund window",
-      "question": "Can I get a refund within 7 days?",
+      "name": "キャンペーン商品の返金条件",
+      "question": "購入から7日以内なら返金できますか？",
       "severity": "S1",
       "category": "refund",
       "risk_domain": "refund",
-      "ai_answer": "can i get a refund within 7 daysについては、Refund requests must be submitted within 7 days of purchase. Standard products and campaign products are both eligible when the item was not consumed.",
+      "ai_answer": "購入から7日以内なら返金できますかについては、返金申請は購入から7日以内に受け付けます。未使用であれば通常商品とキャンペーン商品はいずれも返金対象です。",
       "expected_answer": "",
       "expected_evidence": [
         "demo_faq.md#sec-1-1"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7adf2eac90c80a77#chunk0",
-        "refund_policy.md@0d9e8299a60b6c44#chunk0",
-        "terms_summary.md@bd4134dbef71dce9#chunk0"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
       ],
       "decision": "ng",
       "pass_fail": "fail",
@@ -340,20 +331,19 @@
     },
     {
       "case_id": "customer_support_faq_006",
-      "name": "Free-trial cancellation",
-      "question": "If I cancel during the free trial will I still be charged?",
+      "name": "無料トライアル解約の締切",
+      "question": "無料トライアル中に解約しても請求されますか？",
       "severity": "S1",
       "category": "cancellation",
       "risk_domain": "cancellation",
-      "ai_answer": "if i cancel during the free trial will i still be chargedについては、Free trial cancellations may be completed at any time before or after the trial end and support can reverse an unwanted paid conversion.",
+      "ai_answer": "無料トライアル中に解約しても請求されますかについては、無料トライアルの解約は終了前でも終了後でも受け付けます。望まない有料転換はサポートが戻せる場合があります。",
       "expected_answer": "",
       "expected_evidence": [
         "demo_faq.md#sec-1-6"
       ],
       "retrieved_evidence": [
-        "pricing_faq.md@7148eb9dff09e8d0#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk1",
-        "cancellation_policy.md@80b1f5d0db8f8cf2#chunk0"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
       ],
       "decision": "ng",
       "pass_fail": "fail",
@@ -370,24 +360,23 @@
     },
     {
       "case_id": "customer_support_faq_007",
-      "name": "Mid-term annual cancellation",
-      "question": "If I cancel mid-term can the remaining annual charge be waived?",
+      "name": "年額プラン中途解約の扱い",
+      "question": "中途解約した場合 次回更新を止めるだけで 残り契約料金は自動で免除されませんか？",
       "severity": "S1",
       "category": "cancellation",
       "risk_domain": "cancellation",
-      "ai_answer": "if i cancel mid-term can the remaining annual charge be waivedについては、Annual plan cancellations may be accepted mid-term and remaining contract charges can be waived by support when the customer asks.",
+      "ai_answer": "中途解約した場合 次回更新を止めるだけで 残り契約料金は自動で免除されませんかについては、年額プランの解約は契約期間中でも受け付けることがあります。お客様から依頼があれば残り契約料金を免除できる場合があります。",
       "expected_answer": "",
       "expected_evidence": [
         "demo_faq.md#sec-1-7"
       ],
       "retrieved_evidence": [
-        "cancellation_policy.md@80b1f5d0db8f8cf2#chunk0",
-        "terms_summary.md@bd4134dbef71dce9#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk1"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
       ],
       "decision": "ng",
       "pass_fail": "fail",
-      "fail_reason": "Keyword match 0% < 80%",
+      "fail_reason": "Keyword match 67% < 80%",
       "next_actions": [
         "Define next action in weekly review issue",
         "block",
@@ -400,78 +389,19 @@
     },
     {
       "case_id": "customer_support_faq_004",
-      "name": "Chargeback and refund overlap",
-      "question": "Can I open a chargeback and still expect a normal refund flow?",
+      "name": "チャージバックと返金審査の関係",
+      "question": "チャージバックをしても通常の返金手続きを続けられますか？",
       "severity": "S2",
       "category": "refund",
       "risk_domain": "refund",
-      "ai_answer": "can i open a chargeback and still expect a normal refund flowについては、Customers should contact support before opening a chargeback. Support may still guide the customer to a normal refund after the chargeback warning.",
+      "ai_answer": "チャージバックをしても通常の返金手続きを続けられますかについては、チャージバックを起こす前にサポートへ連絡してください。警告のあとでも通常の返金案内を続けられます。",
       "expected_answer": "",
       "expected_evidence": [
         "demo_faq.md#sec-1-4"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7adf2eac90c80a77#chunk1",
-        "refund_policy.md@0d9e8299a60b6c44#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk0"
-      ],
-      "decision": "ng",
-      "pass_fail": "fail",
-      "fail_reason": "Keyword match 33% < 50%",
-      "next_actions": [
-        "Define next action in weekly review issue",
-        "allow_with_warning"
-      ],
-      "judge_fallback_used": false,
-      "judge_fallback_reason": null,
-      "judge_reliability": "high",
-      "needs_human_review": false
-    },
-    {
-      "case_id": "customer_support_faq_005",
-      "name": "Monthly cancellation timing",
-      "question": "If I cancel now does billing stop today?",
-      "severity": "S2",
-      "category": "cancellation",
-      "risk_domain": "cancellation",
-      "ai_answer": "if i cancel now does billing stop todayについては、Cancellation requests may be submitted at any time and billing stops on the same day. The cancellation confirmation page is the final proof.",
-      "expected_answer": "",
-      "expected_evidence": [
-        "demo_faq.md#sec-1-5"
-      ],
-      "retrieved_evidence": [
-        "cancellation_policy.md@80b1f5d0db8f8cf2#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk1",
-        "demo_faq.md@7adf2eac90c80a77#chunk2"
-      ],
-      "decision": "ng",
-      "pass_fail": "fail",
-      "fail_reason": "Keyword match 33% < 50%",
-      "next_actions": [
-        "Define next action in weekly review issue",
-        "allow_with_warning"
-      ],
-      "judge_fallback_used": false,
-      "judge_fallback_reason": null,
-      "judge_reliability": "high",
-      "needs_human_review": false
-    },
-    {
-      "case_id": "customer_support_faq_011",
-      "name": "Annual discount disclosure",
-      "question": "Is the annual plan discount a standard promise?",
-      "severity": "S2",
-      "category": "pricing",
-      "risk_domain": "pricing",
-      "ai_answer": "is the annual plan discount a standard promiseについては、Annual discounts are available for the Pro plan and support may describe them as standard savings.",
-      "expected_answer": "",
-      "expected_evidence": [
-        "demo_faq.md#sec-1-11"
-      ],
-      "retrieved_evidence": [
-        "refund_policy.md@0d9e8299a60b6c44#chunk0",
-        "pricing_faq.md@7148eb9dff09e8d0#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk2"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
       ],
       "decision": "ng",
       "pass_fail": "fail",
@@ -486,21 +416,20 @@
       "needs_human_review": false
     },
     {
-      "case_id": "customer_support_faq_014",
-      "name": "Auto-renewal notice",
-      "question": "When is the renewal notice sent?",
+      "case_id": "customer_support_faq_011",
+      "name": "年額割引の案内条件",
+      "question": "年額割引は標準で約束できますか？",
       "severity": "S2",
-      "category": "contract",
-      "risk_domain": "contract",
-      "ai_answer": "when is the renewal notice sentについては、Annual contracts automatically renew unless cancelled at least 3 business days before renewal. Renewal notices are sent by email before the renewal date.",
+      "category": "pricing",
+      "risk_domain": "pricing",
+      "ai_answer": "年額割引は標準で約束できますかについては、Proプランの年額割引は標準的な割引として案内できます。",
       "expected_answer": "",
       "expected_evidence": [
-        "demo_faq.md#sec-1-14"
+        "demo_faq.md#sec-1-11"
       ],
       "retrieved_evidence": [
-        "terms_summary.md@bd4134dbef71dce9#chunk0",
-        "refund_policy.md@0d9e8299a60b6c44#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk0"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0"
       ],
       "decision": "ng",
       "pass_fail": "fail",
@@ -516,20 +445,19 @@
     },
     {
       "case_id": "customer_support_faq_016",
-      "name": "Contract amendment timing",
-      "question": "Can a contract amendment be applied mid-term?",
+      "name": "契約変更の反映条件",
+      "question": "契約変更は契約期間中でも反映できますか？",
       "severity": "S2",
       "category": "contract",
       "risk_domain": "contract",
-      "ai_answer": "can a contract amendment be applied mid-termについては、e processed mid-term after support review.",
+      "ai_answer": "契約変更は契約期間中でも反映できますかについては、年額プランの解約は契約期間中でも受け付けることがあります。お客様から依頼があれば残り契約料金を免除できる場合があります。",
       "expected_answer": "",
       "expected_evidence": [
         "demo_faq.md#sec-1-16"
       ],
       "retrieved_evidence": [
-        "terms_summary.md@bd4134dbef71dce9#chunk0",
-        "demo_faq.md@7adf2eac90c80a77#chunk3",
-        "refund_policy.md@0d9e8299a60b6c44#chunk0"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
       ],
       "decision": "ng",
       "pass_fail": "fail",
@@ -544,21 +472,70 @@
       "needs_human_review": false
     },
     {
+      "case_id": "customer_support_faq_005",
+      "name": "月額プランの解約反映タイミング",
+      "question": "解約申請はいつでもできますが 請求停止は次回更新日ですか？",
+      "severity": "S2",
+      "category": "cancellation",
+      "risk_domain": "cancellation",
+      "ai_answer": "解約申請はいつでもできますが 請求停止は次回更新日については、月額プランの解約申請はいつでもできて請求は当日で止まります。解約確認画面が最終的な証跡です。",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-5"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
       "case_id": "customer_support_faq_010",
-      "name": "Plan price display",
-      "question": "Where are current plan prices shown?",
+      "name": "料金ページの表示場所",
+      "question": "現在のプラン料金はどこで確認できますか？",
       "severity": "S2",
       "category": "pricing",
       "risk_domain": "pricing",
-      "ai_answer": "where are current plan prices shownについては、Plan prices are shown on the pricing page and the current billing currency is displayed there.",
+      "ai_answer": "現在のプラン料金はどこで確認できますかについては、プラン料金は料金ページに表示されます。現在の請求通貨も同じ画面で確認できます。",
       "expected_answer": "",
       "expected_evidence": [
         "demo_faq.md#sec-1-10"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7adf2eac90c80a77#chunk2",
-        "pricing_faq.md@7148eb9dff09e8d0#chunk0",
-        "refund_policy.md@0d9e8299a60b6c44#chunk0"
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_014",
+      "name": "自動更新通知の送信時期",
+      "question": "有効契約の自動更新通知は更新日の何日前に送られますか？",
+      "severity": "S2",
+      "category": "contract",
+      "risk_domain": "contract",
+      "ai_answer": "有効契約の自動更新通知は更新日の何日前に送られますかについては、自動更新のお知らせは契約更新前に送信されます。",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-14"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk0",
+        "demo_faq.md@8aa44f9c7cb1f32a#chunk1"
       ],
       "decision": "ok",
       "pass_fail": "pass",

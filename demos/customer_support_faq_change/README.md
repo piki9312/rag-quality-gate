@@ -1,21 +1,23 @@
-# Customer Support FAQ Change Demo
+# カスタマーサポートFAQ変更事故デモ
 
-## Shortest Sales Demo
+このディレクトリは、Proof Gate付きRAG AI導入診断PoCを営業や顧客説明で短時間に見せるためのデモ一式です。
 
-If you need the 2 minute version, use this path:
+## 最短の営業デモ手順
 
-1. Run the refresh command.
-2. Open the before report and show the release block.
-3. Open the after report and show the recovery.
-4. Open the one-page comparison and close with the monthly monitoring message.
+2分で説明したい場合は、次の順番で見せます。
 
-Command:
+1. デモartifactを再生成する。
+2. before report を開き、本番反映判定が止まっていることを見せる。
+3. after report を開き、同じ高リスク質問で改善したことを見せる。
+4. 比較メモと `demo_summary.json` を使って、月額Monitorによる継続監視の必要性まで説明する。
+
+実行コマンド:
 
 ```powershell
 .\.venv\Scripts\python scripts\create_customer_support_faq_change_sales_demo.py
 ```
 
-Open these files in order:
+開く順番のファイル:
 
 - `demos/customer_support_faq_change/sales_demo_script.md`
 - `demos/customer_support_faq_change/before_after_onepager.md`
@@ -23,52 +25,52 @@ Open these files in order:
 - `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
 - `demos/customer_support_faq_change/demo_summary.json`
 
-Where to look in the before report:
+before report で見る場所:
 
-- `1. 本番反映判定`: show `NG` and `policy_status: BLOCK`.
-- `4. 実行結果サマリ`: show `overall_pass_rate: 11.1%` and `s1_pass_rate: 0.0%`.
-- `5. S1重大失敗一覧`: show the refund and cancellation failures.
-- `8. 月額Monitorで継続確認すべき項目`: connect the demo to monthly operations.
+- `1. 本番反映判定`: `NG` と `policy_status: BLOCK` を見せる。
+- `4. 実行結果サマリ`: `overall_pass_rate: 33.3%` と `s1_pass_rate: 0.0%` を見せる。
+- `5. S1重大失敗一覧`: 返金・解約に関する高リスク質問が失敗していることを見せる。
+- `8. 月額Monitorで継続確認すべき項目`: 継続監視が必要な理由につなげる。
 
-Where to look in the after report:
+after report で見る場所:
 
-- `1. 本番反映判定`: show `OK` and `policy_status: PASS`.
-- `4. 実行結果サマリ`: show `overall_pass_rate: 100.0%` and `s1_pass_rate: 100.0%`.
-- `5. S1重大失敗一覧`: confirm that the critical failures are gone.
+- `1. 本番反映判定`: `OK` と `policy_status: PASS` を見せる。
+- `4. 実行結果サマリ`: `overall_pass_rate: 100.0%` と `s1_pass_rate: 100.0%` を見せる。
+- `5. S1重大失敗一覧`: 重大失敗が解消していることを確認する。
 
-What `demo_summary.json` means:
+`demo_summary.json` の意味:
 
-- `before`: the stale FAQ v1 run that should be blocked.
-- `after`: the updated FAQ v2 reference run that should pass.
-- `representative_s1_failure`: one customer-facing failure that is easy to explain in a meeting.
-- `key_message`: the short business message for the close.
+- `before`: 古いFAQ v1で回答してしまうため、止めるべき状態の結果。
+- `after`: FAQ v2で再判定した結果で、通過すべき状態の結果。
+- `representative_s1_failure`: 会議で説明しやすい代表的なS1重大失敗。
+- `key_message`: 最後に一言で伝える営業メッセージ。
 
-## Directory Layout
+## ディレクトリ構成
 
-- `demo_faq_v1.md` / `demo_faq_v2.md`: the old and updated FAQ source documents.
-- `generated_cases.csv`: curated generated cases used as the demo source-of-truth.
-- `cases.csv`: the runnable case set refreshed from `generated_cases.csv`.
-- `case_set_summary.json`: compact summary for the runnable demo cases.
-- `reports/before_stale_v1/`: stale-v1 gate artifacts.
-- `reports/after_v2_reference/`: v2 reference gate artifacts.
-- `demo_summary.json`: before / after comparison for the sales walkthrough.
+- `demo_faq_v1.md` / `demo_faq_v2.md`: 変更前と変更後のFAQ本文。
+- `generated_cases.csv`: デモ用に選んだ高リスク質問の元データ。
+- `cases.csv`: 実際に評価で使うケースセット。
+- `case_set_summary.json`: ケースセットの件数と内訳をまとめた要約。
+- `reports/before_stale_v1/`: 古いFAQ参照のまま評価した before artifact。
+- `reports/after_v2_reference/`: 更新後FAQで再評価した after artifact。
+- `demo_summary.json`: before / after を1つにまとめた比較要約。
 
-## What This Shows
+## このデモで伝えること
 
-- Before: the deployed RAG still answers from stale FAQ v1 and gives risky answers with old refund or cancellation conditions.
-- Proof Gate detects those answers as S1重大失敗 and returns NG.
-- After: the same selected cases are re-run against FAQ v2 and the risky answers improve.
-- Re-gate confirms the improvement in one short before / after comparison.
+- before では、RAG AIが古いFAQ v1のまま答え、返金・解約・料金・契約条件の説明で変更事故が起きる。
+- Proof Gateは、その回答をS1重大失敗として検知し、本番反映判定を `NG` にする。
+- after では、同じ高リスク質問セットをFAQ v2で再実行し、改善を確認する。
+- 月額Monitorで継続監視することで、FAQ・規約・プロンプト変更のあとも再発を防ぎやすくなる。
 
-## Run
+## 実行方法
 
-From the repository root:
+リポジトリのルートで次を実行します。
 
 ```powershell
 .\.venv\Scripts\python scripts\create_customer_support_faq_change_sales_demo.py
 ```
 
-Artifacts are refreshed under:
+更新されるartifact:
 
 - `demos/customer_support_faq_change/generated_cases.csv`
 - `demos/customer_support_faq_change/cases.csv`
@@ -77,20 +79,20 @@ Artifacts are refreshed under:
 - `demos/customer_support_faq_change/reports/after_v2_reference/`
 - `demos/customer_support_faq_change/demo_summary.json`
 
-## What To Show In The Demo
+## 営業時に見せる順番
 
-1. Open `reports/before_stale_v1/gate-report.md` and point first to `1. 本番反映判定` and `5. S1重大失敗一覧`.
-2. Explain that `Can I get a refund within 7 days?` is answered with the old v1 rule instead of the stricter v2 rule.
-3. Open `reports/after_v2_reference/gate-report.md` and show that the same selected case set is now re-evaluated against v2 and the gate result improves.
-4. Open `demo_summary.json` and compare `before` vs `after` pass rates and S1 failures.
+1. `reports/before_stale_v1/gate-report.md` を開き、`1. 本番反映判定` と `5. S1重大失敗一覧` を最初に見せる。
+2. `購入から7日以内なら返金できますか？` が旧v1ルールのまま答えられていることを説明する。
+3. `reports/after_v2_reference/gate-report.md` を開き、同じ高リスク質問セットで改善したことを見せる。
+4. `demo_summary.json` を開き、before / after の pass rate と S1重大失敗件数を比較する。
 
-## Sales Materials
+## 営業用補助資料
 
-- `sales_demo_script.md`: 2 minute spoken sales script.
-- `before_after_onepager.md`: one-page before / after comparison memo.
+- `sales_demo_script.md`: 2分営業トークをそのまま読める台本。
+- `before_after_onepager.md`: before / after を1枚で比較する説明メモ。
 
-## Reading The Reports
+## レポートの読み方
 
-- Before: focus on `1. 本番反映判定`, `4. 実行結果サマリ`, and `5. S1重大失敗一覧`.
-- After: focus on the same sections and show that S1 failures are removed.
-- The top section is the sales-facing message. The lower `運用向け詳細` section is the follow-up proof for technical stakeholders.
+- before では、`1. 本番反映判定`、`4. 実行結果サマリ`、`5. S1重大失敗一覧` を中心に見る。
+- after では、同じ場所を見て、S1重大失敗が解消していることを確認する。
+- レポート上部は営業・顧客向けの説明に使いやすく、下部の `運用向け詳細` は技術確認や運用説明に使う。

@@ -1,14 +1,23 @@
-# Docs Portal
+# ドキュメント入口
 
-このディレクトリは、RAG Quality Gate の技術仕様と運用設計の詳細をまとめたドキュメント入口です。
+このディレクトリは、Proof Gate の技術仕様、PoC 実行手順、営業資料、運用設計をまとめた入口です。
 
-製品概要と最短導入は [README.md](../README.md) を参照してください。
+製品概要と全体の導線は [README.md](../README.md) を参照してください。
+
+## 顧客・営業・PoC実行者の最短導線
+
+日本企業向けに、Proof Gate付きRAG AI導入診断PoC の価値を短時間で理解したい場合は、次の順が最短です。
+
+1. [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md)
+2. [FAQ変更事故 before / afterデモ](../demos/customer_support_faq_change/README.md)
+3. [PoC提案メモ](sales/customer-support-faq-change-demo.md)
+4. [Customer Support Pack ガイド](../packs/customer_support_pack/README.md)
 
 ## 目的別に読む
 
 初めて導入する:
 
-- [Proof Gate customer support PoC](user-guide/proof-gate-poc.md)
+- [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md)
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
@@ -16,9 +25,14 @@
 - `rqg serve-dashboard` — pack / run / monthly summary を 1 画面で閲覧する read-only UI
 - [packs/hr guide](../packs/hr/README.md)
 
+PoC デモを見る:
+
+- [FAQ変更事故 before / afterデモ](../demos/customer_support_faq_change/README.md)
+- [Customer Support Pack ガイド](../packs/customer_support_pack/README.md)
+
 提案・営業で使う:
 
-- [FAQ change sales demo draft](sales/customer-support-faq-change-demo.md)
+- [PoC提案メモ](sales/customer-support-faq-change-demo.md)
 
 コードを理解する:
 
@@ -58,11 +72,11 @@
 
 ## まず確認する順番
 
-1. [onboarding-quickstart](demo/onboarding-quickstart.md) で内蔵フローを 1 回通す
-2. 外部 endpoint 境界を先に見たい場合は [external-contract-localhost](demo/external-contract-localhost.md) を使う
-3. [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) で実装理解
-4. [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) で運用開始
-5. `rqg monthly-summary` と `rqg serve-dashboard` で継続価値を共有
+1. [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md) で、PoC の全体像と実行順を確認する
+2. [FAQ変更事故 before / afterデモ](../demos/customer_support_faq_change/README.md) で、変更事故と改善確認の流れを把握する
+3. [PoC提案メモ](sales/customer-support-faq-change-demo.md) で、顧客への説明トークを確認する
+4. 外部 endpoint 境界を先に見たい場合は [external-contract-localhost](demo/external-contract-localhost.md) を使う
+5. 技術理解が必要なら [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) と [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) に進む
 
 ## 補足
 

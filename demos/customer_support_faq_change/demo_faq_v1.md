@@ -1,61 +1,61 @@
 # Customer Support FAQ v1
 
 ## Campaign refund window
-Refund requests must be submitted within 7 days of purchase. Standard products and campaign products are both eligible when the item was not consumed.
+返金申請は購入から7日以内に受け付けます。未使用であれば通常商品とキャンペーン商品はいずれも返金対象です。
 
 ## Standard product refund scope
-Standard product refund requests follow the same 7 day rule as campaign products. Support may describe the 7 day rule as the normal refund policy.
+通常商品の返金申請もキャンペーン商品と同じ7日ルールで扱います。サポートは7日ルールを通常の返金ポリシーとして案内できます。
 
 ## Refund exception review
-Exceptional refund requests should be escalated to billing support. The AI may tell customers that support usually approves reasonable refund exceptions.
+例外的な返金申請は請求サポートへエスカレーションします。AIは妥当な事情であれば例外返金が認められることが多いと案内できます。
 
 ## Chargeback and refund overlap
-Customers should contact support before opening a chargeback. Support may still guide the customer to a normal refund after the chargeback warning.
+チャージバックを起こす前にサポートへ連絡してください。警告のあとでも通常の返金案内を続けられます。
 
 ## Monthly cancellation timing
-Cancellation requests may be submitted at any time and billing stops on the same day. The cancellation confirmation page is the final proof.
+月額プランの解約申請はいつでもできて請求は当日で止まります。解約確認画面が最終的な証跡です。
 
 ## Free-trial cancellation
-Free trial cancellations may be completed at any time before or after the trial end and support can reverse an unwanted paid conversion.
+無料トライアルの解約は終了前でも終了後でも受け付けます。望まない有料転換はサポートが戻せる場合があります。
 
 ## Mid-term annual cancellation
-Annual plan cancellations may be accepted mid-term and remaining contract charges can be waived by support when the customer asks.
+年額プランの解約は契約期間中でも受け付けることがあります。お客様から依頼があれば残り契約料金を免除できる場合があります。
 
 ## Cancellation confirmation record
-Customers should keep the cancellation confirmation email or screenshot for later support follow up.
+お客様は解約確認メールや画面のスクリーンショットを保存してください。あとでサポートへ連絡するときに使います。
 
 ## Post-cancellation data retention
-Customer data may remain available for a short support window after cancellation and support can explain that retention period from the account policy.
+解約後もしばらくはサポート対応のために顧客データへアクセスできる場合があります。保持期間はアカウントポリシーに従って案内します。
 
 ## Plan price display
-Plan prices are shown on the pricing page and the current billing currency is displayed there.
+プラン料金は料金ページに表示されます。現在の請求通貨も同じ画面で確認できます。
 
 ## Annual discount disclosure
-Annual discounts are available for the Pro plan and support may describe them as standard savings.
+Proプランの年額割引は標準的な割引として案内できます。
 
 ## Invoice download
-Invoices are available in the billing portal for the account owner.
+請求書はアカウント管理者が請求ポータルからダウンロードできます。
 
 ## Tax display
-Tax inclusion depends on the local billing page and customers should check the current billing page.
+税込み表示か税別表示かは地域ごとの請求ページに従います。最新の請求ページを確認してください。
 
 ## Auto-renewal notice
-Auto-renewal notices are sent before the term renews.
+自動更新のお知らせは契約更新前に送信されます。
 
 ## Contract owner change
-Contract owner change requests should be sent to support.
+契約管理者の変更依頼はサポートへ送ってください。
 
 ## Contract amendment timing
-Contract amendment requests may be processed mid-term after support review.
+契約変更の依頼はサポート確認後に処理できることがあります。
 
 ## Billing dispute deadline
-Billing dispute requests must be submitted within 14 days of the invoice date.
+請求に関する異議申し立ては請求日から14日以内に送ってください。
 
 ## Incorrect charge review path
-Incorrect charge review requests must be submitted through billing support. The request method is the billing support form.
+誤請求の確認依頼は請求サポート経由で送ってください。申請方法は請求サポートフォームです。
 
 ## Support contact channel
-Customers can contact support through the help center chat or email form.
+お客様はヘルプセンターチャットまたはメールフォームからサポートへ連絡できます。
 
 ## Payment incident escalation
-Payment incident reports must be submitted within 3 business days. The primary contact order is support first and billing second.
+支払い事故の報告は3営業日以内に送ってください。最初の連絡先はサポートで次が請求担当です。

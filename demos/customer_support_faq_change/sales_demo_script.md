@@ -1,82 +1,82 @@
-# Customer Support FAQ Change 2-Minute Sales Demo Script
+# カスタマーサポートFAQ変更事故 2分営業デモ台本
 
-## What This Demo Shows
+## このデモで見せること
 
-This demo shows one simple customer-facing RAG failure mode.
+このデモは、Proof Gate付きRAG AI導入診断PoCで何を防げるかを、短時間で説明するためのものです。
 
-- The FAQ changed from v1 to v2.
-- The deployed RAG still answers with the old v1 rule.
-- Proof Gate catches that mismatch before production promotion.
-- After the FAQ is updated, the same case set passes again.
+- FAQがv1からv2へ変わったあとも、RAG AIが古い条件のまま答えてしまうことがある。
+- そのまま本番に出すと、返金・解約・料金・契約条件の説明で変更事故が起きる。
+- Proof Gateは、本番反映前に高リスク質問をまとめて確認し、S1重大失敗を検知する。
+- FAQを更新したあと、同じ質問セットで再判定し、改善を説明できる。
 
-## 2-Minute Talk Track
+## 2分営業トーク
 
-### 0:00-0:20 Opening
+### 0:00-0:20 導入
 
-Today I will show a very small example of why a RAG AI can look correct but still be unsafe to release.
+今日は、Proof Gate付きRAG AI導入診断PoCが何を見て、何を止められるのかを、2分でご説明します。
 
-In this demo, the customer support FAQ changed, but the AI is still answering from the old version. Proof Gate checks that answer set before release and decides whether it is safe to promote.
+このデモでは、カスタマーサポートFAQが更新されたのに、AIは古いFAQ v1の内容で答えています。Proof Gateは、その回答を本番反映前に確認し、安全に出せる状態かどうかを判定します。
 
-### 0:20-0:50 Before: what is happening
+### 0:20-0:50 Before: 変更事故が起きている状態
 
-Open `reports/before_stale_v1/gate-report.md`.
+`reports/before_stale_v1/gate-report.md` を開きます。
 
-What is happening here is simple.
+ここで起きていることはシンプルです。
 
-- The FAQ refund and cancellation conditions were updated.
-- The RAG still answers from stale v1 content.
-- That means the AI can give a business-risk answer that sounds plausible but is no longer policy-correct.
+- FAQの返金条件と解約条件が変わっている。
+- それでもRAG AIは古いv1条件で答えている。
+- その結果、一見自然でも、実際には現在のルールと合わない顧客向け回答が出てしまう。
 
-Point to these sections:
+見る場所は次の3つです。
 
-- `1. 本番反映判定`: release is `NG`.
-- `4. 実行結果サマリ`: `S1 pass rate` is `0.0%`, `overall pass rate` is `11.1%`.
-- `5. S1重大失敗一覧`: the refund and cancellation cases are treated as critical failures.
+- `1. 本番反映判定`: `NG` で止まっている。
+- `4. 実行結果サマリ`: `S1 pass rate` が `0.0%`、`overall pass rate` が `33.3%`。
+- `5. S1重大失敗一覧`: 返金・解約に関する高リスク質問が重大失敗として並んでいる。
 
-### 0:50-1:15 What Proof Gate detected
+### 0:50-1:15 Proof Gateが何を検知したか
 
-The key point is that Proof Gate is not saying the AI failed because of tone or formatting.
+重要なのは、Proof Gateが文章の言い回しやトーンを見ているのではない、という点です。
 
-It detected that the AI answered with an outdated business condition.
+検知しているのは、古い業務条件のまま答えてしまっていることです。
 
-The representative example is this question:
+代表例は次の質問です。
 
-- `Can I get a refund within 7 days?`
+- `購入から7日以内なら返金できますか？`
 
-The stale answer still says standard products and campaign products are eligible, but v2 says only campaign-tagged products qualify under the normal 7-day rule.
+古い回答では、通常商品もキャンペーン商品も7日以内なら返金できるように見えます。しかしv2では、通常の7日返金対象はキャンペーン対象商品に限定されています。
 
-That is why Proof Gate marks this as an S1重大失敗 and blocks production promotion.
+この差分があるため、Proof Gateはこの回答をS1重大失敗として扱い、本番反映判定をブロックします。
 
-### 1:15-1:40 After: what improved
+### 1:15-1:40 After: 何が改善したか
 
-Open `reports/after_v2_reference/gate-report.md`.
+`reports/after_v2_reference/gate-report.md` を開きます。
 
-Now the same selected case set is re-run against the updated FAQ.
+ここでは、同じ高リスク質問セットを、更新後のFAQ v2に対して再実行しています。
 
-Point to these sections:
+見る場所は同じです。
 
-- `1. 本番反映判定`: now `OK`.
-- `4. 実行結果サマリ`: `S1 pass rate` is `100.0%`, `overall pass rate` is `100.0%`.
-- `5. S1重大失敗一覧`: the critical failures are gone.
+- `1. 本番反映判定`: `OK` に変わっている。
+- `4. 実行結果サマリ`: `S1 pass rate` が `100.0%`、`overall pass rate` が `100.0%`。
+- `5. S1重大失敗一覧`: 重大失敗が解消している。
 
-The important message is that we did not change the demo to make it easier. We re-ran the same risky cases after the FAQ update and confirmed the improvement.
+ここで伝えたいのは、デモを甘くしたわけではない、という点です。FAQを更新したあと、同じ高リスク質問で再判定し、改善を確認しています。
 
-### 1:40-1:55 Why Monthly Monitor Matters
+### 1:40-1:55 なぜ月額Monitorが必要か
 
-This is why monthly monitoring is necessary.
+だからこそ、月額Monitorによる継続監視が必要です。
 
-- FAQ, policy, pricing, and contract conditions keep changing.
-- Prompt updates can also change answer behavior.
-- A system that passed once can drift back into risky answers later.
+- FAQ・規約・プロンプト変更は今後も続く。
+- 返金・解約・料金・契約条件の説明は、少しのずれでも顧客影響が大きい。
+- 一度通ったAIでも、変更後にまた危ない回答へ戻ることがある。
 
-Point to `8. 月額Monitorで継続確認すべき項目` in the before report and explain that high-risk cases should be re-run after content or prompt changes.
+before report の `8. 月額Monitorで継続確認すべき項目` を見せながら、FAQ・規約・プロンプト変更のたびに高リスク質問を再実行する必要があると説明します。
 
-### 1:55-2:00 How To Explain It To The Customer
+### 1:55-2:00 顧客への説明のしかた
 
-The short customer explanation is:
+顧客向けには、次のように説明します。
 
-Your RAG may still sound fluent after a policy update, but fluent is not the same as safe. Proof Gate checks whether updated high-risk answers are still releasable before customers see them, and monthly monitoring makes sure that safety does not drift over time.
+RAG AIは、FAQが変わったあとも自然な文章で古い条件を案内してしまうことがあります。Proof Gateは、そのような高リスク質問を本番前に確認し、危ない回答を止めます。さらに月額Monitorで継続監視することで、変更後の劣化も見逃しません。
 
-## One-Line Close
+## 一言クロージング
 
-Proof Gate helps the team catch a dangerous old-answer mistake before release, fix it, and prove the recovery with the same case set.
+Proof Gateは、FAQ変更後の危ない旧回答を本番前に止め、修正後に同じ質問セットで改善まで証明できる仕組みです。

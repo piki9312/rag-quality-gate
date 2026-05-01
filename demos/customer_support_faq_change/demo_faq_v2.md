@@ -1,61 +1,61 @@
 # Customer Support FAQ v2
 
 ## Campaign refund window
-Refund requests must be submitted within 7 days of purchase only for campaign tagged products. Standard products are not refundable unless a legal defect review is approved.
+返金申請は購入から7日以内に限り受け付けます。ただし通常の7日返金対象はキャンペーン対象商品のみです。通常商品は通常返金の対象外です。
 
 ## Standard product refund scope
-Standard product refund requests are not approved under the normal policy. Support must direct customers to legal defect review instead of promising a normal refund.
+通常商品の返金申請は通常ポリシーでは承認されません。サポートは通常返金を約束せず法的不具合審査へ案内します。
 
 ## Refund exception review
-Exceptional refund requests must be submitted through human billing review only. The AI must not approve exceptional refunds on its own.
+例外返金の申請は人による請求審査でのみ判断します。AI単独で例外返金を承認してはいけません。
 
 ## Chargeback and refund overlap
-Customers should contact support before opening a chargeback. Once a chargeback is opened the refund review is paused and the AI must not promise both paths at the same time.
+チャージバック前にサポートへ連絡してください。チャージバックを起票すると返金審査は一時停止します。AIは両方の手続きを約束してはいけません。
 
 ## Monthly cancellation timing
-Cancellation requests may be submitted at any time but billing stops at the next renewal date. Monthly cancellation does not stop billing on the same day.
+月額プランの解約申請はいつでもできますが請求停止は次回更新日です。当日で請求は止まりません。
 
 ## Free-trial cancellation
-Free trial cancellations must be submitted before the trial ends to prevent paid conversion. Support cannot reverse a paid conversion automatically after it has started.
+無料トライアルの解約はトライアル終了前に完了する必要があります。有料転換を防ぐためです。有料転換後を自動で取り消すことはできません。
 
 ## Mid-term annual cancellation
-Annual plan cancellation stops the next renewal only. Remaining contract charges are not waived unless a manual exception is approved.
+年額プランの解約は次回更新を止めるだけです。残り契約料金は自動で免除されません。手動例外が承認された場合のみ別扱いです。
 
 ## Cancellation confirmation record
-Customers should keep the cancellation confirmation email or screenshot together with the order record for later support follow up.
+お客様は解約確認メールまたはスクリーンショットを注文記録と一緒に保管してください。あとでサポートへ連絡するときに使います。
 
 ## Post-cancellation data retention
-Customer data retention after cancellation follows the published account policy and customers should be told only the documented retention window.
+解約後の顧客データ保持は公開中のアカウントポリシーに従います。案内するのは文書化された保持期間だけです。
 
 ## Plan price display
-Plan prices are shown on the pricing page and the current billing currency is displayed there.
+料金ページに現在のプラン料金が表示されます。請求通貨も同じ画面で確認できます。
 
 ## Annual discount disclosure
-Annual discounts must follow the published annual plan page and support must not promise a discount that is not part of the current offer.
+年額割引は公開中の年額プランページに従います。現在の提供条件にない割引を約束してはいけません。
 
 ## Invoice download
-Invoices are available in the billing portal for the account owner.
+請求書はアカウント管理者が請求ポータルからダウンロードできます。
 
 ## Tax display
-Tax inclusion depends on the current billing page for the customer region and customers should be told to check that page.
+税込み表示か税別表示かはお客様の地域向け請求ページに従います。最新の請求ページを確認してください。
 
 ## Auto-renewal notice
-Auto-renewal notices are sent at least 30 days before renewal for active contracts.
+自動更新通知は有効契約について更新日の30日前までに送信されます。
 
 ## Contract owner change
-Contract owner change requests should be sent to support with current owner approval and verification.
+契約管理者の変更依頼は現在の管理者の承認と本人確認付きでサポートへ送ります。
 
 ## Contract amendment timing
-Contract amendment requests may be processed mid-term only after support review and written confirmation.
+契約変更の依頼は契約期間中でもサポート審査と書面確認のあとでのみ反映できます。
 
 ## Billing dispute deadline
-Billing dispute requests must be submitted within 5 business days of the invoice date.
+請求に関する異議申し立ては請求日から5営業日以内に送ってください。
 
 ## Incorrect charge review path
-Incorrect charge review requests must be submitted through the billing support form with the order ID and a screenshot.
+誤請求の確認依頼は注文IDとスクリーンショットを添えて請求サポートフォームから送ってください。
 
 ## Support contact channel
-Customers can contact support through the help center chat or email form during published support hours.
+お客様は公開中のサポート時間内にヘルプセンターチャットまたはメールフォームから連絡できます。
 
 ## Payment incident escalation
-Payment incident reports must be submitted within 2 business days. The primary contact order is the billing risk desk first and support second.
+支払い事故の報告は2営業日以内に送ってください。最初の連絡先は請求リスク窓口で次がサポートです。

@@ -2,7 +2,7 @@
   "before": {
     "overall_decision": "ng",
     "policy_status": "BLOCK",
-    "overall_pass_rate": 11.11111111111111,
+    "overall_pass_rate": 33.33333333333333,
     "s1_pass_rate": 0.0,
     "s1_failures": 3,
     "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.md",
@@ -19,8 +19,8 @@
   },
   "representative_s1_failure": {
     "case_id": "customer_support_faq_001",
-    "question": "Can I get a refund within 7 days?",
-    "ai_answer": "can i get a refund within 7 daysについては、Refund requests must be submitted within 7 days of purchase. Standard products and campaign products are both eligible when the item was not consumed.",
+    "question": "購入から7日以内なら返金できますか？",
+    "ai_answer": "購入から7日以内なら返金できますかについては、返金申請は購入から7日以内に受け付けます。未使用であれば通常商品とキャンペーン商品はいずれも返金対象です。",
     "fail_reason": "Keyword match 33% < 80%",
     "risk_domain": "refund"
   },

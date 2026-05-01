@@ -2,12 +2,12 @@
 
 ## Annual Renewal
 
-Annual contracts automatically renew unless cancelled at least 3 business days before renewal. Renewal notices are sent by email before the renewal date.
+年額契約は 更新日の3営業日前までに解約しない限り自動更新されます。更新通知は更新日前にメールで送信されます。
 
 ## Terms Change
 
-Customers receive email notice at least 30 days before material changes to customer-facing terms. Continued use after the effective date means the updated terms apply.
+顧客向けの重要な規約変更は 少なくとも30日前にメール通知します。効力発生日後も利用を続けると 更新後の条件が適用されます。
 
 ## Customer Rights
 
-Support answers must not waive customer rights, deny eligible discount review, or promise exceptions that are not written in the policy documents.
+サポート回答では 顧客の権利を放棄させたり 適格な割引審査を否定したり 文書にない例外を約束してはいけません。

@@ -1,45 +1,51 @@
-# Customer Support FAQ Change Demo Draft
+# Proof Gate付きRAG AI導入診断PoC 提案メモ
 
-## Purpose
+## 目的
 
-Use this draft when pitching the Proof Gate PoC for customer-facing FAQ RAG.
+この1枚は、顧客向けFAQ RAG AIに対して、Proof Gate付きRAG AI導入診断PoCをどう提案するかを短く整理した資料です。
 
-The message is simple:
+伝えたいことはシンプルです。
 
-1. FAQ conditions change over time.
-2. A deployed RAG can keep answering with the old condition.
-3. That creates a customer-facing business-risk answer.
-4. Proof Gate detects the risk before release and shows a readable correction path.
+1. FAQ・規約・プロンプト変更は継続的に起きる。
+2. RAG AIは自然に見えても、古い条件のまま答えることがある。
+3. それが返金・解約・料金・契約条件で起きると、顧客向けの変更事故になる。
+4. Proof Gateは、本番反映前に高リスク質問を確認し、危ない回答を止める。
 
-## Demo Assets
+## デモで使うファイル
 
-- Demo root: `demos/customer_support_faq_change/`
-- Before report: `demos/customer_support_faq_change/reports/before_stale_v1/gate-report.md`
-- After report: `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
-- Comparison summary: `demos/customer_support_faq_change/demo_summary.json`
+- デモ一式: `demos/customer_support_faq_change/`
+- before report: `demos/customer_support_faq_change/reports/before_stale_v1/gate-report.md`
+- after report: `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
+- 比較要約: `demos/customer_support_faq_change/demo_summary.json`
 
-## Talk Track
+## 話す順番
 
 ### Before
 
-- Open the stale-v1 report.
-- Start at `1. 本番反映判定` and show that the release decision is NG.
-- Move to `5. S1重大失敗一覧` and point at the refund case asking whether a refund is available within 7 days.
-- Explain that the AI still answered from the old rule and missed the new campaign-only condition.
+- stale v1 report を開く。
+- `1. 本番反映判定` を見せ、リリース判定が `NG` であることを伝える。
+- `5. S1重大失敗一覧` に移り、7日以内返金の質問が旧ルールで答えられていることを示す。
+- 変更後FAQではキャンペーン条件が厳しくなっているのに、AIが古い条件を案内していると説明する。
 
 ### After
 
-- Open the v2 reference report.
-- Show that `1. 本番反映判定` changed to OK.
-- Show that `5. S1重大失敗一覧` is empty.
-- Explain that the same selected cases were re-run against the updated FAQ and the risky answer no longer passed through.
+- v2 reference report を開く。
+- `1. 本番反映判定` が `OK` に変わっていることを示す。
+- `5. S1重大失敗一覧` が解消していることを見せる。
+- 同じ高リスク質問セットを更新後FAQで再判定し、危ない回答が通らなくなったことを説明する。
 
-### Close
+### クロージング
 
-- Open `demo_summary.json`.
-- Compare before vs after S1 pass rate, total pass rate, and S1 failure count.
-- Close with: Proof Gate does not replace the RAG. It verifies that a changed RAG answer is still safe to release.
+- `demo_summary.json` を開く。
+- before / after の S1 pass rate、overall pass rate、S1 failures を比較する。
+- 最後に、Proof GateはRAGを置き換えるものではなく、変更後の回答を本番に出してよいかを確認する仕組みだと伝える。
 
-## Suggested One-Line Message
+## 月額Monitorが必要な理由
 
-Proof Gate lets the team show a dangerous FAQ change accident, block it as an S1 failure, fix the content, and prove the improvement in one repeatable demo.
+- 一度通ったAIでも、FAQ・規約・プロンプト変更のあとに再び危ない回答へ戻ることがある。
+- 返金・解約・料金・契約条件は、継続監視しないと事故が見えにくい。
+- 月額Monitorで高リスク質問を定期実行することで、変更事故の再発を早く見つけやすくなる。
+
+## 顧客向けの一言
+
+Proof Gateを入れることで、FAQ変更後の危ない旧回答を本番前に止め、修正後に同じ高リスク質問で改善まで説明できます。

@@ -1,41 +1,42 @@
 # Customer Support AI Quality Pack
 
-This pack is the Proof Gate PoC template for customer-facing FAQ RAG. It focuses on high-risk support answers where a wrong response can create refund, cancellation, pricing, contract, deadline, or eligibility harm.
+この Pack は、Proof Gate付きRAG AI導入診断PoC で使う、顧客向けFAQ RAG のテンプレートです。
+返金・解約・料金・契約条件など、高リスク質問で誤回答が起きると顧客影響が大きい領域に焦点を当てています。
 
-## What It Covers
+## この Pack がカバーする範囲
 
-- S1: customer-facing mistakes that should block release, such as promising refunds for non-refundable digital products or giving the wrong cancellation deadline.
-- S2: incomplete or ambiguous answers that should warn and create follow-up work.
-- Documents: refund policy, cancellation policy, pricing FAQ, and terms summary.
+- S1: 本番反映を止めるべき顧客向け重大誤回答。たとえば、返金不可の商品を返金可能と案内する、解約期限を誤って案内する、といったケースです。
+- S2: すぐに block ではないものの、不十分または曖昧で、推奨アクションや追加確認が必要な回答です。
+- Documents: refund policy、cancellation policy、pricing FAQ、terms summary を使います。
 
-## Demo Flow
+## デモの見せ方
 
-For a stable PoC screen share, create the deterministic demo artifacts first:
+安定した PoC 画面共有を行う場合は、まず決定論的なデモartifactを作成します。
 
 ```powershell
 .\.venv\Scripts\python scripts\create_customer_support_demo_artifacts.py
 .\.venv\Scripts\python -m rqg.cli serve-dashboard --workspace-dir . --runs-dir packs\customer_support_pack\reports\demo_runs --port 8012
 ```
 
-Then show these runs:
+そのあと、次の run を順に見せます。
 
 1. `csp-pass-202604`: clean baseline, `policy_status=pass`, no fallback.
 2. `csp-block-refund-202604`: confirmed S1 business risk, `policy_status=block`, `fallback_summary.block_origin=business_risk`.
 3. `csp-needs-review-fallback-202604`: evaluator uncertainty, `policy_status=needs_human_review`, `judge_reliability=low`, `fallback_summary.block_origin=evaluator_reliability`.
 
-Open `/packs`, `/runs`, `/cases/failures`, and `/reports/monthly` to explain the pack, latest runs, failed cases, and monthly operating value.
+`/packs`、`/runs`、`/cases/failures`、`/reports/monthly` を開くと、Pack の内容、最新 run、失敗ケース、月額Monitor の価値を説明しやすくなります。
 
-For a live follow-up, run `rqg gate --pack packs/customer_support_pack --mock --log-dir runs/customer_support_pack --reset-log-dir`, then `rqg report-monthly --log-dir runs/customer_support_pack --month 2026-04`.
+その場で live follow-up を見せる場合は、`rqg gate --pack packs/customer_support_pack --mock --log-dir runs/customer_support_pack --reset-log-dir` のあとに、`rqg report-monthly --log-dir runs/customer_support_pack --month 2026-04` を実行します。
 
-## Reading Results
+## 結果の読み方
 
-- `status` preserves the legacy machine contract: `pass`, `warn`, or `fail`.
-- `policy_status` is the Proof Gate business decision: `pass`, `warn`, `block`, or `needs_human_review`.
-- `fallback_summary` and `judge_reliability` must be checked before approving a customer-facing update.
-- S1 failures should not be shipped until the failed answer and evidence are reviewed.
-- A business-risk block means the evaluator was reliable and the answer violated an S1 case.
-- A fallback-driven review means Proof Gate could not confidently certify the run, so the update needs human review before release.
+- `status` は従来の機械向け契約で、`pass`、`warn`、`fail` のままです。
+- `policy_status` は Proof Gate の業務判断で、`pass`、`warn`、`block`、`needs_human_review` を使います。
+- 顧客向け更新を承認する前に、`fallback_summary` と `judge_reliability` を確認します。
+- S1重大失敗がある場合は、失敗した回答と根拠を確認するまで本番反映しません。
+- business risk による block は、評価器の信頼性が十分で、回答が S1 ケースに違反していたことを意味します。
+- fallback 起因の review は、安全に出してよいと断定できないため、本番反映前に人手確認が必要であることを意味します。
 
-## Clone For Another Customer
+## 別顧客向けに複製する場合
 
-Use `rqg init-pack packs/new_customer_support --profile customer_support --force`, then update `quality-pack.yml` tenant metadata, replace documents, and review S1/S2 cases before the first customer run.
+`rqg init-pack packs/new_customer_support --profile customer_support --force` を使い、そのあと `quality-pack.yml` の tenant metadata を更新し、文書を差し替え、初回 run 前に S1 / S2 ケースを見直します。

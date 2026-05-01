@@ -109,7 +109,7 @@ def _run_phase(phase_dir: Path, faq_doc: Path) -> tuple[dict[str, object], int]:
         index_dir = tmp / "index"
         log_dir = tmp / "gate_logs"
         decision_path = tmp / "gate-decision.json"
-        shutil.copytree(PACK_DIR / "documents", docs_dir)
+        docs_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(faq_doc, docs_dir / "demo_faq.md")
 
         exit_code = cli_main(

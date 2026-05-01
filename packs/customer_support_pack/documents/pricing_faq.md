@@ -2,12 +2,12 @@
 
 ## Pro Plan
 
-The Pro plan costs 12000 JPY per month, tax excluded. Usage-based add-ons are billed separately.
+Proプランは月額12000円で税別です。従量課金オプションは別請求です。
 
 ## Free Trial
 
-The free trial lasts 14 days from the trial start date. After the free trial ends, the selected paid plan begins unless the customer cancels before conversion.
+無料トライアルは開始日から14日間です。無料トライアル終了後は 転換前に解約しない限り 選択した有料プランへ移行します。
 
 ## Discounts
 
-Education discount applications are available to schools, teachers, students, and nonprofit customers. Nonprofit customers may apply for the education discount, but eligibility requires manual review.
+教育割引は 学校 教員 学生 非営利団体が申請できます。非営利団体も教育割引を申請できますが 適格性は個別審査です。
