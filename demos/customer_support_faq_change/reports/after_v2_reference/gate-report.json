@@ -1,0 +1,473 @@
+{
+  "schema_version": "1.0",
+  "decision": {
+    "run_id": "36d43c04-53a",
+    "status": "pass",
+    "policy_status": "pass",
+    "reasons": [],
+    "reason_codes": [],
+    "metrics": {
+      "overall_pass_rate": 100.0,
+      "s1_pass_rate": 100.0,
+      "s1_fail_count": 0.0,
+      "current_runs": 9.0,
+      "baseline_runs": 0.0,
+      "judge_fallback_count": 0.0,
+      "embedding_fallback_count": 0.0,
+      "avg_faithfulness": 66.55555555555556,
+      "faithfulness_scored_runs": 9.0,
+      "avg_judge_relevance": 49.222222222222214,
+      "judge_relevance_scored_runs": 9.0,
+      "avg_evidence_recall": 100.0,
+      "evidence_recall_scored_runs": 9.0,
+      "fresh_case_review_rate": 100.0,
+      "stale_case_count": 0.0
+    },
+    "next_actions": [],
+    "judge_fallback_used": false,
+    "judge_fallback_count": 0,
+    "judge_failure_types": {},
+    "judge_reliability": "high",
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
+    "retrieval_reliability": "high",
+    "fallback_summary": {
+      "judge_fallback_used": false,
+      "judge_fallback_count": 0,
+      "judge_failure_types": {},
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
+      "retrieval_reliability": "high"
+    },
+    "needs_human_review": false,
+    "approval": {
+      "approval_required": false,
+      "approval_status": "not_required",
+      "approver_role": null,
+      "approved_by": null,
+      "approved_at": null,
+      "approval_reason": null
+    },
+    "pack": {
+      "pack_id": "customer_support_pack",
+      "name": "customer-support-ai-quality-pack",
+      "version": "0.1",
+      "review_steward": "proofgate-demo",
+      "pack_name": "Customer Support AI Quality Pack",
+      "tenant_name": "demo_customer",
+      "use_case": "customer_support_faq",
+      "vertical": "customer_support",
+      "risk_profile": "high_external_response",
+      "owner": "proofgate-demo",
+      "environment": "demo",
+      "pack_version": "0.1.0",
+      "source_pack": null,
+      "created_from_template": true,
+      "description": "Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks."
+    },
+    "created_at": "2026-05-01T07:55:13.471423Z"
+  },
+  "history_summary": {
+    "entries": 1,
+    "status_mix": {
+      "pass": 1,
+      "warn": 0,
+      "fail": 0
+    },
+    "week_start": "2026-04-27",
+    "compare_offset": 1,
+    "trend_window": 5,
+    "summary_lines": [
+      "- Latest status: PASS (36d43c04-53a)",
+      "- Current streak: PASS x1",
+      "- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)",
+      "- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)",
+      "- Judge reliability: HIGH",
+      "- Needs human review: NO"
+    ],
+    "trend": {
+      "latest_run_id": "36d43c04-53a",
+      "latest_status": "PASS",
+      "streak_count": 1,
+      "status_sequence": [
+        "PASS"
+      ],
+      "metric_deltas": [
+        {
+          "key": "overall_pass_rate",
+          "label": "Overall pass rate",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "s1_pass_rate",
+          "label": "S1 pass rate",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "fresh_case_review_rate",
+          "label": "Fresh case review rate",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "avg_faithfulness",
+          "label": "Avg faithfulness",
+          "current": 66.55555555555556,
+          "previous": 66.55555555555556,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "avg_judge_relevance",
+          "label": "Avg judge relevance",
+          "current": 49.222222222222214,
+          "previous": 49.222222222222214,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "avg_evidence_recall",
+          "label": "Avg evidence recall",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "stale_case_count",
+          "label": "Stale case count",
+          "current": 0.0,
+          "previous": 0.0,
+          "delta": 0.0,
+          "unit": "count"
+        },
+        {
+          "key": "current_runs",
+          "label": "Current runs",
+          "current": 9.0,
+          "previous": 9.0,
+          "delta": 0.0,
+          "unit": "count"
+        },
+        {
+          "key": "baseline_runs",
+          "label": "Baseline runs",
+          "current": 0.0,
+          "previous": 0.0,
+          "delta": 0.0,
+          "unit": "count"
+        }
+      ],
+      "window_size": 1
+    },
+    "comparison": null,
+    "failure_action_coverage": null,
+    "uncovered_categories": [],
+    "stale_case_review": {
+      "stale_after_days": 45,
+      "fresh_case_review_rate": 100.0,
+      "fresh_case_count": 9,
+      "total_cases": 9,
+      "stale_cases_count": 0,
+      "owners": [],
+      "stale_cases": []
+    },
+    "reliability": {
+      "judge_fallback_used": false,
+      "judge_fallback_count": 0,
+      "judge_failure_types": {},
+      "judge_reliability": "high",
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
+      "retrieval_reliability": "high",
+      "fallback_summary": {
+        "judge_fallback_used": false,
+        "judge_fallback_count": 0,
+        "judge_failure_types": {},
+        "embedding_fallback_used": false,
+        "embedding_fallback_count": 0,
+        "embedding_fallback_reason": null,
+        "retrieval_reliability": "high"
+      },
+      "policy_status": "pass",
+      "needs_human_review": false
+    },
+    "review_steward": "proofgate-demo"
+  },
+  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: OK\n- policy_status: PASS\n- summary: OK。現在の閾値では本番反映可能です。\n\n## 2. 実行概要\n- client_name: demo_customer\n- app_name: Customer Support AI Quality Pack\n- run_id: 36d43c04-53a\n- current_cases: 9\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 100.0%\n- s1_pass_rate: 100.0%\n- failed_cases: 0\n- s1_failed_cases: 0\n- main_failure_category: None\n\n## 5. S1重大失敗一覧\n- 該当なし\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | Campaign refund window | S1 | ok | pass | - |\n| customer_support_faq_006 | Free-trial cancellation | S1 | ok | pass | - |\n| customer_support_faq_007 | Mid-term annual cancellation | S1 | ok | pass | - |\n| customer_support_faq_004 | Chargeback and refund overlap | S2 | ok | pass | - |\n| customer_support_faq_005 | Monthly cancellation timing | S2 | ok | pass | - |\n| customer_support_faq_010 | Plan price display | S2 | ok | pass | - |\n| customer_support_faq_011 | Annual discount disclosure | S2 | ok | pass | - |\n| customer_support_faq_014 | Auto-renewal notice | S2 | ok | pass | - |\n| customer_support_faq_016 | Contract amendment timing | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- 現時点で追加対応は不要です。\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: PASS\n\n### Executive Summary\n- Production promotion: Recommended. This pack meets the configured gate thresholds.\n- Gate status: PASS\n- Policy status: PASS\n- S1 pass rate: 100.0% (0 S1 failures)\n- Overall pass rate: 100.0%\n- Main failure category: None\n- Recommended next action: No immediate action required.\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: PASS (36d43c04-53a)\n- Current streak: PASS x1\n- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 100.0% | 100.0% | OK |\n| Overall pass rate | 100.0% | 85.0% | OK |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 66.6% | 9 |\n| Avg judge relevance | 49.2% | 9 |\n| Avg evidence recall | 100.0% | 9 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (9/9) within 45 days\n- No stale active cases detected.\n",
+  "artifact_paths": {
+    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.md",
+    "decision_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpyg1rdjaa\\gate-decision.json",
+    "history_summary_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpyg1rdjaa\\gate_logs\\gate-history-summary.json",
+    "history_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmpyg1rdjaa\\gate_logs\\gate-decisions.jsonl",
+    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.json"
+  },
+  "report_version": "1.0",
+  "executed_at": "2026-05-01T07:55:13.471423Z",
+  "client_name": "demo_customer",
+  "app_name": "Customer Support AI Quality Pack",
+  "target_docs": [
+    "demo_faq.md"
+  ],
+  "change_event": null,
+  "summary": {
+    "headline": "OK。現在の閾値では本番反映可能です。",
+    "total_cases": 9,
+    "passed_cases": 9,
+    "failed_cases": 0,
+    "s1_failed_cases": 0,
+    "overall_pass_rate": 100.0,
+    "s1_pass_rate": 100.0,
+    "main_failure_category": "None",
+    "needs_human_review": false,
+    "judge_fallback_count": 0
+  },
+  "overall_decision": "ok",
+  "cases": [
+    {
+      "case_id": "customer_support_faq_001",
+      "name": "Campaign refund window",
+      "question": "Can I get a refund within 7 days?",
+      "severity": "S1",
+      "category": "refund",
+      "risk_domain": "refund",
+      "ai_answer": "can i get a refund within 7 daysについては、Refund requests must be submitted within 7 days of purchase only for campaign tagged products. Standard products are not refundable unless a legal defect review is approved.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-1"
+      ],
+      "retrieved_evidence": [
+        "refund_policy.md@0d9e8299a60b6c44#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk0",
+        "terms_summary.md@bd4134dbef71dce9#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_006",
+      "name": "Free-trial cancellation",
+      "question": "If I cancel during the free trial will I still be charged?",
+      "severity": "S1",
+      "category": "cancellation",
+      "risk_domain": "cancellation",
+      "ai_answer": "if i cancel during the free trial will i still be chargedについては、Free trial cancellations must be submitted before the trial ends to prevent paid conversion. Support cannot reverse a paid conversion automatically after it has started.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-6"
+      ],
+      "retrieved_evidence": [
+        "pricing_faq.md@7148eb9dff09e8d0#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk1",
+        "cancellation_policy.md@80b1f5d0db8f8cf2#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_007",
+      "name": "Mid-term annual cancellation",
+      "question": "If I cancel mid-term can the remaining annual charge be waived?",
+      "severity": "S1",
+      "category": "cancellation",
+      "risk_domain": "cancellation",
+      "ai_answer": "if i cancel mid-term can the remaining annual charge be waivedについては、Annual plan cancellation stops the next renewal only. Remaining contract charges are not waived unless a manual exception is approved.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-7"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@9e9af500d0bec26d#chunk1",
+        "cancellation_policy.md@80b1f5d0db8f8cf2#chunk0",
+        "terms_summary.md@bd4134dbef71dce9#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_004",
+      "name": "Chargeback and refund overlap",
+      "question": "Can I open a chargeback and still expect a normal refund flow?",
+      "severity": "S2",
+      "category": "refund",
+      "risk_domain": "refund",
+      "ai_answer": "can i open a chargeback and still expect a normal refund flowについては、support before opening a chargeback. Once a chargeback is opened the refund review is paused and the AI must not promise both paths at the same time.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-4"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@9e9af500d0bec26d#chunk1",
+        "refund_policy.md@0d9e8299a60b6c44#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_005",
+      "name": "Monthly cancellation timing",
+      "question": "If I cancel now does billing stop today?",
+      "severity": "S2",
+      "category": "cancellation",
+      "risk_domain": "cancellation",
+      "ai_answer": "if i cancel now does billing stop todayについては、Cancellation requests may be submitted at any time but billing stops at the next renewal date. Monthly cancellation does not stop billing on the same day.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-5"
+      ],
+      "retrieved_evidence": [
+        "cancellation_policy.md@80b1f5d0db8f8cf2#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk1",
+        "demo_faq.md@9e9af500d0bec26d#chunk2"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_010",
+      "name": "Plan price display",
+      "question": "Where are current plan prices shown?",
+      "severity": "S2",
+      "category": "pricing",
+      "risk_domain": "pricing",
+      "ai_answer": "where are current plan prices shownについては、Plan prices are shown on the pricing page and the current billing currency is displayed there.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-10"
+      ],
+      "retrieved_evidence": [
+        "pricing_faq.md@7148eb9dff09e8d0#chunk0",
+        "refund_policy.md@0d9e8299a60b6c44#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk2"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_011",
+      "name": "Annual discount disclosure",
+      "question": "Is the annual plan discount a standard promise?",
+      "severity": "S2",
+      "category": "pricing",
+      "risk_domain": "pricing",
+      "ai_answer": "is the annual plan discount a standard promiseについては、Annual discounts must follow the published annual plan page and support must not promise a discount that is not part of the current offer.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-11"
+      ],
+      "retrieved_evidence": [
+        "refund_policy.md@0d9e8299a60b6c44#chunk0",
+        "pricing_faq.md@7148eb9dff09e8d0#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk2"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_014",
+      "name": "Auto-renewal notice",
+      "question": "When is the renewal notice sent?",
+      "severity": "S2",
+      "category": "contract",
+      "risk_domain": "contract",
+      "ai_answer": "when is the renewal notice sentについては、Auto-renewal notices are sent at least 30 days before renewal for active contracts.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-14"
+      ],
+      "retrieved_evidence": [
+        "terms_summary.md@bd4134dbef71dce9#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk3",
+        "refund_policy.md@0d9e8299a60b6c44#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_016",
+      "name": "Contract amendment timing",
+      "question": "Can a contract amendment be applied mid-term?",
+      "severity": "S2",
+      "category": "contract",
+      "risk_domain": "contract",
+      "ai_answer": "can a contract amendment be applied mid-termについては、Contract amendment requests may be processed mid-term only after support review and written confirmation.",
+      "expected_answer": "",
+      "expected_evidence": [
+        "demo_faq.md#sec-1-16"
+      ],
+      "retrieved_evidence": [
+        "terms_summary.md@bd4134dbef71dce9#chunk0",
+        "demo_faq.md@9e9af500d0bec26d#chunk3",
+        "refund_policy.md@0d9e8299a60b6c44#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    }
+  ]
+}

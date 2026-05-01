@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 from .casegen import (
+    cmd_build_poc_set,
     cmd_gen_cases,
     cmd_impact,
     cmd_merge_cases,
@@ -635,6 +636,61 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate merged rows before writing (default: on; --no-validate to skip)",
     )
 
+    # --- build-poc-set ---
+    p_build_poc_set = sub.add_parser(
+        "build-poc-set",
+        help="Build a deterministic Proof Gate PoC case set from generated and template CSVs",
+    )
+    p_build_poc_set.add_argument(
+        "--pack",
+        required=True,
+        help="Pack directory used to resolve relative input/output paths",
+    )
+    p_build_poc_set.add_argument(
+        "--generated-cases",
+        required=True,
+        help="Path to curated generated cases CSV",
+    )
+    p_build_poc_set.add_argument(
+        "--template-cases",
+        default="template_cases.csv",
+        help="Path to template_cases.csv (default: <pack>/template_cases.csv)",
+    )
+    p_build_poc_set.add_argument(
+        "--output",
+        default="cases.csv",
+        help="Output cases.csv path (default: <pack>/cases.csv)",
+    )
+    p_build_poc_set.add_argument(
+        "--summary-output",
+        default="case_set_summary.json",
+        help="Output summary JSON path (default: <pack>/case_set_summary.json)",
+    )
+    p_build_poc_set.add_argument("--total", type=int, default=30)
+    p_build_poc_set.add_argument("--s1", type=int, default=10)
+    p_build_poc_set.add_argument("--s2", type=int, default=15)
+    p_build_poc_set.add_argument("--s3", type=int, default=5)
+    p_build_poc_set.add_argument(
+        "--risk-profile",
+        default="customer_support",
+        help="Risk-profile selection preset (default: customer_support)",
+    )
+    p_build_poc_set.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail when requested quotas cannot be satisfied",
+    )
+    p_build_poc_set.add_argument(
+        "--allow-fill",
+        action="store_true",
+        help="Backfill remaining slots from any eligible cases and emit warnings",
+    )
+    p_build_poc_set.add_argument(
+        "--warn-if-s1-missing",
+        action="store_true",
+        help="Emit an explicit warning when S1 quota is not met",
+    )
+
     # --- validate-cases ---
     p_validate_cases = sub.add_parser(
         "validate-cases",
@@ -822,6 +878,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_migrate_cases(args)
     elif args.command == "merge-cases":
         return cmd_merge_cases(args)
+    elif args.command == "build-poc-set":
+        return cmd_build_poc_set(args)
     elif args.command == "validate-cases":
         return cmd_validate_cases(args)
     elif args.command == "validate-pack":

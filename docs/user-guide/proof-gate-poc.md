@@ -27,6 +27,46 @@ Open these routes:
 - `http://127.0.0.1:8012/cases/failures`
 - `http://127.0.0.1:8012/reports/monthly`
 
+## Repository Layout For The PoC
+
+For this repository, responsibilities are split like this:
+
+- `src/rqg/`: Proof Gate core CLI and evaluation logic.
+- `packs/customer_support_pack/`: reusable customer support quality pack.
+- `demos/customer_support_faq_change/`: FAQ v1 -> v2 change-accident demo assets, source FAQs, runnable cases, summaries, and before / after reports.
+- `docs/user-guide/`: operator-facing runbooks, including this PoC guide.
+- `docs/sales/`: proposal and sales-facing talk tracks.
+
+The minimal before / after sales demo lives under `demos/customer_support_faq_change/`.
+
+## FAQ Change Demo
+
+Use the curated FAQ change demo when you want to show one compact story:
+
+1. stale FAQ v1 returns a dangerous old-condition answer
+2. Proof Gate detects an S1 failure and returns NG
+3. FAQ v2 reference run removes the risky answer
+4. re-gate confirms the improvement
+
+Run from the repository root:
+
+```powershell
+.\.venv\Scripts\python scripts\create_customer_support_faq_change_sales_demo.py
+```
+
+Main files:
+
+- `demos/customer_support_faq_change/demo_faq_v1.md`
+- `demos/customer_support_faq_change/demo_faq_v2.md`
+- `demos/customer_support_faq_change/generated_cases.csv`
+- `demos/customer_support_faq_change/cases.csv`
+- `demos/customer_support_faq_change/case_set_summary.json`
+- `demos/customer_support_faq_change/reports/before_stale_v1/gate-report.md`
+- `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
+- `demos/customer_support_faq_change/demo_summary.json`
+
+When presenting, first show `1. 本番反映判定`, then `5. S1重大失敗一覧`, then `8. 月額Monitorで継続確認すべき項目` in the before report. After that, open the after report and show that the same selected cases now clear S1 and pass the gate.
+
 ## Talk Track
 
 1. Start at `/packs` and introduce `Customer Support AI Quality Pack` as the

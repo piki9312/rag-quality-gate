@@ -1,0 +1,23 @@
+{
+  "total": 9,
+  "severity_mix": {
+    "S1": 3,
+    "S2": 6,
+    "S3": 0
+  },
+  "runtime_severity_mix": {
+    "S1": 3,
+    "S2": 6
+  },
+  "risk_domain_mix": {
+    "cancellation": 3,
+    "contract": 2,
+    "pricing": 2,
+    "refund": 2
+  },
+  "source_mix": {
+    "template": 0,
+    "generated": 9
+  },
+  "warnings": []
+}

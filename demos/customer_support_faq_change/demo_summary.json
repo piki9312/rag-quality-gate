@@ -1,0 +1,28 @@
+{
+  "before": {
+    "overall_decision": "ng",
+    "policy_status": "BLOCK",
+    "overall_pass_rate": 11.11111111111111,
+    "s1_pass_rate": 0.0,
+    "s1_failures": 3,
+    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.md",
+    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.json"
+  },
+  "after": {
+    "overall_decision": "ok",
+    "policy_status": "PASS",
+    "overall_pass_rate": 100.0,
+    "s1_pass_rate": 100.0,
+    "s1_failures": 0,
+    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.md",
+    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.json"
+  },
+  "representative_s1_failure": {
+    "case_id": "customer_support_faq_001",
+    "question": "Can I get a refund within 7 days?",
+    "ai_answer": "can i get a refund within 7 daysについては、Refund requests must be submitted within 7 days of purchase. Standard products and campaign products are both eligible when the item was not consumed.",
+    "fail_reason": "Keyword match 33% < 80%",
+    "risk_domain": "refund"
+  },
+  "key_message": "FAQ更新後の古い回答をProof Gateが検知し、修正後のv2 reference runでS1重大失敗の解消とGate改善を確認できる"
+}

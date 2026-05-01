@@ -8,12 +8,17 @@
 
 初めて導入する:
 
+- [Proof Gate customer support PoC](user-guide/proof-gate-poc.md)
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
 - [external-contract-localhost](demo/external-contract-localhost.md) — localhost から weekly review payload まで外部契約を 1 本通す
 - `rqg serve-dashboard` — pack / run / monthly summary を 1 画面で閲覧する read-only UI
 - [packs/hr guide](../packs/hr/README.md)
+
+提案・営業で使う:
+
+- [FAQ change sales demo draft](sales/customer-support-faq-change-demo.md)
 
 コードを理解する:
 
@@ -79,12 +84,17 @@ Getting started:
 
 - [Vendor PoC walkthrough](demo/vendor-poc-walkthrough.md)
 - [onboarding-quickstart](demo/onboarding-quickstart.md)
+- [Proof Gate customer support PoC](user-guide/proof-gate-poc.md)
 - [Windows PowerShell command guide](user-guide/windows-powershell.md)
 - [Quality Pack S1/S2 design guide](user-guide/quality-pack-s1-s2-design.md)
 - [fail-fix-cycle](demo/fail-fix-cycle.md)
 - [impact-cycle](demo/impact-cycle.md)
 - [external-contract-localhost](demo/external-contract-localhost.md) — run the external contract story from localhost to weekly review payload
 - [packs/hr guide](../packs/hr/README.md)
+
+Sales / proposal:
+
+- [FAQ change sales demo draft](sales/customer-support-faq-change-demo.md)
 
 Understanding the code:
 
