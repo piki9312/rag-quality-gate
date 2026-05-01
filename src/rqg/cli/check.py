@@ -103,6 +103,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     md = render_gate_markdown(
         result,
         failure_actions=failure_actions,
+        pack_metadata=pack_metadata,
         history_decisions=history_decisions,
     )
     print(md)
@@ -130,6 +131,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         history_summary_path=history_summary_path,
         history_path=decision_history_path,
         bundle_path=bundle_path,
+        check_result=result,
     )
 
     report_path = MarkdownFileReportAdapter(report_path).emit(artifacts)

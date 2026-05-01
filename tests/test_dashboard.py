@@ -116,3 +116,23 @@ def test_dashboard_routes_render_pack_runs_and_monthly_summary(tmp_path: Path) -
     monthly = client.get("/packs/sample-pack/monthly")
     assert monthly.status_code == 200
     assert "Blocked runs" in monthly.text
+
+
+def test_dashboard_global_failures_include_demo_block_and_review() -> None:
+    from rqg.serving.dashboard import create_dashboard_app
+
+    client = TestClient(
+        create_dashboard_app(
+            workspace_dir=".",
+            runs_dir="packs/customer_support_pack/reports/demo_runs",
+        )
+    )
+
+    failures = client.get("/cases/failures")
+    assert failures.status_code == 200
+    assert "csp-block-refund-202604" in failures.text
+    assert "answer_quality_fail" in failures.text
+    assert "business_risk" in failures.text
+    assert "csp-needs-review-fallback-202604" in failures.text
+    assert "evaluator_reliability" in failures.text
+    assert "judge_fallback_used" in failures.text

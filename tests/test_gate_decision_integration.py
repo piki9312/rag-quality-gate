@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from rqg.cli import main
 from rqg.quality.check import CheckResult, ThresholdResult, build_gate_decision
+from rqg.quality.models import QARunRecord, QATestCase
+from rqg.quality.reporting import GateReportArtifacts, build_gate_report_bundle_payload
 from rqg.quality.staleness import CaseStalenessItem
 
 
@@ -122,6 +125,42 @@ def assert_gate_report_bundle_contract(payload: dict) -> None:
         "bundle_path",
     ):
         assert isinstance(artifact_paths[key], str)
+
+
+def _minimal_history_summary() -> dict[str, object]:
+    return {
+        "entries": 1,
+        "status_mix": {"pass": 0, "warn": 0, "fail": 1},
+        "week_start": None,
+        "compare_offset": 1,
+        "trend_window": 5,
+        "summary_lines": [],
+        "trend": {"latest_run_id": "run-case-projection"},
+        "comparison": None,
+        "failure_action_coverage": None,
+        "uncovered_categories": [],
+        "stale_case_review": None,
+        "review_steward": None,
+    }
+
+
+def _make_bundle_artifacts(
+    result: CheckResult,
+    *,
+    pack_metadata: dict[str, object] | None = None,
+) -> GateReportArtifacts:
+    decision = build_gate_decision(result, pack_metadata=pack_metadata)
+    return GateReportArtifacts(
+        markdown="md",
+        decision=decision,
+        history_summary=_minimal_history_summary(),
+        report_path=Path("gate-report.md"),
+        decision_path=Path("gate-decision.json"),
+        history_summary_path=Path("gate-history-summary.json"),
+        history_path=Path("gate-decisions.jsonl"),
+        bundle_path=Path("gate-report.json"),
+        check_result=result,
+    )
 
 
 def test_build_gate_decision_from_check_result_pass() -> None:
@@ -307,6 +346,142 @@ def test_gate_report_json_bundle_schema_contract() -> None:
     assert payload["decision"]["next_actions"][0]["affected_case_ids"] == ["QA-1", "QA-2"]
     assert payload["history_summary"]["entries"] == 1
     assert payload["artifact_paths"]["bundle_path"].endswith("gate-report.json")
+
+
+def test_build_gate_report_bundle_payload_adds_customer_fields_preserving_contract() -> None:
+    result = CheckResult(
+        run_id="run-case-projection",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=0.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1")],
+        judge_fallback_count=1,
+        judge_reliability="low",
+        current_records=[
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="run-case-projection",
+                case_id="QA001",
+                severity="S1",
+                category="policy",
+                risk_domain="refund",
+                required_action="block",
+                passed=False,
+                failure_type="judge_fallback",
+                failure_category="judge_reliability",
+                reasons=["Judge returned invalid payload"],
+                answer="返金できます",
+                retrieved_ids=["refund_policy"],
+                judge_fallback_used=True,
+                judge_fallback_reason="parse_error",
+            )
+        ],
+        active_cases=[
+            QATestCase(
+                case_id="QA001",
+                name="Refund answer",
+                question="返金できますか",
+                severity="S1",
+                expected_answer="返金条件を案内する",
+                expected_evidence=["refund_policy"],
+                category="policy",
+                risk_domain="refund",
+                source_doc="refund.md",
+            )
+        ],
+    )
+
+    payload = build_gate_report_bundle_payload(
+        _make_bundle_artifacts(
+            result,
+            pack_metadata={
+                "tenant_name": "acme",
+                "pack_name": "Support FAQ",
+                "change_event": None,
+            },
+        )
+    )
+
+    assert_gate_report_bundle_contract(payload)
+    assert payload["report_version"] == "1.0"
+    assert payload["client_name"] == "acme"
+    assert payload["app_name"] == "Support FAQ"
+    assert payload["executed_at"] == payload["decision"]["created_at"]
+    assert payload["target_docs"] == ["refund.md"]
+    assert payload["change_event"] is None
+    assert payload["summary"]["failed_cases"] == 1
+    assert payload["overall_decision"] == "ng"
+    assert payload["cases"][0]["case_id"] == "QA001"
+    assert payload["cases"][0]["question"] == "返金できますか"
+    assert payload["cases"][0]["ai_answer"] == "返金できます"
+    assert payload["cases"][0]["expected_answer"] == "返金条件を案内する"
+    assert payload["cases"][0]["expected_evidence"] == ["refund_policy"]
+    assert payload["cases"][0]["retrieved_evidence"] == ["refund_policy"]
+    assert payload["cases"][0]["judge_fallback_used"] is True
+    assert payload["cases"][0]["judge_fallback_reason"] == "parse_error"
+    assert payload["cases"][0]["judge_reliability"] == "low"
+    assert payload["cases"][0]["needs_human_review"] is True
+
+
+def test_build_gate_report_bundle_payload_maps_overall_decision_variants() -> None:
+    cases = [
+        (
+            "ok",
+            CheckResult(
+                run_id="run-ok",
+                current_runs=2,
+                baseline_runs=0,
+                overall_rate=100.0,
+                s1_rate=100.0,
+                s1_passed=1,
+                s1_total=1,
+                thresholds=[ThresholdResult("Overall", 80.0, 100.0, True, "2/2")],
+            ),
+        ),
+        (
+            "needs_confirmation",
+            CheckResult(
+                run_id="run-warn",
+                current_runs=2,
+                baseline_runs=0,
+                overall_rate=100.0,
+                s1_rate=100.0,
+                s1_passed=1,
+                s1_total=1,
+                thresholds=[
+                    ThresholdResult(
+                        "Overall",
+                        80.0,
+                        85.0,
+                        True,
+                        "2/2",
+                        warn_threshold=90.0,
+                        warned=True,
+                    )
+                ],
+            ),
+        ),
+        (
+            "ng",
+            CheckResult(
+                run_id="run-ng",
+                current_runs=2,
+                baseline_runs=0,
+                overall_rate=50.0,
+                s1_rate=0.0,
+                s1_passed=0,
+                s1_total=1,
+                thresholds=[ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1")],
+            ),
+        ),
+    ]
+
+    for expected, result in cases:
+        payload = build_gate_report_bundle_payload(_make_bundle_artifacts(result))
+        assert payload["overall_decision"] == expected
 
 
 def test_check_command_overrides_aggregation_policy() -> None:

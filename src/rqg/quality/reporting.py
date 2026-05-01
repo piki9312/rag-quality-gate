@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from rqg.domain import GateDecision
 
@@ -22,6 +22,7 @@ class GateReportArtifacts:
     history_summary_path: Path
     history_path: Path
     bundle_path: Path
+    check_result: Any | None = None
 
 
 class GateReportAdapter(Protocol):
@@ -73,9 +74,10 @@ class BundleJsonReportAdapter:
 
 def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str, object]:
     """Build a consolidated machine-readable gate report bundle."""
-    return {
+    decision_payload = artifacts.decision.model_dump(mode="json")
+    payload = {
         "schema_version": GATE_REPORT_SCHEMA_VERSION,
-        "decision": artifacts.decision.model_dump(mode="json"),
+        "decision": decision_payload,
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,
         "artifact_paths": {
@@ -86,6 +88,96 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "bundle_path": str(artifacts.bundle_path),
         },
     }
+
+    cases: list[dict[str, object]] = []
+    target_docs: list[str] = []
+    summary = _build_bundle_summary_from_decision(artifacts.decision)
+    overall_decision = _overall_decision_from_gate_decision(artifacts.decision)
+
+    if artifacts.check_result is not None:
+        from rqg.quality.check import (
+            build_case_report_rows,
+            build_customer_report_summary,
+            collect_target_docs,
+            map_overall_decision,
+        )
+
+        cases = build_case_report_rows(artifacts.check_result)
+        target_docs = collect_target_docs(artifacts.check_result)
+        summary = build_customer_report_summary(artifacts.check_result)
+        overall_decision = map_overall_decision(artifacts.check_result)
+
+    payload.update(
+        {
+            "report_version": GATE_REPORT_SCHEMA_VERSION,
+            "executed_at": decision_payload["created_at"],
+            "client_name": _resolve_client_name(artifacts.decision),
+            "app_name": _resolve_app_name(artifacts.decision),
+            "target_docs": target_docs,
+            "change_event": _extract_change_event(artifacts.decision),
+            "summary": summary,
+            "overall_decision": overall_decision,
+            "cases": cases,
+        }
+    )
+    return payload
+
+
+def _overall_decision_from_gate_decision(decision: GateDecision) -> str:
+    if decision.policy_status == "block" or decision.status == "fail":
+        return "ng"
+    if decision.policy_status in {"warn", "needs_human_review"} or decision.needs_human_review:
+        return "needs_confirmation"
+    return "ok"
+
+
+def _build_bundle_summary_from_decision(decision: GateDecision) -> dict[str, object]:
+    return {
+        "headline": "Gate report bundle generated.",
+        "overall_pass_rate": decision.metrics.get("overall_pass_rate"),
+        "s1_pass_rate": decision.metrics.get("s1_pass_rate"),
+        "needs_human_review": decision.needs_human_review,
+        "judge_fallback_count": decision.judge_fallback_count,
+    }
+
+
+def _resolve_client_name(decision: GateDecision) -> str | None:
+    pack = decision.pack
+    if pack is None:
+        return None
+    extras = getattr(pack, "model_extra", None) or {}
+    for value in (
+        extras.get("client_name"),
+        extras.get("tenant_name"),
+        getattr(pack, "tenant_name", None),
+    ):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _resolve_app_name(decision: GateDecision) -> str | None:
+    pack = decision.pack
+    if pack is None:
+        return None
+    extras = getattr(pack, "model_extra", None) or {}
+    for value in (
+        extras.get("app_name"),
+        getattr(pack, "pack_name", None),
+        getattr(pack, "name", None),
+        getattr(pack, "pack_id", None),
+    ):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _extract_change_event(decision: GateDecision) -> object | None:
+    pack = decision.pack
+    if pack is None:
+        return None
+    extras = getattr(pack, "model_extra", None) or {}
+    return extras.get("change_event")
 
 
 def _append_jsonl_output(path: str | Path, model: GateDecision) -> Path:

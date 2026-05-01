@@ -86,7 +86,11 @@ def create_dashboard_app(
         runs = (
             all_runs
             if pack_name == ""
-            else [run for run in all_runs if run["pack_id"] == pack_name or run["pack_name"] == pack_name]
+            else [
+                run
+                for run in all_runs
+                if run["pack_id"] == pack_name or run["pack_name"] == pack_name
+            ]
         )
         if not runs:
             raise HTTPException(status_code=404, detail="No runs found for pack")
@@ -153,20 +157,47 @@ def create_dashboard_app(
         runs = (
             all_runs
             if pack_name == ""
-            else [run for run in all_runs if run["pack_id"] == pack_name or run["pack_name"] == pack_name]
+            else [
+                run
+                for run in all_runs
+                if run["pack_id"] == pack_name or run["pack_name"] == pack_name
+            ]
         )
         if not runs:
             raise HTTPException(status_code=404, detail="No runs found for pack")
-        latest = runs[-1]
         fail_case_rows = []
-        for action in latest["decision"].get("next_actions", []):
-            case_ids = ", ".join(action.get("affected_case_ids", [])) or "-"
+        for run in reversed(runs):
+            policy_status = str(run.get("policy_status", run["status"])).lower()
+            status = str(run["status"]).lower()
+            if status != "fail" and policy_status not in {
+                "block",
+                "needs_human_review",
+            }:
+                continue
+            for action in run["decision"].get("next_actions", []):
+                case_ids = ", ".join(action.get("affected_case_ids", [])) or "-"
+                fallback_summary = run["decision"].get("fallback_summary", {})
+                origin = "-"
+                if isinstance(fallback_summary, dict):
+                    origin = str(fallback_summary.get("block_origin") or "-")
+                fail_case_rows.append(
+                    "<tr>"
+                    f"<td>{_esc(run['run_id'])}</td>"
+                    f"<td>{_esc(run.get('policy_status', run['status']))}</td>"
+                    f"<td>{_esc(origin)}</td>"
+                    f"<td>{_esc(action.get('failure_category', '-'))}</td>"
+                    f"<td>{_esc(case_ids)}</td>"
+                    f"<td>{_esc(action.get('action', '-'))}</td>"
+                    "</tr>"
+                )
+        if not fail_case_rows:
             fail_case_rows.append(
-                f"<tr><td>{_esc(action.get('failure_category', '-'))}</td><td>{_esc(case_ids)}</td></tr>"
+                '<tr><td colspan="6">No failed or review-required cases found.</td></tr>'
             )
         return _page(
             f"Fail cases for {pack_name}",
-            "<table><tr><th>Failure Category</th><th>Affected Cases</th></tr>"
+            "<table><tr><th>Run</th><th>Policy Status</th><th>Origin</th><th>Failure Category</th>"
+            "<th>Affected Cases</th><th>Recommended Action</th></tr>"
             + "".join(fail_case_rows)
             + "</table>",
         )
@@ -228,7 +259,10 @@ def _scan_runs(runs_dir: Path) -> list[dict[str, Any]]:
         pack = decision.get("pack", {})
         if not isinstance(pack, dict):
             pack = {}
-        pack_id = str(pack.get("pack_id") or pack.get("pack_name") or "").strip() or report_file.parent.name
+        pack_id = (
+            str(pack.get("pack_id") or pack.get("pack_name") or "").strip()
+            or report_file.parent.name
+        )
         pack_name = str(pack.get("pack_name", "")).strip() or pack_id
         metrics = decision.get("metrics", {}) if isinstance(decision.get("metrics"), dict) else {}
         fallback_used = bool(
@@ -240,7 +274,9 @@ def _scan_runs(runs_dir: Path) -> list[dict[str, Any]]:
                 "pack_name": pack_name,
                 "run_id": str(decision.get("run_id", report_file.parent.name)),
                 "status": str(decision.get("status", "unknown")).upper(),
-                "policy_status": str(decision.get("policy_status", decision.get("status", "unknown"))).upper(),
+                "policy_status": str(
+                    decision.get("policy_status", decision.get("status", "unknown"))
+                ).upper(),
                 "overall_pass_rate": float(metrics.get("overall_pass_rate", 0.0) or 0.0),
                 "s1_pass_rate": float(metrics.get("s1_pass_rate", 0.0) or 0.0),
                 "s1_fail_count": float(metrics.get("s1_fail_count", 0.0) or 0.0),

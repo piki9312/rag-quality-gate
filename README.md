@@ -4,15 +4,17 @@
 
 This repository is being shaped into **Proof Gate**: a customer-facing FAQ RAG quality gate that detects serious refund, cancellation, pricing, contract, deadline, and eligibility mistakes before release. The 0-3 month PoC path is intentionally narrow: `customer_support_pack`, gate decisions, reliability/fallback visibility, notifications, a minimal dashboard, and monthly quality reports.
 
-Start the customer support demo with:
+Start the reproducible customer support demo with:
 
 ```powershell
-rqg gate --pack packs/customer_support_pack --mock --log-dir runs/customer_support_pack --reset-log-dir
-rqg report-monthly --log-dir runs/customer_support_pack --month 2026-04
-rqg serve-dashboard --workspace-dir . --port 8012
+.\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\python scripts\create_customer_support_demo_artifacts.py
+.\.venv\Scripts\python -m rqg.cli serve-dashboard --workspace-dir . --runs-dir packs\customer_support_pack\reports\demo_runs --port 8012
 ```
 
-See [docs/user-guide/proof-gate-poc.md](docs/user-guide/proof-gate-poc.md) and [packs/customer_support_pack/README.md](packs/customer_support_pack/README.md) for the demo flow, reliability fields, monthly report, UI routes, and pack clone workflow.
+Then open `/packs`, `/runs`, `/runs/csp-block-refund-202604`, `/runs/csp-needs-review-fallback-202604`, `/cases/failures`, and `/reports/monthly` on `http://127.0.0.1:8012`.
+
+See [docs/user-guide/proof-gate-poc.md](docs/user-guide/proof-gate-poc.md) and [packs/customer_support_pack/README.md](packs/customer_support_pack/README.md) for the demo flow, reliability fields, monthly report, UI routes, and pack clone workflow. The shortest demo uses committed artifacts; the live `rqg gate` flow is documented there as the optional follow-up.
 
 [日本語](#日本語--japanese) | [English](#english)
 

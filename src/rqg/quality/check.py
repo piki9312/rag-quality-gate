@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from rqg.domain import GateDecision, GateNextAction, GatePackMetadata
 
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
-from .models import QARunRecord
+from .models import QARunRecord, QATestCase
 from .reason_taxonomy import (
     REASON_EMBEDDING_FALLBACK_USED,
     REASON_JUDGE_FALLBACK_USED,
@@ -228,6 +228,8 @@ class CheckResult:
     embedding_fallback_reason: str | None = None
     retrieval_reliability: str = "high"
     needs_human_review: bool = False
+    current_records: list[QARunRecord] = field(default_factory=list)
+    active_cases: list[QATestCase] = field(default_factory=list)
 
     @property
     def gate_passed(self) -> bool:
@@ -693,6 +695,8 @@ def run_check(
         embedding_fallback_reason=embedding_fallback_reason,
         retrieval_reliability=retrieval_reliability,
         needs_human_review=needs_human_review,
+        current_records=current,
+        active_cases=active_cases or [],
     )
 
 
@@ -756,6 +760,182 @@ def _main_failure_category_summary(failure_categories: dict[str, int]) -> str:
     )[0]
     case_label = "case" if count == 1 else "cases"
     return f"{category} ({count} {case_label})"
+
+
+def map_overall_decision(result: CheckResult) -> str:
+    """Map gate status into a customer-facing overall decision."""
+    policy_status = _policy_status_for_result(result)
+    if policy_status == "block" or result.gate_status == "fail":
+        return "ng"
+    if policy_status in {"warn", "needs_human_review"} or result.needs_human_review:
+        return "needs_confirmation"
+    return "ok"
+
+
+def collect_target_docs(result: CheckResult) -> list[str]:
+    docs: list[str] = []
+    seen: set[str] = set()
+    for case in result.active_cases:
+        source_doc = str(case.source_doc or "").strip()
+        if not source_doc or source_doc in seen:
+            continue
+        seen.add(source_doc)
+        docs.append(source_doc)
+    return docs
+
+
+def build_customer_report_summary(result: CheckResult) -> dict[str, object]:
+    total_cases = len(result.current_records) if result.current_records else result.current_runs
+    if result.current_records:
+        passed_cases = sum(1 for record in result.current_records if record.passed)
+    else:
+        passed_cases = int(round(total_cases * result.overall_rate / 100)) if total_cases else 0
+    failed_cases = max(0, total_cases - passed_cases)
+    s1_failed_cases = max(0, result.s1_total - result.s1_passed)
+    overall_decision = map_overall_decision(result)
+
+    if overall_decision == "ng":
+        headline = "NG。重大な失敗または block 判定があるため、本番反映は推奨されません。"
+    elif overall_decision == "needs_confirmation":
+        headline = "要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。"
+    else:
+        headline = "OK。現在の閾値では本番反映可能です。"
+
+    return {
+        "headline": headline,
+        "total_cases": total_cases,
+        "passed_cases": passed_cases,
+        "failed_cases": failed_cases,
+        "s1_failed_cases": s1_failed_cases,
+        "overall_pass_rate": result.overall_rate,
+        "s1_pass_rate": result.s1_rate,
+        "main_failure_category": _main_failure_category_summary(result.failure_categories),
+        "needs_human_review": result.needs_human_review,
+        "judge_fallback_count": result.judge_fallback_count,
+    }
+
+
+def build_case_report_rows(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+) -> list[dict[str, object]]:
+    case_by_id = {case.case_id: case for case in result.active_cases}
+    rows: list[dict[str, object]] = []
+
+    for record in sorted(result.current_records, key=_case_report_sort_key):
+        case = case_by_id.get(record.case_id)
+        needs_human_review = _case_needs_human_review(record)
+        rows.append(
+            {
+                "case_id": record.case_id,
+                "name": case.name if case else record.case_id,
+                "question": case.question if case else "",
+                "severity": case.severity if case else record.severity,
+                "category": case.category if case else record.category,
+                "risk_domain": (
+                    case.risk_domain if case and case.risk_domain else record.risk_domain or ""
+                ),
+                "ai_answer": record.answer,
+                "expected_answer": case.expected_answer if case else "",
+                "expected_evidence": list(case.expected_evidence) if case else [],
+                "retrieved_evidence": list(record.retrieved_ids),
+                "decision": _case_decision(record, needs_human_review),
+                "pass_fail": "pass" if record.passed else "fail",
+                "fail_reason": _case_fail_reason(record),
+                "next_actions": _case_next_actions(
+                    record,
+                    failure_actions=failure_actions,
+                    needs_human_review=needs_human_review,
+                ),
+                "judge_fallback_used": bool(record.judge_fallback_used),
+                "judge_fallback_reason": record.judge_fallback_reason,
+                "judge_reliability": result.judge_reliability,
+                "needs_human_review": needs_human_review,
+            }
+        )
+
+    return rows
+
+
+def _case_report_sort_key(record: QARunRecord) -> tuple[int, int, int, str]:
+    severity = str(record.severity or "").strip().upper()
+    critical_fail_rank = 0 if severity == "S1" and not record.passed else 1
+    fail_rank = 0 if not record.passed else 1
+    severity_rank = 0 if severity == "S1" else 1
+    return (critical_fail_rank, fail_rank, severity_rank, record.case_id)
+
+
+def _case_needs_human_review(record: QARunRecord) -> bool:
+    severity = str(record.severity or "").strip().upper()
+    return bool(
+        record.judge_fallback_used
+        or record.embedding_fallback_used
+        or (severity == "S1" and not record.passed)
+    )
+
+
+def _case_decision(record: QARunRecord, needs_human_review: bool) -> str:
+    if not record.passed:
+        return "ng"
+    if needs_human_review:
+        return "needs_confirmation"
+    return "ok"
+
+
+def _case_fail_reason(record: QARunRecord) -> str:
+    reasons = [str(reason).strip() for reason in record.reasons if str(reason).strip()]
+    if reasons:
+        return "; ".join(reasons)
+    if record.failure_category:
+        return str(record.failure_category)
+    if record.failure_type:
+        return str(record.failure_type)
+    if record.passed:
+        return ""
+    return "Gate check failed"
+
+
+def _case_next_actions(
+    record: QARunRecord,
+    *,
+    failure_actions: dict[str, str] | None,
+    needs_human_review: bool,
+) -> list[str]:
+    actions: list[str] = []
+    failure_category = str(record.failure_category or "").strip()
+    required_action = str(record.required_action or "").strip()
+
+    if not record.passed:
+        if failure_category:
+            actions.append((failure_actions or {}).get(failure_category, DEFAULT_NEXT_ACTION_HINT))
+        if required_action:
+            actions.append(required_action)
+    if record.judge_fallback_used:
+        actions.append("Re-run judge-enabled evaluation and confirm model/API connectivity")
+    if record.embedding_fallback_used:
+        actions.append(
+            "Check embedding dependency/model loading and rebuild the retrieval index"
+        )
+    if needs_human_review:
+        actions.append("Route this case for manual review before approving the update")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for action in actions:
+        normalized = action.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+    return deduped
+
+
+def _overall_decision_label(overall_decision: str) -> str:
+    if overall_decision == "ng":
+        return "NG"
+    if overall_decision == "needs_confirmation":
+        return "要確認"
+    return "OK"
 
 
 def build_gate_decision(
@@ -923,7 +1103,135 @@ def _approval_for_policy_status(policy_status: str) -> dict[str, object]:
 # ------------------------------------------------------------------
 
 
-def render_gate_markdown(
+def _render_customer_report_markdown(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+    pack_metadata: dict[str, Any] | None = None,
+) -> str:
+    overall_decision = map_overall_decision(result)
+    summary = build_customer_report_summary(result)
+    case_rows = build_case_report_rows(result, failure_actions)
+    target_docs = collect_target_docs(result)
+    pack_metadata = pack_metadata or {}
+    client_name = str(
+        pack_metadata.get("client_name") or pack_metadata.get("tenant_name") or "未設定"
+    ).strip() or "未設定"
+    app_name = str(
+        pack_metadata.get("app_name") or pack_metadata.get("pack_name") or "未設定"
+    ).strip() or "未設定"
+    change_event = pack_metadata.get("change_event")
+    s1_failures = [
+        row
+        for row in case_rows
+        if str(row["severity"]).strip().upper() == "S1" and row["pass_fail"] == "fail"
+    ]
+
+    lines = ["# Proof Gate 実行レポート", "", "## 1. 本番反映判定"]
+    lines.append(f"- 判定: {_overall_decision_label(overall_decision)}")
+    lines.append(f"- policy_status: {_policy_status_for_result(result).upper()}")
+    lines.append(f"- summary: {summary['headline']}")
+
+    lines.append("")
+    lines.append("## 2. 実行概要")
+    lines.append(f"- client_name: {client_name}")
+    lines.append(f"- app_name: {app_name}")
+    lines.append(f"- run_id: {result.run_id}")
+    lines.append(f"- current_cases: {summary['total_cases']}")
+    lines.append(f"- baseline_runs: {result.baseline_runs}")
+    lines.append(f"- aggregation_policy: {result.aggregation_policy}")
+    lines.append(f"- needs_human_review: {'YES' if result.needs_human_review else 'NO'}")
+    lines.append(f"- judge_fallback_count: {result.judge_fallback_count}")
+
+    lines.append("")
+    lines.append("## 3. 対象ドキュメントと変更点")
+    if target_docs:
+        lines.append(f"- target_docs: {', '.join(target_docs)}")
+    else:
+        lines.append("- target_docs: 未設定")
+    if change_event is None:
+        lines.append("- change_event: 未設定")
+    else:
+        lines.append(f"- change_event: {change_event}")
+
+    lines.append("")
+    lines.append("## 4. 実行結果サマリ")
+    lines.append(f"- overall_pass_rate: {result.overall_rate:.1f}%")
+    lines.append(f"- s1_pass_rate: {result.s1_rate:.1f}%")
+    lines.append(f"- failed_cases: {summary['failed_cases']}")
+    lines.append(f"- s1_failed_cases: {summary['s1_failed_cases']}")
+    lines.append(f"- main_failure_category: {summary['main_failure_category']}")
+
+    lines.append("")
+    lines.append("## 5. S1重大失敗一覧")
+    if s1_failures:
+        lines.append("| Case ID | Name | Fail Reason | Next Actions |")
+        lines.append("|---------|------|-------------|--------------|")
+        for row in s1_failures:
+            next_actions = row["next_actions"] or []
+            action_text = "; ".join(str(item) for item in next_actions) if next_actions else "-"
+            lines.append(
+                "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
+                    case_id=row["case_id"],
+                    name=str(row["name"] or "-").replace("|", "\\|"),
+                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                    next_actions=action_text.replace("|", "\\|"),
+                )
+            )
+    else:
+        lines.append("- 該当なし")
+
+    lines.append("")
+    lines.append("## 6. ケース別結果")
+    if case_rows:
+        lines.append("| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |")
+        lines.append("|---------|------|----------|----------|-----------|-------------|")
+        for row in case_rows:
+            lines.append(
+                "| {case_id} | {name} | {severity} | {decision} | {pass_fail} | {fail_reason} |".format(
+                    case_id=row["case_id"],
+                    name=str(row["name"] or "-").replace("|", "\\|"),
+                    severity=row["severity"],
+                    decision=row["decision"],
+                    pass_fail=row["pass_fail"],
+                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                )
+            )
+    else:
+        lines.append("- ケース別の詳細データはありません。")
+
+    lines.append("")
+    lines.append("## 7. 推奨アクション")
+    action_lines: list[str] = []
+    seen_actions: set[str] = set()
+    for row in case_rows:
+        for action in row["next_actions"] or []:
+            normalized = str(action).strip()
+            if not normalized or normalized in seen_actions:
+                continue
+            seen_actions.add(normalized)
+            action_lines.append(normalized)
+    if action_lines:
+        for action in action_lines:
+            lines.append(f"- {action}")
+    else:
+        lines.append("- 現時点で追加対応は不要です。")
+
+    lines.append("")
+    lines.append("## 8. 月額Monitorで継続確認すべき項目")
+    lines.append("- FAQ・規約・料金表の更新後にS1ケースを再実行する")
+    lines.append("- 返金・解約・料金・契約条件に関する回答を継続確認する")
+    lines.append("- プロンプト変更後に高リスクケースを再実行する")
+    lines.append("- 新しい問い合わせ傾向に応じて高リスクケースを追加する")
+    lines.append("- 月次レポートで重大誤回答リスクと改善状況を確認する")
+
+    lines.append("")
+    lines.append("## 9. 運用向け詳細")
+    lines.append("以下は運用・開発向けの詳細です。")
+
+    return "\n".join(lines) + "\n"
+
+
+def _render_gate_operations_markdown(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
     *,
@@ -931,7 +1239,7 @@ def render_gate_markdown(
     compare_offset: int = 1,
     trend_window: int = 5,
 ) -> str:
-    """Render a gate check result as Markdown."""
+    """Render the existing operations-focused gate markdown."""
     status = result.gate_status.upper()
     next_actions = _build_structured_next_actions(
         result.failure_categories, failure_actions, result.failure_case_ids
@@ -1094,3 +1402,28 @@ def render_gate_markdown(
             )
 
     return "\n".join(lines) + "\n"
+
+
+def render_gate_markdown(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+    *,
+    pack_metadata: dict[str, Any] | None = None,
+    history_decisions: list[GateDecision] | None = None,
+    compare_offset: int = 1,
+    trend_window: int = 5,
+) -> str:
+    """Render a gate check result as customer-facing Markdown plus ops details."""
+    customer_markdown = _render_customer_report_markdown(
+        result,
+        failure_actions=failure_actions,
+        pack_metadata=pack_metadata,
+    )
+    operations_markdown = _render_gate_operations_markdown(
+        result,
+        failure_actions=failure_actions,
+        history_decisions=history_decisions,
+        compare_offset=compare_offset,
+        trend_window=trend_window,
+    )
+    return customer_markdown.rstrip() + "\n\n" + operations_markdown.lstrip()

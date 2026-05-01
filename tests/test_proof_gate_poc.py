@@ -109,3 +109,22 @@ def test_monthly_summary_exposes_proof_gate_business_fields(tmp_path: Path) -> N
     assert summary["blocked_runs"] == 1
     assert summary["s1_incidents_detected"] == 1
     assert summary["fallback_summary"]["embedding_fallback_count"] == 1
+
+
+def test_customer_support_demo_artifacts_cover_pass_block_and_review() -> None:
+    demo_root = Path("packs/customer_support_pack/reports/demo_runs")
+    decisions = {
+        path.parent.name: json.loads(path.read_text(encoding="utf-8"))
+        for path in demo_root.glob("csp-*/gate-decision.json")
+    }
+
+    assert decisions["csp-pass-202604"]["policy_status"] == "pass"
+    assert decisions["csp-block-refund-202604"]["policy_status"] == "block"
+    assert decisions["csp-block-refund-202604"]["fallback_summary"]["block_origin"] == (
+        "business_risk"
+    )
+    assert decisions["csp-needs-review-fallback-202604"]["policy_status"] == ("needs_human_review")
+    assert decisions["csp-needs-review-fallback-202604"]["judge_reliability"] == "low"
+    assert decisions["csp-needs-review-fallback-202604"]["fallback_summary"]["block_origin"] == (
+        "evaluator_reliability"
+    )

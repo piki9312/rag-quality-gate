@@ -21,6 +21,7 @@ from rqg.quality.check import (
     run_check,
 )
 from rqg.quality.models import QARunRecord
+from rqg.quality.models import QATestCase
 from rqg.quality.staleness import CaseStalenessItem
 
 # ------------------------------------------------------------------
@@ -694,6 +695,27 @@ class TestRenderMarkdown:
         assert "Main failure category: None" in md
         assert "Recommended next action: No immediate action required." in md
 
+    def test_rendering_starts_with_customer_report_sections(self):
+        result = CheckResult(
+            run_id="run-customer",
+            current_runs=2,
+            baseline_runs=1,
+            overall_rate=100.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[ThresholdResult("Overall", 80.0, 100.0, True, "2/2")],
+        )
+
+        md = render_gate_markdown(result)
+
+        assert md.startswith("# Proof Gate 実行レポート")
+        assert "## 1. 本番反映判定" in md
+        assert "## 4. 実行結果サマリ" in md
+        assert "## 8. 月額Monitorで継続確認すべき項目" in md
+        assert "## 9. 運用向け詳細" in md
+        assert "## RAG Quality Gate: PASS" in md
+
     def test_fail_rendering(self):
         result = CheckResult(
             run_id="run-001",
@@ -760,6 +782,100 @@ class TestRenderMarkdown:
         assert "Review retrieval settings" in md
         assert "Define next action in weekly review issue" in md
         assert "T.B.D." in md
+
+    def test_rendering_orders_s1_failures_first_in_customer_sections(self):
+        now = datetime.now(timezone.utc)
+        result = CheckResult(
+            run_id="run-ordering",
+            current_runs=3,
+            baseline_runs=0,
+            overall_rate=33.3,
+            s1_rate=0.0,
+            s1_passed=0,
+            s1_total=1,
+            thresholds=[ThresholdResult("S1", 100.0, 0.0, False, "0/1")],
+            current_records=[
+                QARunRecord(
+                    timestamp=now,
+                    run_id="run-ordering",
+                    case_id="QA-S2",
+                    severity="S2",
+                    category="retrieval",
+                    risk_domain="ops",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="retrieval_miss",
+                    reasons=["missing evidence"],
+                ),
+                QARunRecord(
+                    timestamp=now,
+                    run_id="run-ordering",
+                    case_id="QA-S1",
+                    severity="S1",
+                    category="policy",
+                    risk_domain="refund",
+                    passed=False,
+                    failure_type="policy_miss",
+                    failure_category="policy_gap",
+                    reasons=["wrong escalation"],
+                ),
+                QARunRecord(
+                    timestamp=now,
+                    run_id="run-ordering",
+                    case_id="QA-PASS",
+                    severity="S2",
+                    category="faq",
+                    risk_domain="general",
+                    passed=True,
+                ),
+            ],
+            active_cases=[
+                QATestCase(
+                    case_id="QA-S2",
+                    name="S2 retrieval miss",
+                    question="詳細は?",
+                    severity="S2",
+                    expected_answer="evidence",
+                    expected_evidence=["doc-s2"],
+                    category="retrieval",
+                    risk_domain="ops",
+                ),
+                QATestCase(
+                    case_id="QA-S1",
+                    name="S1 policy miss",
+                    question="返金条件は?",
+                    severity="S1",
+                    expected_answer="policy",
+                    expected_evidence=["doc-s1"],
+                    category="policy",
+                    risk_domain="refund",
+                ),
+                QATestCase(
+                    case_id="QA-PASS",
+                    name="Passing case",
+                    question="営業時間は?",
+                    severity="S2",
+                    expected_answer="hours",
+                    expected_evidence=["doc-pass"],
+                    category="faq",
+                    risk_domain="general",
+                ),
+            ],
+        )
+
+        md = render_gate_markdown(
+            result,
+            failure_actions={
+                "retrieval_miss": "Review retrieval settings",
+                "policy_gap": "Fix the policy answer before release",
+            },
+        )
+
+        assert "## 5. S1重大失敗一覧" in md
+        assert md.index("## 5. S1重大失敗一覧") < md.index("## 6. ケース別結果")
+        assert "## 8. 月額Monitorで継続確認すべき項目" in md
+        assert "FAQ・規約・料金表の更新後にS1ケースを再実行する" in md
+        assert md.index("QA-S1") < md.index("QA-S2")
 
     def test_rendering_includes_observed_metrics(self):
         result = CheckResult(

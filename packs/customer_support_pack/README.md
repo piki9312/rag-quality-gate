@@ -10,13 +10,22 @@ This pack is the Proof Gate PoC template for customer-facing FAQ RAG. It focuses
 
 ## Demo Flow
 
-1. Run `rqg gate --pack packs/customer_support_pack --mock --log-dir runs/customer_support_pack --reset-log-dir`.
-2. Confirm `gate-decision.json`, `gate-report.json`, and `gate-report.md` show pass/block reasons, next actions, reliability, and fallback status.
-3. Break the demo by editing `documents/refund_policy.md` or a RAG prompt so a digital product is described as refundable after download.
-4. Rerun the same gate command.
-5. Show that S1 failures produce `policy_status=block` or `needs_human_review`, with reasons, next actions, and reliability visible.
-6. Generate monthly artifacts with `rqg report-monthly --log-dir runs/customer_support_pack --month 2026-04`.
-7. Start the dashboard with `rqg serve-dashboard --workspace-dir . --port 8012` and open `/packs`, `/runs`, `/cases/failures`, and `/reports/monthly`.
+For a stable PoC screen share, create the deterministic demo artifacts first:
+
+```powershell
+.\.venv\Scripts\python scripts\create_customer_support_demo_artifacts.py
+.\.venv\Scripts\python -m rqg.cli serve-dashboard --workspace-dir . --runs-dir packs\customer_support_pack\reports\demo_runs --port 8012
+```
+
+Then show these runs:
+
+1. `csp-pass-202604`: clean baseline, `policy_status=pass`, no fallback.
+2. `csp-block-refund-202604`: confirmed S1 business risk, `policy_status=block`, `fallback_summary.block_origin=business_risk`.
+3. `csp-needs-review-fallback-202604`: evaluator uncertainty, `policy_status=needs_human_review`, `judge_reliability=low`, `fallback_summary.block_origin=evaluator_reliability`.
+
+Open `/packs`, `/runs`, `/cases/failures`, and `/reports/monthly` to explain the pack, latest runs, failed cases, and monthly operating value.
+
+For a live follow-up, run `rqg gate --pack packs/customer_support_pack --mock --log-dir runs/customer_support_pack --reset-log-dir`, then `rqg report-monthly --log-dir runs/customer_support_pack --month 2026-04`.
 
 ## Reading Results
 
@@ -24,6 +33,8 @@ This pack is the Proof Gate PoC template for customer-facing FAQ RAG. It focuses
 - `policy_status` is the Proof Gate business decision: `pass`, `warn`, `block`, or `needs_human_review`.
 - `fallback_summary` and `judge_reliability` must be checked before approving a customer-facing update.
 - S1 failures should not be shipped until the failed answer and evidence are reviewed.
+- A business-risk block means the evaluator was reliable and the answer violated an S1 case.
+- A fallback-driven review means Proof Gate could not confidently certify the run, so the update needs human review before release.
 
 ## Clone For Another Customer
 
