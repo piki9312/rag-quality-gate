@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import shutil
-import tempfile
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -45,8 +45,6 @@ class DemoSummary:
 
 
 def _reset_phase_dir(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
 
 
@@ -103,37 +101,38 @@ def _run_phase(phase_dir: Path, faq_doc: Path) -> tuple[dict[str, object], int]:
     report_path = phase_dir / "gate-report.md"
     bundle_path = phase_dir / "gate-report.json"
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmp = Path(tmpdir)
-        docs_dir = tmp / "documents"
-        index_dir = tmp / "index"
-        log_dir = tmp / "gate_logs"
-        decision_path = tmp / "gate-decision.json"
-        docs_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(faq_doc, docs_dir / "demo_faq.md")
+    tmp_parent = ROOT / ".tmp"
+    tmp_parent.mkdir(parents=True, exist_ok=True)
+    tmp = tmp_parent / f"sales_demo_{phase_dir.name}_{uuid.uuid4().hex}"
+    docs_dir = tmp / "documents"
+    index_dir = tmp / "index"
+    log_dir = tmp / "gate_logs"
+    decision_path = tmp / "gate-decision.json"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(faq_doc, docs_dir / "demo_faq.md")
 
-        exit_code = cli_main(
-            [
-                "gate",
-                str(ROOT_CASES),
-                "--pack",
-                str(PACK_DIR),
-                "--docs",
-                str(docs_dir),
-                "--index-dir",
-                str(index_dir),
-                "--log-dir",
-                str(log_dir),
-                "--output-file",
-                str(report_path),
-                "--bundle-file",
-                str(bundle_path),
-                "--decision-file",
-                str(decision_path),
-                "--mock",
-                "--reset-log-dir",
-            ]
-        )
+    exit_code = cli_main(
+        [
+            "gate",
+            str(ROOT_CASES),
+            "--pack",
+            str(PACK_DIR),
+            "--docs",
+            str(docs_dir),
+            "--index-dir",
+            str(index_dir),
+            "--log-dir",
+            str(log_dir),
+            "--output-file",
+            str(report_path),
+            "--bundle-file",
+            str(bundle_path),
+            "--decision-file",
+            str(decision_path),
+            "--mock",
+            "--reset-log-dir",
+        ]
+    )
 
     bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
     return bundle, exit_code
@@ -180,8 +179,8 @@ def run_demo() -> DemoSummary:
         after=after,
         representative_s1_failure=_representative_s1_failure(before_bundle),
         key_message=(
-            "FAQ更新後の古い回答をProof Gateが検知し、修正後のv2 reference runで"
-            "S1重大失敗の解消とGate改善を確認できる"
+            "FAQ変更後に古い回答が残る事故をProof GateがS1重大失敗として検知し、"
+            "修正後のv2 reference runでS1失敗の解消とGate改善を確認できる。"
         ),
     )
     SUMMARY_PATH.write_text(json.dumps(asdict(summary), indent=2, ensure_ascii=False), encoding="utf-8")

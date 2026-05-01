@@ -1,39 +1,50 @@
-# カスタマーサポートFAQ変更事故 Before / After 1枚メモ
+# Customer Support FAQ変更事故 Before / After 1枚メモ
 
-## この1枚の使い方
+## 目的
 
-営業や顧客説明の場で、Proof Gate付きRAG AI導入診断PoCの結果を1画面で示したいときに使います。
+FAQ・規約・料金表の変更後に、RAG AI が古い条件で答えてしまうリスクを、Proof Gate が本番前に検知できることを示します。
 
-## Before / After 比較
+## Before / After Summary
 
-| 項目 | Before: stale v1（旧FAQ参照のまま） | After: v2 reference（更新後FAQで再判定） |
+| 項目 | Before: stale v1 | After: v2 reference |
 |---|---:|---:|
-| 本番反映判定 | NG | OK |
-| policy_status | BLOCK | PASS |
-| S1 pass rate | 0.0% | 100.0% |
-| overall pass rate | 33.3% | 100.0% |
-| S1 failures | 3 | 0 |
-| 代表S1重大失敗 | customer_support_faq_001: 7日以内返金を旧ルールで許容 | 解消 |
-| 顧客向け一言コメント | 古いFAQ条件のまま自然に答えてしまうため、本番前に止める必要がある | 更新後の回答は新ルールに沿っており、同じ高リスク質問でも通過した |
+| 本番反映判定 | NG | 要確認 |
+| policy_status | BLOCK | NEEDS_HUMAN_REVIEW |
+| S1 pass rate | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
+| overall pass rate | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
+| S1 failures | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
+| 顧客向けメッセージ | 古いFAQ条件で回答しており、本番反映前に止める必要がある | S1重大失敗は解消。fallback検知により運用確認は必要 |
 
-## 代表S1重大失敗
+## 代表的なS1重大失敗
 
-- Case ID: `customer_support_faq_001`
-- 質問: `購入から7日以内なら返金できますか？`
-- fail_reason: `Keyword match 33% < 80%`
-- 顧客影響の意味: AIが古いv1返金ルールで答えており、通常商品まで通常の7日返金対象のように案内してしまっている。
+`demo_summary.json` の `representative_s1_failure` を参照します。
+
+見るポイント:
+
+- `case_id`
+- `question`
+- `ai_answer`
+- `fail_reason`
+- `risk_domain`
 
 ## 顧客向け説明
 
 Before:
 
-回答文は自然に見えても、実際には古い返金条件を案内しているため、そのまま本番に出すと顧客向けの説明事故につながります。
+AIの回答文は自然でも、現在のFAQ条件と違う回答をしている場合があります。返金・解約・料金・契約条件の誤案内は顧客影響が大きいため、本番反映前に止める必要があります。
 
 After:
 
-FAQ更新後に同じ高リスク質問で再判定すると、S1重大失敗が解消し、本番反映判定も安全に説明できる状態になります。
+FAQ更新後に、同じ高リスク質問セットで再Gateします。S1重大失敗が解消していれば、修正が有効だったことを説明できます。このローカル実行では検索モデルfallbackにより要確認扱いですが、回答品質の重大失敗は解消しています。
 
-## デモ中に開くファイル
+## 月額Monitorにつながる理由
+
+- FAQ・規約・料金表は継続的に変わる
+- プロンプトや検索設定の変更でも回答品質は劣化する
+- 一度通ったAIでも、変更後に危険な回答へ戻ることがある
+- 高リスク質問を定期実行することで、変更事故を見逃しにくくなる
+
+## 開くファイル
 
 - `reports/before_stale_v1/gate-report.md`
 - `reports/after_v2_reference/gate-report.md`

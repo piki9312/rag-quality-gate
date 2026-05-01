@@ -1,18 +1,18 @@
 # Proof Gate 実行レポート
 
 ## 1. 本番反映判定
-- 判定: OK
-- policy_status: PASS
-- summary: OK。現在の閾値では本番反映可能です。
+- 判定: 要確認
+- policy_status: NEEDS_HUMAN_REVIEW
+- summary: 要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。
 
 ## 2. 実行概要
-- client_name: demo_customer
-- app_name: Customer Support AI Quality Pack
-- run_id: cb0a524f-087
-- current_cases: 9
+- client_name: 未設定
+- app_name: 未設定
+- run_id: 3449f46b-993
+- current_cases: 6
 - baseline_runs: 0
 - aggregation_policy: latest_run
-- needs_human_review: NO
+- needs_human_review: YES
 - judge_fallback_count: 0
 
 ## 3. 対象ドキュメントと変更点
@@ -32,18 +32,16 @@
 ## 6. ケース別結果
 | Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |
 |---------|------|----------|----------|-----------|-------------|
-| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ok | pass | - |
-| customer_support_faq_006 | 無料トライアル解約の締切 | S1 | ok | pass | - |
-| customer_support_faq_007 | 年額プラン中途解約の扱い | S1 | ok | pass | - |
-| customer_support_faq_004 | チャージバックと返金審査の関係 | S2 | ok | pass | - |
-| customer_support_faq_005 | 月額プランの解約反映タイミング | S2 | ok | pass | - |
-| customer_support_faq_010 | 料金ページの表示場所 | S2 | ok | pass | - |
-| customer_support_faq_011 | 年額割引の案内条件 | S2 | ok | pass | - |
-| customer_support_faq_014 | 自動更新通知の送信時期 | S2 | ok | pass | - |
-| customer_support_faq_016 | 契約変更の反映条件 | S2 | ok | pass | - |
+| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | needs_confirmation | pass | - |
+| customer_support_faq_002 | 無料トライアル解約期限 | S1 | needs_confirmation | pass | - |
+| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | needs_confirmation | pass | - |
+| customer_support_faq_004 | 料金ページの確認先 | S2 | needs_confirmation | pass | - |
+| customer_support_faq_005 | 解約後のデータ保持 | S2 | needs_confirmation | pass | - |
+| customer_support_faq_006 | 契約変更の反映条件 | S2 | needs_confirmation | pass | - |
 
 ## 7. 推奨アクション
-- 現時点で追加対応は不要です。
+- 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する
+- このケースは人手で確認してから更新を承認する
 
 ## 8. 月額Monitorで継続確認すべき項目
 - FAQ・規約・料金表の更新後にS1ケースを再実行する
@@ -60,21 +58,23 @@
 ### Executive Summary
 - Production promotion: Recommended. This pack meets the configured gate thresholds.
 - Gate status: PASS
-- Policy status: PASS
+- Policy status: NEEDS_HUMAN_REVIEW
 - S1 pass rate: 100.0% (0 S1 failures)
 - Overall pass rate: 100.0%
 - Main failure category: None
-- Recommended next action: No immediate action required.
+- Recommended next action: Check embedding dependency/model loading and rebuild the retrieval index
 
 - Aggregation Policy: latest_run
 
 ### Recent History Summary
-- Latest status: PASS (cb0a524f-087)
+- Latest status: PASS (3449f46b-993)
 - Current streak: PASS x1
 - Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)
 - S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)
+- Failure action coverage (last 1): 2/2 categories (100.0%)
 - Judge reliability: HIGH
-- Needs human review: NO
+- Embedding fallback: YES (model_load_error)
+- Needs human review: YES
 
 | Metric | Actual | Threshold | Status |
 |--------|--------|-----------|--------|
@@ -86,17 +86,24 @@
 ### Observed Metrics
 | Metric | Average | Scored Runs |
 |--------|---------|-------------|
-| Avg faithfulness | 84.2% | 9 |
-| Avg judge relevance | 67.2% | 9 |
-| Avg evidence recall | 100.0% | 9 |
+| Avg faithfulness | 80.0% | 6 |
+| Avg judge relevance | 100.0% | 6 |
+| Avg evidence recall | 100.0% | 6 |
 
 ### Reliability
 - Judge reliability: HIGH
 - Judge fallback count: 0
-- Embedding fallback: NO
+- Embedding fallback: YES
+- Embedding fallback reason: model_load_error
 - Retrieval reliability: HIGH
-- Needs human review: NO
+- Needs human review: YES
 
 ### Case Staleness
-- Fresh review rate: 100.0% (9/9) within 45 days
+- Fresh review rate: 100.0% (6/6) within 45 days
 - No stale active cases detected.
+
+### Next Actions
+| Failure Category | Affected Cases | Next Action | Owner | Due |
+|------------------|----------------|-------------|-------|-----|
+| embedding_reliability | - | Check embedding dependency/model loading and rebuild the retrieval index | T.B.D. | T.B.D. |
+| human_review | - | Route this run for manual review before approving the update | T.B.D. | T.B.D. |

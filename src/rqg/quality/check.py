@@ -938,6 +938,26 @@ def _overall_decision_label(overall_decision: str) -> str:
     return "OK"
 
 
+def _customer_action_label(action: object) -> str:
+    text = str(action).strip()
+    labels = {
+        DEFAULT_NEXT_ACTION_HINT: "失敗ケースの原因を確認し、週次レビューで対応方針を決める",
+        "block": "本番反映を止め、該当FAQ・規約・回答ロジックを修正する",
+        "allow_with_warning": "注意付きで扱い、必要に応じてサポート担当者の確認を入れる",
+        "needs_human_review": "人手確認に回し、承認後に本番反映を判断する",
+        "Check embedding dependency/model loading and rebuild the retrieval index": (
+            "検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する"
+        ),
+        "Route this case for manual review before approving the update": (
+            "このケースは人手で確認してから更新を承認する"
+        ),
+        "Route this run for manual review before approving the update": (
+            "この実行結果は人手で確認してから更新を承認する"
+        ),
+    }
+    return labels.get(text, text)
+
+
 def build_gate_decision(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
@@ -1168,7 +1188,7 @@ def _render_customer_report_markdown(
         lines.append("|---------|------|-------------|--------------|")
         for row in s1_failures:
             next_actions = row["next_actions"] or []
-            action_text = "; ".join(str(item) for item in next_actions) if next_actions else "-"
+            action_text = "; ".join(_customer_action_label(item) for item in next_actions) if next_actions else "-"
             lines.append(
                 "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
                     case_id=row["case_id"],
@@ -1205,7 +1225,7 @@ def _render_customer_report_markdown(
     seen_actions: set[str] = set()
     for row in case_rows:
         for action in row["next_actions"] or []:
-            normalized = str(action).strip()
+            normalized = _customer_action_label(action).strip()
             if not normalized or normalized in seen_actions:
                 continue
             seen_actions.add(normalized)
@@ -1404,6 +1424,130 @@ def _render_gate_operations_markdown(
     return "\n".join(lines) + "\n"
 
 
+def _render_customer_report_markdown_clean(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+    pack_metadata: dict[str, Any] | None = None,
+) -> str:
+    overall_decision = map_overall_decision(result)
+    summary = build_customer_report_summary(result)
+    case_rows = build_case_report_rows(result, failure_actions)
+    target_docs = collect_target_docs(result)
+    pack_metadata = pack_metadata or {}
+    client_name = str(pack_metadata.get("client_name") or "未設定").strip() or "未設定"
+    app_name = str(pack_metadata.get("app_name") or "未設定").strip() or "未設定"
+    change_event = pack_metadata.get("change_event")
+    s1_failures = [
+        row
+        for row in case_rows
+        if str(row["severity"]).strip().upper() == "S1" and row["pass_fail"] == "fail"
+    ]
+
+    lines = ["# Proof Gate 実行レポート", "", "## 1. 本番反映判定"]
+    lines.append(f"- 判定: {_overall_decision_label(overall_decision)}")
+    lines.append(f"- policy_status: {_policy_status_for_result(result).upper()}")
+    lines.append(f"- summary: {summary['headline']}")
+
+    lines.append("")
+    lines.append("## 2. 実行概要")
+    lines.append(f"- client_name: {client_name}")
+    lines.append(f"- app_name: {app_name}")
+    lines.append(f"- run_id: {result.run_id}")
+    lines.append(f"- current_cases: {summary['total_cases']}")
+    lines.append(f"- baseline_runs: {result.baseline_runs}")
+    lines.append(f"- aggregation_policy: {result.aggregation_policy}")
+    lines.append(f"- needs_human_review: {'YES' if result.needs_human_review else 'NO'}")
+    lines.append(f"- judge_fallback_count: {result.judge_fallback_count}")
+
+    lines.append("")
+    lines.append("## 3. 対象ドキュメントと変更点")
+    if target_docs:
+        lines.append(f"- target_docs: {', '.join(target_docs)}")
+    else:
+        lines.append("- target_docs: 未設定")
+    if change_event is None:
+        lines.append("- change_event: 未設定")
+    else:
+        lines.append(f"- change_event: {change_event}")
+
+    lines.append("")
+    lines.append("## 4. 実行結果サマリ")
+    lines.append(f"- overall_pass_rate: {result.overall_rate:.1f}%")
+    lines.append(f"- s1_pass_rate: {result.s1_rate:.1f}%")
+    lines.append(f"- failed_cases: {summary['failed_cases']}")
+    lines.append(f"- s1_failed_cases: {summary['s1_failed_cases']}")
+    lines.append(f"- main_failure_category: {summary['main_failure_category']}")
+
+    lines.append("")
+    lines.append("## 5. S1重大失敗一覧")
+    if s1_failures:
+        lines.append("| Case ID | Name | Fail Reason | Next Actions |")
+        lines.append("|---------|------|-------------|--------------|")
+        for row in s1_failures:
+            next_actions = row["next_actions"] or []
+            action_text = "; ".join(_customer_action_label(item) for item in next_actions) if next_actions else "-"
+            lines.append(
+                "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
+                    case_id=row["case_id"],
+                    name=str(row["name"] or "-").replace("|", "\\|"),
+                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                    next_actions=action_text.replace("|", "\\|"),
+                )
+            )
+    else:
+        lines.append("- 該当なし")
+
+    lines.append("")
+    lines.append("## 6. ケース別結果")
+    if case_rows:
+        lines.append("| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |")
+        lines.append("|---------|------|----------|----------|-----------|-------------|")
+        for row in case_rows:
+            lines.append(
+                "| {case_id} | {name} | {severity} | {decision} | {pass_fail} | {fail_reason} |".format(
+                    case_id=row["case_id"],
+                    name=str(row["name"] or "-").replace("|", "\\|"),
+                    severity=row["severity"],
+                    decision=row["decision"],
+                    pass_fail=row["pass_fail"],
+                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                )
+            )
+    else:
+        lines.append("- ケース別の詳細データはありません。")
+
+    lines.append("")
+    lines.append("## 7. 推奨アクション")
+    action_lines: list[str] = []
+    seen_actions: set[str] = set()
+    for row in case_rows:
+        for action in row["next_actions"] or []:
+            normalized = _customer_action_label(action).strip()
+            if not normalized or normalized in seen_actions:
+                continue
+            seen_actions.add(normalized)
+            action_lines.append(normalized)
+    if action_lines:
+        for action in action_lines:
+            lines.append(f"- {action}")
+    else:
+        lines.append("- 現時点で追加対応は不要です。")
+
+    lines.append("")
+    lines.append("## 8. 月額Monitorで継続確認すべき項目")
+    lines.append("- FAQ・規約・料金表の更新後にS1ケースを再実行する")
+    lines.append("- 返金・解約・料金・契約条件に関する回答を継続確認する")
+    lines.append("- プロンプト変更後に高リスクケースを再実行する")
+    lines.append("- 新しい問い合わせ傾向に応じて高リスクケースを追加する")
+    lines.append("- 月次レポートで重大誤回答リスクと改善状況を確認する")
+
+    lines.append("")
+    lines.append("## 9. 運用向け詳細")
+    lines.append("以下は運用・開発向けの詳細です。")
+
+    return "\n".join(lines) + "\n"
+
+
 def render_gate_markdown(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
@@ -1414,7 +1558,7 @@ def render_gate_markdown(
     trend_window: int = 5,
 ) -> str:
     """Render a gate check result as customer-facing Markdown plus ops details."""
-    customer_markdown = _render_customer_report_markdown(
+    customer_markdown = _render_customer_report_markdown_clean(
         result,
         failure_actions=failure_actions,
         pack_metadata=pack_metadata,

@@ -1,51 +1,74 @@
 {
   "schema_version": "1.0",
   "decision": {
-    "run_id": "cb0a524f-087",
+    "run_id": "3449f46b-993",
     "status": "pass",
-    "policy_status": "pass",
-    "reasons": [],
-    "reason_codes": [],
+    "policy_status": "needs_human_review",
+    "reasons": [
+      "Embedding fallback detected; confirm embedding dependency/model health and rebuild the index",
+      "Human review required because run reliability signals were degraded"
+    ],
+    "reason_codes": [
+      "embedding_fallback_used",
+      "needs_human_review"
+    ],
     "metrics": {
       "overall_pass_rate": 100.0,
       "s1_pass_rate": 100.0,
       "s1_fail_count": 0.0,
-      "current_runs": 9.0,
+      "current_runs": 6.0,
       "baseline_runs": 0.0,
       "judge_fallback_count": 0.0,
-      "embedding_fallback_count": 0.0,
-      "avg_faithfulness": 84.22222222222221,
-      "faithfulness_scored_runs": 9.0,
-      "avg_judge_relevance": 67.22222222222221,
-      "judge_relevance_scored_runs": 9.0,
+      "embedding_fallback_count": 6.0,
+      "avg_faithfulness": 80.0,
+      "faithfulness_scored_runs": 6.0,
+      "avg_judge_relevance": 100.0,
+      "judge_relevance_scored_runs": 6.0,
       "avg_evidence_recall": 100.0,
-      "evidence_recall_scored_runs": 9.0,
+      "evidence_recall_scored_runs": 6.0,
       "fresh_case_review_rate": 100.0,
       "stale_case_count": 0.0
     },
-    "next_actions": [],
+    "next_actions": [
+      {
+        "failure_category": "embedding_reliability",
+        "count": 6,
+        "action": "Check embedding dependency/model loading and rebuild the retrieval index",
+        "owner": "T.B.D.",
+        "due": "T.B.D.",
+        "affected_case_ids": []
+      },
+      {
+        "failure_category": "human_review",
+        "count": 1,
+        "action": "Route this run for manual review before approving the update",
+        "owner": "T.B.D.",
+        "due": "T.B.D.",
+        "affected_case_ids": []
+      }
+    ],
     "judge_fallback_used": false,
     "judge_fallback_count": 0,
     "judge_failure_types": {},
     "judge_reliability": "high",
-    "embedding_fallback_used": false,
-    "embedding_fallback_count": 0,
-    "embedding_fallback_reason": null,
+    "embedding_fallback_used": true,
+    "embedding_fallback_count": 6,
+    "embedding_fallback_reason": "model_load_error",
     "retrieval_reliability": "high",
     "fallback_summary": {
       "judge_fallback_used": false,
       "judge_fallback_count": 0,
       "judge_failure_types": {},
-      "embedding_fallback_used": false,
-      "embedding_fallback_count": 0,
-      "embedding_fallback_reason": null,
+      "embedding_fallback_used": true,
+      "embedding_fallback_count": 6,
+      "embedding_fallback_reason": "model_load_error",
       "retrieval_reliability": "high"
     },
-    "needs_human_review": false,
+    "needs_human_review": true,
     "approval": {
-      "approval_required": false,
-      "approval_status": "not_required",
-      "approver_role": null,
+      "approval_required": true,
+      "approval_status": "pending",
+      "approver_role": "quality_owner",
       "approved_by": null,
       "approved_at": null,
       "approval_reason": null
@@ -67,7 +90,7 @@
       "created_from_template": true,
       "description": "Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks."
     },
-    "created_at": "2026-05-01T09:01:10.562670Z"
+    "created_at": "2026-05-01T09:31:20.041099Z"
   },
   "history_summary": {
     "entries": 1,
@@ -80,15 +103,17 @@
     "compare_offset": 1,
     "trend_window": 5,
     "summary_lines": [
-      "- Latest status: PASS (cb0a524f-087)",
+      "- Latest status: PASS (3449f46b-993)",
       "- Current streak: PASS x1",
       "- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)",
       "- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)",
+      "- Failure action coverage (last 1): 2/2 categories (100.0%)",
       "- Judge reliability: HIGH",
-      "- Needs human review: NO"
+      "- Embedding fallback: YES (model_load_error)",
+      "- Needs human review: YES"
     ],
     "trend": {
-      "latest_run_id": "cb0a524f-087",
+      "latest_run_id": "3449f46b-993",
       "latest_status": "PASS",
       "streak_count": 1,
       "status_sequence": [
@@ -122,16 +147,16 @@
         {
           "key": "avg_faithfulness",
           "label": "Avg faithfulness",
-          "current": 84.22222222222221,
-          "previous": 84.22222222222221,
+          "current": 80.0,
+          "previous": 80.0,
           "delta": 0.0,
           "unit": "pct"
         },
         {
           "key": "avg_judge_relevance",
           "label": "Avg judge relevance",
-          "current": 67.22222222222221,
-          "previous": 67.22222222222221,
+          "current": 100.0,
+          "previous": 100.0,
           "delta": 0.0,
           "unit": "pct"
         },
@@ -154,8 +179,8 @@
         {
           "key": "current_runs",
           "label": "Current runs",
-          "current": 9.0,
-          "previous": 9.0,
+          "current": 6.0,
+          "previous": 6.0,
           "delta": 0.0,
           "unit": "count"
         },
@@ -171,13 +196,19 @@
       "window_size": 1
     },
     "comparison": null,
-    "failure_action_coverage": null,
+    "failure_action_coverage": {
+      "total_categories": 2,
+      "covered_categories": 2,
+      "coverage_rate": 100.0,
+      "uncovered_categories": [],
+      "window_size": 1
+    },
     "uncovered_categories": [],
     "stale_case_review": {
       "stale_after_days": 45,
       "fresh_case_review_rate": 100.0,
-      "fresh_case_count": 9,
-      "total_cases": 9,
+      "fresh_case_count": 6,
+      "total_cases": 6,
       "stale_cases_count": 0,
       "owners": [],
       "stale_cases": []
@@ -187,34 +218,34 @@
       "judge_fallback_count": 0,
       "judge_failure_types": {},
       "judge_reliability": "high",
-      "embedding_fallback_used": false,
-      "embedding_fallback_count": 0,
-      "embedding_fallback_reason": null,
+      "embedding_fallback_used": true,
+      "embedding_fallback_count": 6,
+      "embedding_fallback_reason": "model_load_error",
       "retrieval_reliability": "high",
       "fallback_summary": {
         "judge_fallback_used": false,
         "judge_fallback_count": 0,
         "judge_failure_types": {},
-        "embedding_fallback_used": false,
-        "embedding_fallback_count": 0,
-        "embedding_fallback_reason": null,
+        "embedding_fallback_used": true,
+        "embedding_fallback_count": 6,
+        "embedding_fallback_reason": "model_load_error",
         "retrieval_reliability": "high"
       },
-      "policy_status": "pass",
-      "needs_human_review": false
+      "policy_status": "needs_human_review",
+      "needs_human_review": true
     },
     "review_steward": "proofgate-demo"
   },
-  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: OK\n- policy_status: PASS\n- summary: OK。現在の閾値では本番反映可能です。\n\n## 2. 実行概要\n- client_name: demo_customer\n- app_name: Customer Support AI Quality Pack\n- run_id: cb0a524f-087\n- current_cases: 9\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 100.0%\n- s1_pass_rate: 100.0%\n- failed_cases: 0\n- s1_failed_cases: 0\n- main_failure_category: None\n\n## 5. S1重大失敗一覧\n- 該当なし\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ok | pass | - |\n| customer_support_faq_006 | 無料トライアル解約の締切 | S1 | ok | pass | - |\n| customer_support_faq_007 | 年額プラン中途解約の扱い | S1 | ok | pass | - |\n| customer_support_faq_004 | チャージバックと返金審査の関係 | S2 | ok | pass | - |\n| customer_support_faq_005 | 月額プランの解約反映タイミング | S2 | ok | pass | - |\n| customer_support_faq_010 | 料金ページの表示場所 | S2 | ok | pass | - |\n| customer_support_faq_011 | 年額割引の案内条件 | S2 | ok | pass | - |\n| customer_support_faq_014 | 自動更新通知の送信時期 | S2 | ok | pass | - |\n| customer_support_faq_016 | 契約変更の反映条件 | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- 現時点で追加対応は不要です。\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: PASS\n\n### Executive Summary\n- Production promotion: Recommended. This pack meets the configured gate thresholds.\n- Gate status: PASS\n- Policy status: PASS\n- S1 pass rate: 100.0% (0 S1 failures)\n- Overall pass rate: 100.0%\n- Main failure category: None\n- Recommended next action: No immediate action required.\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: PASS (cb0a524f-087)\n- Current streak: PASS x1\n- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 100.0% | 100.0% | OK |\n| Overall pass rate | 100.0% | 85.0% | OK |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 84.2% | 9 |\n| Avg judge relevance | 67.2% | 9 |\n| Avg evidence recall | 100.0% | 9 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (9/9) within 45 days\n- No stale active cases detected.\n",
+  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: 要確認\n- policy_status: NEEDS_HUMAN_REVIEW\n- summary: 要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。\n\n## 2. 実行概要\n- client_name: 未設定\n- app_name: 未設定\n- run_id: 3449f46b-993\n- current_cases: 6\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: YES\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 100.0%\n- s1_pass_rate: 100.0%\n- failed_cases: 0\n- s1_failed_cases: 0\n- main_failure_category: None\n\n## 5. S1重大失敗一覧\n- 該当なし\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | needs_confirmation | pass | - |\n| customer_support_faq_002 | 無料トライアル解約期限 | S1 | needs_confirmation | pass | - |\n| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | needs_confirmation | pass | - |\n| customer_support_faq_004 | 料金ページの確認先 | S2 | needs_confirmation | pass | - |\n| customer_support_faq_005 | 解約後のデータ保持 | S2 | needs_confirmation | pass | - |\n| customer_support_faq_006 | 契約変更の反映条件 | S2 | needs_confirmation | pass | - |\n\n## 7. 推奨アクション\n- 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する\n- このケースは人手で確認してから更新を承認する\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: PASS\n\n### Executive Summary\n- Production promotion: Recommended. This pack meets the configured gate thresholds.\n- Gate status: PASS\n- Policy status: NEEDS_HUMAN_REVIEW\n- S1 pass rate: 100.0% (0 S1 failures)\n- Overall pass rate: 100.0%\n- Main failure category: None\n- Recommended next action: Check embedding dependency/model loading and rebuild the retrieval index\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: PASS (3449f46b-993)\n- Current streak: PASS x1\n- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- Failure action coverage (last 1): 2/2 categories (100.0%)\n- Judge reliability: HIGH\n- Embedding fallback: YES (model_load_error)\n- Needs human review: YES\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 100.0% | 100.0% | OK |\n| Overall pass rate | 100.0% | 85.0% | OK |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 80.0% | 6 |\n| Avg judge relevance | 100.0% | 6 |\n| Avg evidence recall | 100.0% | 6 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: YES\n- Embedding fallback reason: model_load_error\n- Retrieval reliability: HIGH\n- Needs human review: YES\n\n### Case Staleness\n- Fresh review rate: 100.0% (6/6) within 45 days\n- No stale active cases detected.\n\n### Next Actions\n| Failure Category | Affected Cases | Next Action | Owner | Due |\n|------------------|----------------|-------------|-------|-----|\n| embedding_reliability | - | Check embedding dependency/model loading and rebuild the retrieval index | T.B.D. | T.B.D. |\n| human_review | - | Route this run for manual review before approving the update | T.B.D. | T.B.D. |\n",
   "artifact_paths": {
     "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.md",
-    "decision_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmp_vc0h37i\\gate-decision.json",
-    "history_summary_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmp_vc0h37i\\gate_logs\\gate-history-summary.json",
-    "history_path": "C:\\Users\\工藤大和\\AppData\\Local\\Temp\\tmp_vc0h37i\\gate_logs\\gate-decisions.jsonl",
+    "decision_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_after_v2_reference_b795477e9e934fc5a123f9403ebc320b\\gate-decision.json",
+    "history_summary_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_after_v2_reference_b795477e9e934fc5a123f9403ebc320b\\gate_logs\\gate-history-summary.json",
+    "history_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_after_v2_reference_b795477e9e934fc5a123f9403ebc320b\\gate_logs\\gate-decisions.jsonl",
     "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.json"
   },
   "report_version": "1.0",
-  "executed_at": "2026-05-01T09:01:10.562670Z",
+  "executed_at": "2026-05-01T09:31:20.041099Z",
   "client_name": "demo_customer",
   "app_name": "Customer Support AI Quality Pack",
   "target_docs": [
@@ -222,243 +253,180 @@
   ],
   "change_event": null,
   "summary": {
-    "headline": "OK。現在の閾値では本番反映可能です。",
-    "total_cases": 9,
-    "passed_cases": 9,
+    "headline": "要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。",
+    "total_cases": 6,
+    "passed_cases": 6,
     "failed_cases": 0,
     "s1_failed_cases": 0,
     "overall_pass_rate": 100.0,
     "s1_pass_rate": 100.0,
     "main_failure_category": "None",
-    "needs_human_review": false,
+    "needs_human_review": true,
     "judge_fallback_count": 0
   },
-  "overall_decision": "ok",
+  "overall_decision": "needs_confirmation",
   "cases": [
     {
       "case_id": "customer_support_faq_001",
       "name": "キャンペーン商品の返金条件",
-      "question": "購入から7日以内なら返金できますか？",
+      "question": "キャンペーン商品は購入から7日以内なら返金できますか。",
       "severity": "S1",
       "category": "refund",
       "risk_domain": "refund",
-      "ai_answer": "購入から7日以内なら返金できますかについては、返金申請は購入から7日以内に限り受け付けます。ただし通常の7日返金対象はキャンペーン対象商品のみです。通常商品は通常返金の対象外です。",
-      "expected_answer": "",
+      "ai_answer": "キャンペーン商品は購入から7日以内なら返金できますか。については、キャンペーン対象商品だけが購入から7日以内の返金対象です。通常商品は通常返金の対象外です。サポート担当者は、商品種別を確認してから案内してください。",
+      "expected_answer": "キャンペーン対象商品だけが購入から7日以内の返金対象です。通常商品は通常返金の対象外です。",
       "expected_evidence": [
-        "demo_faq.md#sec-1-1"
+        "demo_faq.md#campaign-refund"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk0",
-        "demo_faq.md@7b20882d093cf817#chunk1"
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "ok",
+      "decision": "needs_confirmation",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [],
+      "next_actions": [
+        "Check embedding dependency/model loading and rebuild the retrieval index",
+        "Route this case for manual review before approving the update"
+      ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": false
+      "needs_human_review": true
     },
     {
-      "case_id": "customer_support_faq_006",
-      "name": "無料トライアル解約の締切",
-      "question": "無料トライアル中に解約しても請求されますか？",
+      "case_id": "customer_support_faq_002",
+      "name": "無料トライアル解約期限",
+      "question": "無料トライアル中に解約すれば課金されませんか。",
       "severity": "S1",
       "category": "cancellation",
       "risk_domain": "cancellation",
-      "ai_answer": "無料トライアル中に解約しても請求されますかについては、無料トライアルの解約はトライアル終了前に完了する必要があります。有料転換を防ぐためです。有料転換後を自動で取り消すことはできません。",
-      "expected_answer": "",
+      "ai_answer": "無料トライアル中に解約すれば課金されませんか。については、無料トライアルの解約は、トライアル終了前に完了する必要があります。有料化を防ぐためです。課金開始後の自動取消はできません。",
+      "expected_answer": "無料トライアルの解約はトライアル終了前に完了する必要があります。課金開始後の自動取消はできません。",
       "expected_evidence": [
-        "demo_faq.md#sec-1-6"
+        "demo_faq.md#trial-cancel"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "ok",
+      "decision": "needs_confirmation",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [],
+      "next_actions": [
+        "Check embedding dependency/model loading and rebuild the retrieval index",
+        "Route this case for manual review before approving the update"
+      ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": false
+      "needs_human_review": true
     },
     {
-      "case_id": "customer_support_faq_007",
-      "name": "年額プラン中途解約の扱い",
-      "question": "中途解約した場合 次回更新を止めるだけで 残り契約料金は自動で免除されませんか？",
+      "case_id": "customer_support_faq_003",
+      "name": "年額契約の自動更新通知",
+      "question": "年額契約の自動更新通知はいつ送られますか。",
       "severity": "S1",
-      "category": "cancellation",
-      "risk_domain": "cancellation",
-      "ai_answer": "中途解約した場合 次回更新を止めるだけで 残り契約料金は自動で免除されませんかについては、年額プランの解約は次回更新を止めるだけです。残り契約料金は自動で免除されません。手動例外が承認された場合のみ別扱いです。",
-      "expected_answer": "",
+      "category": "contract",
+      "risk_domain": "contract",
+      "ai_answer": "年額契約の自動更新通知はいつ送られますか。については、有効な年額契約では、更新日の30日前までに自動更新通知がメールで送られます。通知が届かない場合は契約管理者に確認してください。",
+      "expected_answer": "有効な年額契約では、更新日の30日前までに自動更新通知がメールで送られます。",
       "expected_evidence": [
-        "demo_faq.md#sec-1-7"
+        "demo_faq.md#auto-renewal"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "ok",
+      "decision": "needs_confirmation",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [],
+      "next_actions": [
+        "Check embedding dependency/model loading and rebuild the retrieval index",
+        "Route this case for manual review before approving the update"
+      ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": false
+      "needs_human_review": true
     },
     {
       "case_id": "customer_support_faq_004",
-      "name": "チャージバックと返金審査の関係",
-      "question": "チャージバックをしても通常の返金手続きを続けられますか？",
+      "name": "料金ページの確認先",
+      "question": "現在のプラン料金はどこで確認できますか。",
       "severity": "S2",
-      "category": "refund",
-      "risk_domain": "refund",
-      "ai_answer": "チャージバックをしても通常の返金手続きを続けられますかについては、チャージバック前にサポートへ連絡してください。チャージバックを起票すると返金審査は一時停止します。AIは両方の手続きを約束してはいけません。",
-      "expected_answer": "",
+      "category": "pricing",
+      "risk_domain": "pricing",
+      "ai_answer": "現在のプラン料金はどこで確認できますか。については、現在のプラン料金は料金ページで確認できます。請求通貨も同じ画面で確認できます。",
+      "expected_answer": "現在のプラン料金は料金ページで確認できます。請求通貨も同じ画面で確認できます。",
       "expected_evidence": [
-        "demo_faq.md#sec-1-4"
+        "demo_faq.md#pricing-page"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk0",
-        "demo_faq.md@7b20882d093cf817#chunk1"
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "ok",
+      "decision": "needs_confirmation",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [],
+      "next_actions": [
+        "Check embedding dependency/model loading and rebuild the retrieval index",
+        "Route this case for manual review before approving the update"
+      ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": false
+      "needs_human_review": true
     },
     {
       "case_id": "customer_support_faq_005",
-      "name": "月額プランの解約反映タイミング",
-      "question": "解約申請はいつでもできますが 請求停止は次回更新日ですか？",
+      "name": "解約後のデータ保持",
+      "question": "解約後のデータはしばらく残りますか。",
       "severity": "S2",
-      "category": "cancellation",
-      "risk_domain": "cancellation",
-      "ai_answer": "解約申請はいつでもできますが 請求停止は次回更新日については、月額プランの解約申請はいつでもできますが請求停止は次回更新日です。当日で請求は止まりません。",
-      "expected_answer": "",
+      "category": "data_retention",
+      "risk_domain": "general_faq",
+      "ai_answer": "解約後のデータはしばらく残りますか。については、解約後のデータ保持は公開中のアカウントポリシーに従います。案内できるのは文書化された保持期間だけです。",
+      "expected_answer": "解約後のデータ保持は公開中のアカウントポリシーに従います。案内できるのは文書化された保持期間だけです。",
       "expected_evidence": [
-        "demo_faq.md#sec-1-5"
+        "demo_faq.md#data-retention"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "ok",
+      "decision": "needs_confirmation",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [],
+      "next_actions": [
+        "Check embedding dependency/model loading and rebuild the retrieval index",
+        "Route this case for manual review before approving the update"
+      ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": false
+      "needs_human_review": true
     },
     {
-      "case_id": "customer_support_faq_010",
-      "name": "料金ページの表示場所",
-      "question": "現在のプラン料金はどこで確認できますか？",
-      "severity": "S2",
-      "category": "pricing",
-      "risk_domain": "pricing",
-      "ai_answer": "現在のプラン料金はどこで確認できますかについては、料金ページに現在のプラン料金が表示されます。請求通貨も同じ画面で確認できます。",
-      "expected_answer": "",
-      "expected_evidence": [
-        "demo_faq.md#sec-1-10"
-      ],
-      "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
-      ],
-      "decision": "ok",
-      "pass_fail": "pass",
-      "fail_reason": "",
-      "next_actions": [],
-      "judge_fallback_used": false,
-      "judge_fallback_reason": null,
-      "judge_reliability": "high",
-      "needs_human_review": false
-    },
-    {
-      "case_id": "customer_support_faq_011",
-      "name": "年額割引の案内条件",
-      "question": "年額割引は標準で約束できますか？",
-      "severity": "S2",
-      "category": "pricing",
-      "risk_domain": "pricing",
-      "ai_answer": "年額割引は標準で約束できますかについては、年額割引は公開中の年額プランページに従います。現在の提供条件にない割引を約束してはいけません。",
-      "expected_answer": "",
-      "expected_evidence": [
-        "demo_faq.md#sec-1-11"
-      ],
-      "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
-      ],
-      "decision": "ok",
-      "pass_fail": "pass",
-      "fail_reason": "",
-      "next_actions": [],
-      "judge_fallback_used": false,
-      "judge_fallback_reason": null,
-      "judge_reliability": "high",
-      "needs_human_review": false
-    },
-    {
-      "case_id": "customer_support_faq_014",
-      "name": "自動更新通知の送信時期",
-      "question": "有効契約の自動更新通知は更新日の何日前に送られますか？",
-      "severity": "S2",
-      "category": "contract",
-      "risk_domain": "contract",
-      "ai_answer": "有効契約の自動更新通知は更新日の何日前に送られますかについては、自動更新通知は有効契約について更新日の30日前までに送信されます。",
-      "expected_answer": "",
-      "expected_evidence": [
-        "demo_faq.md#sec-1-14"
-      ],
-      "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
-      ],
-      "decision": "ok",
-      "pass_fail": "pass",
-      "fail_reason": "",
-      "next_actions": [],
-      "judge_fallback_used": false,
-      "judge_fallback_reason": null,
-      "judge_reliability": "high",
-      "needs_human_review": false
-    },
-    {
-      "case_id": "customer_support_faq_016",
+      "case_id": "customer_support_faq_006",
       "name": "契約変更の反映条件",
-      "question": "契約変更は契約期間中でも反映できますか？",
+      "question": "契約内容の変更は契約期間中でも反映できますか。",
       "severity": "S2",
       "category": "contract",
       "risk_domain": "contract",
-      "ai_answer": "契約変更は契約期間中でも反映できますかについては、契約変更の依頼は契約期間中でもサポート審査と書面確認のあとでのみ反映できます。",
-      "expected_answer": "",
+      "ai_answer": "契約内容の変更は契約期間中でも反映できますか。については、契約内容の変更は、サポート審査と書面確認の後でのみ契約期間中に反映できます。口頭依頼だけでは反映できません。",
+      "expected_answer": "契約内容の変更は、サポート審査と書面確認の後でのみ契約期間中に反映できます。",
       "expected_evidence": [
-        "demo_faq.md#sec-1-16"
+        "demo_faq.md#contract-change"
       ],
       "retrieved_evidence": [
-        "demo_faq.md@7b20882d093cf817#chunk1",
-        "demo_faq.md@7b20882d093cf817#chunk0"
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "ok",
+      "decision": "needs_confirmation",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [],
+      "next_actions": [
+        "Check embedding dependency/model loading and rebuild the retrieval index",
+        "Route this case for manual review before approving the update"
+      ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": false
+      "needs_human_review": true
     }
   ]
 }
