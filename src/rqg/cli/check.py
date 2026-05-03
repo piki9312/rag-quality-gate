@@ -34,8 +34,12 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
 
     try:
-        report_mode = normalize_report_mode(getattr(args, "report_mode", None))
-        if os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true" and report_mode == "full":
+        github_actions = os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+        requested_report_mode = getattr(args, "report_mode", None)
+        report_mode = normalize_report_mode(
+            "ci" if github_actions and requested_report_mode is None else requested_report_mode
+        )
+        if github_actions and requested_report_mode == "full":
             import sys
 
             print(

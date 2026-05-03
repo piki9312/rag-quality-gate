@@ -658,6 +658,33 @@ def test_check_command_rejects_full_report_mode_in_github_actions(monkeypatch, c
     assert "--report-mode full is not allowed" in captured.err
 
 
+def test_check_command_defaults_to_ci_report_mode_in_github_actions(
+    monkeypatch, capsys
+) -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-github-actions-default"
+    fake_result = CheckResult(
+        run_id="run-github-actions-default",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=100.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1")],
+    )
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        exit_code = main(["check", "--log-dir", str(log_dir)])
+
+    captured = capsys.readouterr()
+    bundle_payload = json.loads((log_dir / "gate-report.json").read_text(encoding="utf-8"))
+
+    assert exit_code == 0
+    assert "# Proof Gate Safe Summary" in captured.out
+    assert bundle_payload["report_mode"] == "ci"
+
+
 def test_build_gate_report_bundle_payload_maps_overall_decision_variants() -> None:
     cases = [
         (
