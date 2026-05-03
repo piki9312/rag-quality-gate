@@ -83,7 +83,7 @@ on:
         default: true
         type: boolean
       install_embedding_deps:
-        description: Install faiss-cpu for local document evaluation
+        description: Install local embedding dependencies for document evaluation
         required: false
         default: false
         type: boolean
@@ -168,6 +168,9 @@ on:
         description: Path to gate-history-summary.json when produced
         value: ${{ jobs.rqg_gate.outputs.gate_history_summary_path }}
 
+permissions:
+  contents: read
+
 jobs:
   rqg_gate:
     name: RQG Gate
@@ -218,7 +221,7 @@ jobs:
           eval "${{ inputs.rqg_install_command }}"
 
           if [ "${{ inputs.install_embedding_deps }}" = "true" ] || [ -n "${{ inputs.docs_dir }}" ]; then
-            python -m pip install "faiss-cpu>=1.7.4" --retries 10 --timeout 120 --progress-bar off
+            python -m pip install "faiss-cpu>=1.7.4" "sentence-transformers>=2.2.0" --retries 10 --timeout 120 --progress-bar off
           fi
 
       - name: Validate pack onboarding
@@ -430,6 +433,7 @@ jobs:
             --index-dir "${{ inputs.index_dir }}"
             --context-k "${{ inputs.context_k }}"
             --warn-exit-code "${{ inputs.warn_exit_code }}"
+            --report-mode ci
           )
 
           if [ "${{ inputs.reset_log_dir }}" = "true" ]; then
@@ -604,8 +608,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
+          retention-days: 14
+          if-no-files-found: ignore
           path: |
-            ${{ inputs.log_dir }}/
+            ${{ inputs.log_dir }}/gate-decision.json
+            ${{ inputs.log_dir }}/gate-history-summary.json
+            ${{ inputs.log_dir }}/pack-validation.json
 
       - name: Fail when connection validation failed
         if: ${{ always() && inputs.run_connection_validation && steps.validate_connection.outcome == 'failure' }}

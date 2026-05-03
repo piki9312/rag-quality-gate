@@ -1,0 +1,383 @@
+{
+  "schema_version": "1.0",
+  "decision": {
+    "run_id": "3ab6031e-087",
+    "status": "pass",
+    "policy_status": "pass",
+    "reasons": [],
+    "reason_codes": [],
+    "metrics": {
+      "overall_pass_rate": 100.0,
+      "s1_pass_rate": 100.0,
+      "s1_fail_count": 0.0,
+      "current_runs": 6.0,
+      "baseline_runs": 0.0,
+      "judge_fallback_count": 0.0,
+      "embedding_fallback_count": 0.0,
+      "avg_faithfulness": 80.0,
+      "faithfulness_scored_runs": 6.0,
+      "avg_judge_relevance": 100.0,
+      "judge_relevance_scored_runs": 6.0,
+      "avg_evidence_recall": 100.0,
+      "evidence_recall_scored_runs": 6.0,
+      "fresh_case_review_rate": 100.0,
+      "stale_case_count": 0.0
+    },
+    "next_actions": [],
+    "judge_fallback_used": false,
+    "judge_fallback_count": 0,
+    "judge_failure_types": {},
+    "judge_reliability": "high",
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
+    "retrieval_reliability": "high",
+    "fallback_summary": {
+      "judge_fallback_used": false,
+      "judge_fallback_count": 0,
+      "judge_failure_types": {},
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
+      "retrieval_reliability": "high"
+    },
+    "needs_human_review": false,
+    "approval": {
+      "approval_required": false,
+      "approval_status": "not_required",
+      "approver_role": null,
+      "approved_by": null,
+      "approved_at": null,
+      "approval_reason": null
+    },
+    "pack": {
+      "pack_id": "customer_support_pack",
+      "name": "customer-support-ai-quality-pack",
+      "version": "0.1",
+      "review_steward": "proofgate-demo",
+      "pack_name": "Customer Support AI Quality Pack",
+      "tenant_name": "demo_customer",
+      "use_case": "customer_support_faq",
+      "vertical": "customer_support",
+      "risk_profile": "high_external_response",
+      "owner": "proofgate-demo",
+      "environment": "demo",
+      "pack_version": "0.1.0",
+      "source_pack": null,
+      "created_from_template": true,
+      "description": "Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks."
+    },
+    "created_at": "2026-05-02T13:51:57.586162Z"
+  },
+  "history_summary": {
+    "entries": 1,
+    "status_mix": {
+      "pass": 1,
+      "warn": 0,
+      "fail": 0
+    },
+    "week_start": "2026-04-27",
+    "compare_offset": 1,
+    "trend_window": 5,
+    "summary_lines": [
+      "- Latest status: PASS (3ab6031e-087)",
+      "- Current streak: PASS x1",
+      "- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)",
+      "- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)",
+      "- Judge reliability: HIGH",
+      "- Needs human review: NO"
+    ],
+    "trend": {
+      "latest_run_id": "3ab6031e-087",
+      "latest_status": "PASS",
+      "streak_count": 1,
+      "status_sequence": [
+        "PASS"
+      ],
+      "metric_deltas": [
+        {
+          "key": "overall_pass_rate",
+          "label": "Overall pass rate",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "s1_pass_rate",
+          "label": "S1 pass rate",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "fresh_case_review_rate",
+          "label": "Fresh case review rate",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "avg_faithfulness",
+          "label": "Avg faithfulness",
+          "current": 80.0,
+          "previous": 80.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "avg_judge_relevance",
+          "label": "Avg judge relevance",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "avg_evidence_recall",
+          "label": "Avg evidence recall",
+          "current": 100.0,
+          "previous": 100.0,
+          "delta": 0.0,
+          "unit": "pct"
+        },
+        {
+          "key": "stale_case_count",
+          "label": "Stale case count",
+          "current": 0.0,
+          "previous": 0.0,
+          "delta": 0.0,
+          "unit": "count"
+        },
+        {
+          "key": "current_runs",
+          "label": "Current runs",
+          "current": 6.0,
+          "previous": 6.0,
+          "delta": 0.0,
+          "unit": "count"
+        },
+        {
+          "key": "baseline_runs",
+          "label": "Baseline runs",
+          "current": 0.0,
+          "previous": 0.0,
+          "delta": 0.0,
+          "unit": "count"
+        }
+      ],
+      "window_size": 1
+    },
+    "comparison": null,
+    "failure_action_coverage": null,
+    "uncovered_categories": [],
+    "stale_case_review": {
+      "stale_after_days": 45,
+      "fresh_case_review_rate": 100.0,
+      "fresh_case_count": 6,
+      "total_cases": 6,
+      "stale_cases_count": 0,
+      "owners": [],
+      "stale_cases": []
+    },
+    "reliability": {
+      "judge_fallback_used": false,
+      "judge_fallback_count": 0,
+      "judge_failure_types": {},
+      "judge_reliability": "high",
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
+      "retrieval_reliability": "high",
+      "fallback_summary": {
+        "judge_fallback_used": false,
+        "judge_fallback_count": 0,
+        "judge_failure_types": {},
+        "embedding_fallback_used": false,
+        "embedding_fallback_count": 0,
+        "embedding_fallback_reason": null,
+        "retrieval_reliability": "high"
+      },
+      "policy_status": "pass",
+      "needs_human_review": false
+    },
+    "review_steward": "proofgate-demo"
+  },
+  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: OK\n- policy_status: PASS\n- summary: OK。現在の閾値では本番反映可能です。\n\n## 2. 実行概要\n- client_name: 未設定\n- app_name: 未設定\n- run_id: 3ab6031e-087\n- current_cases: 6\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 100.0%\n- s1_pass_rate: 100.0%\n- failed_cases: 0\n- s1_failed_cases: 0\n- main_failure_category: None\n\n## 5. S1重大失敗一覧\n- 該当なし\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ok | pass | - |\n| customer_support_faq_002 | 無料トライアル解約期限 | S1 | ok | pass | - |\n| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | ok | pass | - |\n| customer_support_faq_004 | 料金ページの確認先 | S2 | ok | pass | - |\n| customer_support_faq_005 | 解約後のデータ保持 | S2 | ok | pass | - |\n| customer_support_faq_006 | 契約変更の反映条件 | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- 現時点で追加対応は不要です。\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: PASS\n\n### Executive Summary\n- Production promotion: Recommended. This pack meets the configured gate thresholds.\n- Gate status: PASS\n- Policy status: PASS\n- S1 pass rate: 100.0% (0 S1 failures)\n- Overall pass rate: 100.0%\n- Main failure category: None\n- Recommended next action: No immediate action required.\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: PASS (3ab6031e-087)\n- Current streak: PASS x1\n- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 100.0% | 100.0% | OK |\n| Overall pass rate | 100.0% | 85.0% | OK |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 80.0% | 6 |\n| Avg judge relevance | 100.0% | 6 |\n| Avg evidence recall | 100.0% | 6 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (6/6) within 45 days\n- No stale active cases detected.\n",
+  "artifact_paths": {
+    "report_path": "gate-report.md",
+    "decision_path": "gate-decision.json",
+    "history_summary_path": "gate-history-summary.json",
+    "history_path": "gate-decisions.jsonl",
+    "bundle_path": "gate-report.json"
+  },
+  "report_version": "1.0",
+  "executed_at": "2026-05-02T13:51:57.586162Z",
+  "client_name": "demo_customer",
+  "app_name": "Customer Support AI Quality Pack",
+  "target_docs": [
+    "demo_faq.md"
+  ],
+  "change_event": null,
+  "summary": {
+    "headline": "OK。現在の閾値では本番反映可能です。",
+    "total_cases": 6,
+    "passed_cases": 6,
+    "failed_cases": 0,
+    "s1_failed_cases": 0,
+    "overall_pass_rate": 100.0,
+    "s1_pass_rate": 100.0,
+    "main_failure_category": "None",
+    "needs_human_review": false,
+    "judge_fallback_count": 0
+  },
+  "overall_decision": "ok",
+  "cases": [
+    {
+      "case_id": "customer_support_faq_001",
+      "name": "キャンペーン商品の返金条件",
+      "question": "キャンペーン商品は購入から7日以内なら返金できますか。",
+      "severity": "S1",
+      "category": "refund",
+      "risk_domain": "refund",
+      "ai_answer": "キャンペーン商品は購入から7日以内なら返金できますか。については、キャンペーン対象商品だけが購入から7日以内の返金対象です。通常商品は通常返金の対象外です。サポート担当者は、商品種別を確認してから案内してください。",
+      "expected_answer": "キャンペーン対象商品だけが購入から7日以内の返金対象です。通常商品は通常返金の対象外です。",
+      "expected_evidence": [
+        "demo_faq.md#campaign-refund"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_002",
+      "name": "無料トライアル解約期限",
+      "question": "無料トライアル中に解約すれば課金されませんか。",
+      "severity": "S1",
+      "category": "cancellation",
+      "risk_domain": "cancellation",
+      "ai_answer": "無料トライアル中に解約すれば課金されませんか。については、無料トライアルの解約は、トライアル終了前に完了する必要があります。有料化を防ぐためです。課金開始後の自動取消はできません。",
+      "expected_answer": "無料トライアルの解約はトライアル終了前に完了する必要があります。課金開始後の自動取消はできません。",
+      "expected_evidence": [
+        "demo_faq.md#trial-cancel"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_003",
+      "name": "年額契約の自動更新通知",
+      "question": "年額契約の自動更新通知はいつ送られますか。",
+      "severity": "S1",
+      "category": "contract",
+      "risk_domain": "contract",
+      "ai_answer": "年額契約の自動更新通知はいつ送られますか。については、有効な年額契約では、更新日の30日前までに自動更新通知がメールで送られます。通知が届かない場合は契約管理者に確認してください。",
+      "expected_answer": "有効な年額契約では、更新日の30日前までに自動更新通知がメールで送られます。",
+      "expected_evidence": [
+        "demo_faq.md#auto-renewal"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_004",
+      "name": "料金ページの確認先",
+      "question": "現在のプラン料金はどこで確認できますか。",
+      "severity": "S2",
+      "category": "pricing",
+      "risk_domain": "pricing",
+      "ai_answer": "現在のプラン料金はどこで確認できますか。については、現在のプラン料金は料金ページで確認できます。請求通貨も同じ画面で確認できます。",
+      "expected_answer": "現在のプラン料金は料金ページで確認できます。請求通貨も同じ画面で確認できます。",
+      "expected_evidence": [
+        "demo_faq.md#pricing-page"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_005",
+      "name": "解約後のデータ保持",
+      "question": "解約後のデータはしばらく残りますか。",
+      "severity": "S2",
+      "category": "data_retention",
+      "risk_domain": "general_faq",
+      "ai_answer": "解約後のデータはしばらく残りますか。については、解約後のデータ保持は公開中のアカウントポリシーに従います。案内できるのは文書化された保持期間だけです。",
+      "expected_answer": "解約後のデータ保持は公開中のアカウントポリシーに従います。案内できるのは文書化された保持期間だけです。",
+      "expected_evidence": [
+        "demo_faq.md#data-retention"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    },
+    {
+      "case_id": "customer_support_faq_006",
+      "name": "契約変更の反映条件",
+      "question": "契約内容の変更は契約期間中でも反映できますか。",
+      "severity": "S2",
+      "category": "contract",
+      "risk_domain": "contract",
+      "ai_answer": "契約内容の変更は契約期間中でも反映できますか。については、契約内容の変更は、サポート審査と書面確認の後でのみ契約期間中に反映できます。口頭依頼だけでは反映できません。",
+      "expected_answer": "契約内容の変更は、サポート審査と書面確認の後でのみ契約期間中に反映できます。",
+      "expected_evidence": [
+        "demo_faq.md#contract-change"
+      ],
+      "retrieved_evidence": [
+        "demo_faq.md@8dda9c49eaf0f845#chunk0"
+      ],
+      "decision": "ok",
+      "pass_fail": "pass",
+      "fail_reason": "",
+      "next_actions": [],
+      "judge_fallback_used": false,
+      "judge_fallback_reason": null,
+      "judge_reliability": "high",
+      "needs_human_review": false
+    }
+  ]
+}

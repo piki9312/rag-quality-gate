@@ -1,4 +1,4 @@
-"""rqg casegen / impact / migrate-cases / merge-cases / validate-cases sub-commands."""
+"""rqg casegen / impact / migrate-cases / merge-cases / validate-cases / build-poc-set sub-commands."""
 
 from __future__ import annotations
 
@@ -299,3 +299,79 @@ def cmd_merge_cases(args: argparse.Namespace) -> int:
         print("Dry run completed. No CSV file written.")
 
     return 0
+
+
+def cmd_build_poc_set(args: argparse.Namespace) -> int:
+    from ..quality.poc_set import (
+        build_poc_case_set,
+        write_case_set_summary,
+        write_poc_cases_csv,
+    )
+
+    pack_dir = Path(args.pack)
+    generated_cases_path = _resolve_build_poc_set_path(
+        args.generated_cases,
+        pack_dir=pack_dir,
+        expect_exists=True,
+    )
+    template_cases_path = _resolve_build_poc_set_path(
+        args.template_cases,
+        pack_dir=pack_dir,
+        expect_exists=True,
+    )
+    output_path = _resolve_build_poc_set_path(
+        args.output,
+        pack_dir=pack_dir,
+        expect_exists=False,
+    )
+    summary_path = _resolve_build_poc_set_path(
+        args.summary_output,
+        pack_dir=pack_dir,
+        expect_exists=False,
+    )
+
+    try:
+        result = build_poc_case_set(
+            generated_cases_path,
+            template_cases_path,
+            total=args.total,
+            s1=args.s1,
+            s2=args.s2,
+            s3=args.s3,
+            risk_profile=args.risk_profile,
+            strict=args.strict,
+            allow_fill=args.allow_fill,
+            warn_if_s1_missing=args.warn_if_s1_missing,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] Failed to build PoC case set: {exc}", file=sys.stderr)
+        return 1
+
+    cases_output_path = write_poc_cases_csv(output_path, result.selected_rows)
+    summary_output_path = write_case_set_summary(summary_path, result.summary)
+    print(f"Saved PoC cases CSV to {cases_output_path}")
+    print(f"Saved PoC case-set summary to {summary_output_path}")
+    print(f"Selected {result.summary['total']} cases")
+    if result.summary["warnings"]:
+        for warning in result.summary["warnings"]:
+            print(f"[WARN] {warning}", file=sys.stderr)
+    return 0
+
+
+def _resolve_build_poc_set_path(
+    raw_path: str,
+    *,
+    pack_dir: Path,
+    expect_exists: bool,
+) -> Path:
+    candidate = Path(raw_path)
+    if candidate.is_absolute():
+        return candidate
+    if expect_exists:
+        if candidate.exists():
+            return candidate
+        pack_candidate = pack_dir / candidate
+        if pack_candidate.exists():
+            return pack_candidate
+        return candidate
+    return pack_dir / candidate

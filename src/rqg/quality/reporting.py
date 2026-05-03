@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -23,6 +24,7 @@ class GateReportArtifacts:
     history_path: Path
     bundle_path: Path
     check_result: Any | None = None
+    report_mode: str = "full"
 
 
 class GateReportAdapter(Protocol):
@@ -75,17 +77,24 @@ class BundleJsonReportAdapter:
 def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str, object]:
     """Build a consolidated machine-readable gate report bundle."""
     decision_payload = artifacts.decision.model_dump(mode="json")
+    artifact_base_dir = artifacts.bundle_path.parent
+    report_mode = str(getattr(artifacts, "report_mode", "full") or "full")
     payload = {
         "schema_version": GATE_REPORT_SCHEMA_VERSION,
+        "report_mode": report_mode,
         "decision": decision_payload,
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,
         "artifact_paths": {
-            "report_path": str(artifacts.report_path),
-            "decision_path": str(artifacts.decision_path),
-            "history_summary_path": str(artifacts.history_summary_path),
-            "history_path": str(artifacts.history_path),
-            "bundle_path": str(artifacts.bundle_path),
+            "report_path": safe_relative_artifact_path(artifacts.report_path, artifact_base_dir),
+            "decision_path": safe_relative_artifact_path(
+                artifacts.decision_path, artifact_base_dir
+            ),
+            "history_summary_path": safe_relative_artifact_path(
+                artifacts.history_summary_path, artifact_base_dir
+            ),
+            "history_path": safe_relative_artifact_path(artifacts.history_path, artifact_base_dir),
+            "bundle_path": safe_relative_artifact_path(artifacts.bundle_path, artifact_base_dir),
         },
     }
 
@@ -100,10 +109,19 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             build_customer_report_summary,
             collect_target_docs,
             map_overall_decision,
+            normalize_report_mode,
+            report_mode_exposes_sensitive_fields,
         )
 
-        cases = build_case_report_rows(artifacts.check_result)
-        target_docs = collect_target_docs(artifacts.check_result)
+        normalized_report_mode = normalize_report_mode(report_mode)
+        cases = build_case_report_rows(
+            artifacts.check_result,
+            report_mode=normalized_report_mode,
+        )
+        if report_mode_exposes_sensitive_fields(normalized_report_mode):
+            target_docs = collect_target_docs(artifacts.check_result)
+        else:
+            target_docs = []
         summary = build_customer_report_summary(artifacts.check_result)
         overall_decision = map_overall_decision(artifacts.check_result)
 
@@ -178,6 +196,19 @@ def _extract_change_event(decision: GateDecision) -> object | None:
         return None
     extras = getattr(pack, "model_extra", None) or {}
     return extras.get("change_event")
+
+
+def safe_relative_artifact_path(path: str | Path, base_dir: str | Path) -> str:
+    """Return a stable relative artifact reference without exposing host paths."""
+    artifact_path = Path(path)
+    artifact_base_dir = Path(base_dir)
+    try:
+        relative = Path(os.path.relpath(artifact_path, start=artifact_base_dir))
+    except ValueError:
+        relative = Path(artifact_path.name)
+    if any(part in {".tmp", "tmp"} for part in relative.parts):
+        relative = Path(artifact_path.name)
+    return relative.as_posix()
 
 
 def _append_jsonl_output(path: str | Path, model: GateDecision) -> Path:

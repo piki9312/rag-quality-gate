@@ -92,7 +92,8 @@ jobs:
             --log-dir runs/weekly-gate \
             --config "${{ steps.pack.outputs.pack_dir }}/gate.yml" \
             --output-file runs/weekly-gate/gate-report.md \
-            --decision-file runs/weekly-gate/gate-decision.json
+            --decision-file runs/weekly-gate/gate-decision.json \
+            --report-mode ci
           echo "check_exit=$?" >> "$GITHUB_OUTPUT"
 
       - name: Read gate decision
@@ -118,8 +119,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: weekly-gate-${{ github.run_number }}
-          path: runs/weekly-gate/
-          retention-days: 90
+          retention-days: 14
+          if-no-files-found: ignore
+          path: |
+            runs/weekly-gate/gate-decision.json
+            runs/weekly-gate/gate-history-summary.json
 
       - name: Post result to GitHub issue
         uses: actions/github-script@v7

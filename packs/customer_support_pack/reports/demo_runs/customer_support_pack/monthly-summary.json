@@ -1,0 +1,110 @@
+{
+  "month": "2026-04",
+  "month_start": "2026-04-01",
+  "pack_id": "customer_support_pack",
+  "total_runs": 3,
+  "passed_runs": 2,
+  "blocked_runs": 1,
+  "needs_review_runs": 1,
+  "s1_incidents_detected": 2,
+  "s2_warnings": 0,
+  "top_reasons": [
+    {
+      "reason": "S1 pass rate: 66.7 < 100.0 (4/6)",
+      "count": 1
+    },
+    {
+      "reason": "Refund policy S1 case failed: digital product refund was incorrectly allowed",
+      "count": 1
+    },
+    {
+      "reason": "This block is caused by business-risk answer quality, not evaluator fallback",
+      "count": 1
+    },
+    {
+      "reason": "Judge fallback detected; re-run evaluation and verify judge/API connectivity before release",
+      "count": 1
+    },
+    {
+      "reason": "Human review required because run reliability signals were degraded",
+      "count": 1
+    }
+  ],
+  "top_reasons_trend": [
+    {
+      "reason": "S1 pass rate: 66.7 < 100.0 (4/6)",
+      "count": 1
+    },
+    {
+      "reason": "Refund policy S1 case failed: digital product refund was incorrectly allowed",
+      "count": 1
+    },
+    {
+      "reason": "This block is caused by business-risk answer quality, not evaluator fallback",
+      "count": 1
+    },
+    {
+      "reason": "Judge fallback detected; re-run evaluation and verify judge/API connectivity before release",
+      "count": 1
+    },
+    {
+      "reason": "Human review required because run reliability signals were degraded",
+      "count": 1
+    }
+  ],
+  "fallback_summary": {
+    "judge_fallback_count": 1,
+    "embedding_fallback_count": 0,
+    "low_reliability_runs": 1
+  },
+  "fallback_trend": {
+    "judge_fallback_runs": 1,
+    "judge_fallback_count": 1,
+    "embedding_fallback_runs": 0,
+    "embedding_fallback_count": 0,
+    "low_reliability_runs": 1
+  },
+  "resolved_issues": 3,
+  "resolved_issue_reasons": [
+    "Refund policy S1 case failed: digital product refund was incorrectly allowed",
+    "S1 pass rate: 66.7 < 100.0 (4/6)",
+    "This block is caused by business-risk answer quality, not evaluator fallback"
+  ],
+  "unresolved_issues": 3,
+  "unresolved_issue_reasons": [
+    "Human review required because run reliability signals were degraded",
+    "Judge fallback detected; re-run evaluation and verify judge/API connectivity before release",
+    "This review state is caused by evaluator reliability, not a confirmed business-rule violation"
+  ],
+  "recommended_actions": [
+    {
+      "failure_category": "judge_fallback_used",
+      "count": 1,
+      "action": "Re-run judge-enabled evaluation and route this run to the quality owner if fallback repeats",
+      "owner": "proofgate-demo",
+      "due": "same-day",
+      "affected_case_ids": [
+        "CS-S1-TERMS-001"
+      ]
+    }
+  ],
+  "quality_trend_summary": "Overall pass rate 100.0% -> 100.0%; S1 pass rate 100.0% -> 100.0%; latest status=PASS",
+  "quality_trend": "stable",
+  "latest_status": "PASS",
+  "pack": {
+    "pack_id": "customer_support_pack",
+    "name": "",
+    "version": "",
+    "review_steward": "",
+    "pack_name": "Customer Support AI Quality Pack",
+    "tenant_name": "demo_customer",
+    "use_case": "customer_support_faq",
+    "vertical": "customer_support",
+    "risk_profile": "high_external_response",
+    "owner": "proofgate-demo",
+    "environment": "demo",
+    "pack_version": "0.1.0",
+    "source_pack": null,
+    "created_from_template": true
+  }
+}

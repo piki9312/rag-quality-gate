@@ -65,6 +65,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             output_file=args.output_file,
             decision_file=args.decision_file,
             bundle_file=getattr(args, "bundle_file", None),
+            report_mode=getattr(args, "report_mode", None),
             warn_exit_code=args.warn_exit_code,
             append_history=check_append_history,
             notifications_enabled=notifications_enabled,

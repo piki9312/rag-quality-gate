@@ -1,111 +1,105 @@
-# Proof Gate Customer Support PoC
+# Proof Gate PoCガイド
 
-Proof Gate is scoped to customer-facing FAQ RAG quality assurance for this PoC.
-It is not a general observability platform. The demo goal is to show that a
-support AI update can be checked, blocked, reviewed, reported, and explained
-without asking the audience to inspect raw GitHub artifacts.
+このガイドは、日本企業向けに Proof Gate の PoC を短時間で説明・再現するための入口です。
 
-## Fastest Sales Demo
+Proof Gate は、RAG AI を「作るだけ」で終わらせず、返金・解約・料金・契約条件などの高リスク回答をリリース前に確認し、危険な更新を止め、結果を記録する品質保証基盤です。
 
-Use the deterministic demo artifacts when you need a stable screen-share flow.
-They contain one pass run, one business-risk block, and one reliability-driven
-human-review run.
+## PoCで見せる価値
+
+- 自社FAQ・規約・料金表を使った RAG AI の体験
+- 高リスク質問に対する回答品質の診断
+- FAQ・規約変更後にAIが古い条件で誤回答する変更事故の検知
+- S1重大失敗を `policy_status=block` として本番反映前に止めること
+- 修正後に同じケースで再Gateし、改善を確認できること
+- 月額Monitorで継続監視する合理性
+
+## 2つのPoCパターン
+
+### A軸: RAG未導入企業向け
+
+Proof Gate付き RAG AI導入診断PoCです。
+
+顧客のFAQ・規約・料金表をもとに簡易RAGを構築し、高リスク質問ケースを作って回答品質を診断します。PoC後は、本格RAG構築と Proof Gate Monitor に進みます。
+
+### B軸: 既存RAGあり企業向け
+
+既存RAG品質診断PoCです。
+
+顧客またはベンダーが持つ既存RAG APIに Proof Gate を接続し、同じ高リスク質問セットで回答品質を診断します。PoC後は、改善支援と Proof Gate Monitor に進みます。
+
+## 最短営業デモ: FAQ変更事故 before / after
 
 ```powershell
 .\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\python scripts\create_customer_support_faq_change_sales_demo.py
+```
+
+生成される主なファイル:
+
+- `demos/customer_support_faq_change/reports/before_stale_v1/gate-report.md`
+- `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
+- `demos/customer_support_faq_change/before_after_onepager.md`
+- `demos/customer_support_faq_change/demo_summary.json`
+
+見る順番:
+
+1. before report の `1. 本番反映判定` を見せ、`NG` / `BLOCK` を説明する。
+2. before report の `5. S1重大失敗一覧` を見せ、古いFAQ条件で危険な回答が出ることを説明する。
+3. after report の `1. 本番反映判定` を見せ、`要確認` / `NEEDS_HUMAN_REVIEW` を説明する。
+4. after report の `4. 実行結果サマリ` を見せ、S1 pass rate と overall pass rate の改善、S1重大失敗の解消を説明する。
+5. ローカルfallbackが出た場合は、回答品質は改善済みだが運用品質として人手確認が必要、というMonitor価値につなげる。
+6. `before_after_onepager.md` で、月額Monitorへつなげる。
+
+## ダッシュボードデモ
+
+固定artifactを使う場合:
+
+```powershell
 .\.venv\Scripts\python scripts\create_customer_support_demo_artifacts.py
 .\.venv\Scripts\python -m rqg.cli serve-dashboard --workspace-dir . --runs-dir packs\customer_support_pack\reports\demo_runs --port 8012
 ```
 
-Open these routes:
+開く画面:
 
-- `http://127.0.0.1:8012/packs`
-- `http://127.0.0.1:8012/runs`
-- `http://127.0.0.1:8012/runs/csp-pass-202604`
-- `http://127.0.0.1:8012/runs/csp-block-refund-202604`
-- `http://127.0.0.1:8012/runs/csp-needs-review-fallback-202604`
-- `http://127.0.0.1:8012/cases/failures`
-- `http://127.0.0.1:8012/reports/monthly`
+- `/packs`
+- `/runs`
+- `/runs/csp-pass-202604`
+- `/runs/csp-block-refund-202604`
+- `/runs/csp-needs-review-fallback-202604`
+- `/cases/failures`
+- `/reports/monthly`
 
-## Talk Track
-
-1. Start at `/packs` and introduce `Customer Support AI Quality Pack` as the
-   reusable template for refund, cancellation, pricing, contract, deadline, and
-   eligibility risk.
-2. Open `/runs/csp-pass-202604` and show the clean baseline: `policy_status=pass`,
-   S1 fail count `0`, judge reliability `high`, and no fallback.
-3. Open `/runs/csp-block-refund-202604` and show the release stop: legacy
-   `status=fail`, `policy_status=block`, S1 failures, reasons, affected case IDs,
-   and next action.
-4. Open `/runs/csp-needs-review-fallback-202604` and show evaluator uncertainty:
-   legacy `status=pass`, but `policy_status=needs_human_review`,
-   `judge_reliability=low`, fallback used, and approval pending.
-5. Open `/cases/failures` to show that product owners can see the affected cases
-   and recommended actions without reading JSON.
-6. Open `/reports/monthly` to explain the monthly value: runs checked, blocked
-   updates, S1 incidents, fallback trend, unresolved issues, and recommended
-   actions.
-
-## Reliability Contract
-
-The legacy `status` field remains `pass`, `warn`, or `fail`. Proof Gate adds `policy_status` for business decisions:
-
-- `pass`: safe to continue.
-- `warn`: hard thresholds passed, but follow-up is recommended.
-- `block`: an S1 or hard gate failure should stop release.
-- `needs_human_review`: reliability degraded or uncertainty requires manual approval.
-
-Gate artifacts include `judge_reliability`, `fallback_summary`, `retrieval_reliability`, `needs_human_review`, and an `approval` stub for future approval workflows.
-
-Use these two demo runs to explain the difference between confirmed business
-risk and Proof Gate uncertainty:
-
-- `csp-block-refund-202604`: `policy_status=block`,
-  `fallback_summary.block_origin=business_risk`, `judge_reliability=high`.
-  The update is stopped because the customer-facing answer is wrong for S1
-  refund/cancellation cases.
-- `csp-needs-review-fallback-202604`: `policy_status=needs_human_review`,
-  `fallback_summary.block_origin=evaluator_reliability`,
-  `judge_reliability=low`. The answer is not treated as safely releasable
-  because the evaluator fell back.
-
-The key message is: Proof Gate blocks confirmed S1 business risk, and routes
-uncertain evaluator runs to human review instead of silently passing them.
-
-## Live Gate Option
-
-After the screen-share demo, you can run the pack against the normal CLI flow:
+## 通常CLIで実行する場合
 
 ```powershell
 .\.venv\Scripts\python -m rqg.cli gate --pack packs\customer_support_pack --mock --log-dir runs\customer_support_pack --reset-log-dir
 .\.venv\Scripts\python -m rqg.cli report-monthly --log-dir runs\customer_support_pack --month 2026-04
 ```
 
-For first-run local document demos, keep Windows PowerShell in UTF-8 mode and
-prefer deterministic artifacts unless the environment already has the retrieval
-dependencies and embedding model available.
+## 顧客に準備してもらうもの
 
-## Windows Notes
+- FAQ、規約、料金表、サポート手順などの対象文書
+- 誤回答時に顧客影響が大きい質問領域
+- 既存RAGがある場合は検索APIの接続情報とレスポンス例
+- PoCで判定したい変更イベント
+- 成果物の提出先とレビュー担当者
 
-Run commands from the repository root in PowerShell. Use `.\.venv\Scripts\python`
-to avoid PATH differences between machines. If you run the full pytest suite on
-Windows and coverage/temp cleanup hits a permission error, rerun the same suite
-with an explicit local `--basetemp` and `--no-cov` for functional verification:
+## PoC成果物
 
-```powershell
-.\.venv\Scripts\python -m pytest --no-cov --basetemp=.pytest-tmp-full-hardening
-```
+- Quality Pack
+- 高リスク質問ケース `cases.csv`
+- `gate-report.md`
+- `gate-decision.json`
+- `gate-report.json`
+- before / after 比較メモ
+- 月額Monitorに引き継ぐ確認項目
 
-## Monthly Report
+## Runtime severity note
 
-Monthly artifacts are written as `monthly-summary.json` and `monthly-summary.md`. They include run volume, blocked runs, S1 incidents, top reasons, fallback trend, unresolved issues, and recommended actions.
+PoC case selection may use `S3` as a classification band in `case_set_summary.json`, but `S3` is not a new runtime severity. The runtime CSV contract remains compatible with the existing formal schema: S3-selected rows are emitted in `cases.csv` as `severity=S2`, while the original selection band is preserved in `notes` as `poc_band:S3`. This is why `case_set_summary.json` includes both `severity_mix` and `runtime_severity_mix`.
 
-## Pack Clone
+## 顧客データの扱い
 
-Create a new customer-facing FAQ pack with:
+ローカルPoCでは、文書・ケース・評価ログは指定した作業ディレクトリに保存されます。外部RAG診断では、Proof Gate は外部RAG APIの検索結果と回答を評価し、顧客RAG本体を置き換えません。
 
-```powershell
-rqg init-pack packs/new_customer_support --profile customer_support
-```
-
-Then update tenant metadata, replace documents, and review S1/S2 cases before the first run.
+実案件では、保存場所、外部送信有無、APIキー管理、ログ保持期間をPoC開始前に合意してください。

@@ -216,6 +216,25 @@ class TestValidation:
         errors = validate_case_row(row)
         assert [e for e in errors if e.level == "error"] == []
 
+    def test_valid_row_with_build_poc_set_additive_columns_no_errors(self):
+        row = {
+            "case_id": "V001P",
+            "question": "What is the refund policy?",
+            "status": "active",
+            "severity": "S1",
+            "eval_mode": "evidence_keyword",
+            "expected_evidence": "refund.md#sec-1",
+            "expected_keywords": "refund;policy",
+            "risk_domain": "refund",
+            "required_action": "block",
+            "evidence_required": "true",
+            "owner_role": "support_quality_owner",
+            "source_doc": "refund.md",
+            "updated_at": "2026-05-01",
+        }
+        errors = validate_case_row(row)
+        assert [e for e in errors if e.level == "error"] == []
+
     def test_active_evidence_keyword_requires_keywords(self):
         row = {
             "case_id": "V001A",

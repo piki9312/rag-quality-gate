@@ -1,0 +1,53 @@
+{
+  "entries": 1,
+  "status_mix": {
+    "pass": 0,
+    "warn": 0,
+    "fail": 1
+  },
+  "week_start": "2026-03-30",
+  "compare_offset": 1,
+  "trend_window": 5,
+  "summary_lines": [
+    "- Latest status: FAIL (csp-block-refund-202604)",
+    "- Policy status: BLOCK",
+    "- Judge reliability: HIGH"
+  ],
+  "trend": {
+    "latest_run_id": "csp-block-refund-202604",
+    "latest_status": "FAIL",
+    "streak_count": 1,
+    "status_sequence": [
+      "FAIL"
+    ],
+    "metric_deltas": [],
+    "window_size": 1
+  },
+  "comparison": null,
+  "failure_action_coverage": null,
+  "uncovered_categories": [],
+  "stale_case_review": null,
+  "reliability": {
+    "judge_fallback_used": false,
+    "judge_fallback_count": 0,
+    "judge_failure_types": {},
+    "judge_reliability": "high",
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
+    "retrieval_reliability": "high",
+    "fallback_summary": {
+      "judge_fallback_used": false,
+      "judge_fallback_count": 0,
+      "judge_failure_types": {},
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
+      "retrieval_reliability": "high",
+      "block_origin": "business_risk"
+    },
+    "policy_status": "block",
+    "needs_human_review": false
+  },
+  "review_steward": "proofgate-demo"
+}

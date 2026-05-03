@@ -1,570 +1,96 @@
 # Proof Gate
 
-## Proof Gate PoC Focus
+Proof Gate は、RAG や LLM を用いた業務AIに対して、重大な誤回答、品質劣化、外部送信リスクを検知し、必要に応じて遮断・人手確認・記録を行う品質保証基盤です。
 
-This repository is being shaped into **Proof Gate**: a customer-facing FAQ RAG quality gate that detects serious refund, cancellation, pricing, contract, deadline, and eligibility mistakes before release. The 0-3 month PoC path is intentionally narrow: `customer_support_pack`, gate decisions, reliability/fallback visibility, notifications, a minimal dashboard, and monthly quality reports.
+現時点の提供形態は SaaS ではなく、CLI、Quality Pack、外部RAG adapter、Markdown/JSONレポートを中心にした PoC/運用支援です。RAGエンジンそのものを置き換えるのではなく、既存または新規の RAG/FAQ AI の外側に品質ゲートを置きます。
 
-Start the reproducible customer support demo with:
+## 解決する課題
+
+RAG AI は、FAQ・規約・料金表・社内ルールが変わった後も、古い条件で自然に答えてしまうことがあります。特に返金、解約、料金、契約条件、期限、資格条件の誤回答は、顧客対応事故や社内説明責任につながります。
+
+Proof Gate は、こうした高リスク質問を `cases.csv` として管理し、RAG AI の回答をリリース前または定期運用で再チェックします。
+
+- S1重大失敗を検知したら `policy_status=block`
+- 評価器や検索の信頼性が落ちたら `policy_status=needs_human_review`
+- 結果を `gate-report.md`、`gate-decision.json`、`gate-report.json` に記録
+- 月額Monitorで品質劣化や未解決リスクを継続確認
+
+## 2つの導入パターン
+
+### A軸: RAG未導入企業向け
+
+**Proof Gate付き RAG AI導入診断PoC**
+
+自社FAQ・規約・料金表を使って、簡易RAG体験と高リスク回答の品質診断を同時に行います。PoC後は、安全化した本格RAG構築と Proof Gate Monitor へ進みます。
+
+### B軸: 既存RAGあり企業向け
+
+**既存RAG品質診断PoC**
+
+既存RAG APIに Proof Gate を接続し、返金・解約・料金・契約条件などの高リスク質問で品質診断を行います。PoC後は、改善支援と Proof Gate Monitor へ進みます。
+
+## 最短の営業デモ
+
+FAQ が v1 から v2 に変わった後も、AI が古い条件で答える変更事故を before / after で見せます。
 
 ```powershell
 .\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\python scripts\create_customer_support_faq_change_sales_demo.py
+```
+
+見るファイル:
+
+- `demos/customer_support_faq_change/reports/before_stale_v1/gate-report.md`
+- `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
+- `demos/customer_support_faq_change/before_after_onepager.md`
+- `demos/customer_support_faq_change/demo_summary.json`
+
+期待する見せ方:
+
+- before: `NG`, `policy_status=BLOCK`
+- after: `要確認`, `policy_status=NEEDS_HUMAN_REVIEW`
+- after は S1 pass rate 100%、S1重大失敗 0件
+- ローカルfallbackがある場合は、人手確認が必要な運用品質リスクとして説明
+- 月額Monitorで継続監視する理由につなげる
+
+## ダッシュボードデモ
+
+固定デモ artifact を作って、最小ダッシュボードで PASS / BLOCK / NEEDS_HUMAN_REVIEW を見せます。
+
+```powershell
 .\.venv\Scripts\python scripts\create_customer_support_demo_artifacts.py
 .\.venv\Scripts\python -m rqg.cli serve-dashboard --workspace-dir . --runs-dir packs\customer_support_pack\reports\demo_runs --port 8012
 ```
 
-Then open `/packs`, `/runs`, `/runs/csp-block-refund-202604`, `/runs/csp-needs-review-fallback-202604`, `/cases/failures`, and `/reports/monthly` on `http://127.0.0.1:8012`.
+開くURL:
 
-See [docs/user-guide/proof-gate-poc.md](docs/user-guide/proof-gate-poc.md) and [packs/customer_support_pack/README.md](packs/customer_support_pack/README.md) for the demo flow, reliability fields, monthly report, UI routes, and pack clone workflow. The shortest demo uses committed artifacts; the live `rqg gate` flow is documented there as the optional follow-up.
+- `http://127.0.0.1:8012/packs`
+- `http://127.0.0.1:8012/runs`
+- `http://127.0.0.1:8012/cases/failures`
+- `http://127.0.0.1:8012/reports/monthly`
 
-[日本語](#日本語--japanese) | [English](#english)
-
-## Choose Your Path
-
-Install the lightweight package first when you only need pack validation, existing
-report inspection, or external-RAG setup checks:
-
-```bash
-pip install -e .
-rqg doctor
-```
-
-The local document demos below build a FAISS index from `documents/`, so install
-the embedding extra before running them:
-
-```bash
-pip install -e ".[embedding]"
-```
-
-For deterministic first-run demos without downloading a sentence-transformers
-model, use the built-in local hash embedding mode:
-
-```bash
-export EMB_MODEL=local-fallback-hash-embedding
-```
-
-PowerShell:
+## 通常の gate 実行
 
 ```powershell
-$env:EMB_MODEL = "local-fallback-hash-embedding"
+.\.venv\Scripts\python -m rqg.cli gate --pack packs\customer_support_pack --mock --log-dir runs\customer_support_pack --reset-log-dir
 ```
 
-Use isolated `--index-dir` and `--log-dir` values for each demo run. Reusing a shared
-index across different packs can cause false retrieval misses because old chunks may
-be searched together with the current demo corpus.
+出力:
 
-| Path | Use this when | Pack or template | Command |
-|---|---|---|---|
-| Client-facing PASS demo | You want the fastest clean walkthrough for a customer or stakeholder. | `examples/demo-client-pack` | `rqg gate --pack examples/demo-client-pack --mock --reset-log-dir --index-dir indexes/demo-client-pack --log-dir logs/demo-client-pack` |
-| Intentional FAIL demo | You want to show production blocking, S1 failure interpretation, and next actions. | `examples/vendor-poc-pack` | `rqg gate --pack examples/vendor-poc-pack --mock --reset-log-dir --index-dir indexes/vendor-poc-pack --log-dir logs/vendor-poc-pack` |
-| Fixed PASS scenario | You want to show remediation from the FAIL scenario to a passing gate. | `examples/vendor-poc-pack-pass` | `rqg gate --pack examples/vendor-poc-pack-pass --mock --reset-log-dir --index-dir indexes/vendor-poc-pack-pass --log-dir logs/vendor-poc-pack-pass` |
-| Customer PoC template | You are starting a customer-specific Proof Gate repository. | `templates/customer-rqg-template` | Copy this directory into the customer repo, then replace documents, cases, and pack metadata. |
+- `runs/customer_support_pack/gate-report.md`
+- `runs/customer_support_pack/gate-decision.json`
+- `runs/customer_support_pack/gate-report.json`
+- `runs/customer_support_pack/gate-decisions.jsonl`
 
-On Windows PowerShell, run the UTF-8 setup from
-[docs/user-guide/windows-powershell.md](docs/user-guide/windows-powershell.md)
-before viewing Markdown or JSON reports if console output looks garbled.
+## PoC資料
 
-For customer-owned or vendor-owned RAG APIs that already exist, use the
-[external RAG walkthrough](docs/demo/external-rag-walkthrough.md).
+- [Proof Gate PoCガイド](docs/user-guide/proof-gate-poc.md)
+- [営業デモ手順](demos/customer_support_faq_change/README.md)
+- [A軸/B軸 PoC提案1枚](docs/sales/proof-gate-poc-offer.md)
+- [Customer Support AI Quality Pack](packs/customer_support_pack/README.md)
+- [既存RAG接続ガイド](docs/demo/external-rag-walkthrough.md)
+- [Windows PowerShellガイド](docs/user-guide/windows-powershell.md)
 
-## 日本語 / Japanese
+## 今はやらないこと
 
-Proof Gate は、RAG/Agent の品質を毎回同じやり方で検証し、高リスク更新の事故をリリース前に検知・遮断するための実運用向け品質ゲート基盤です。
-
-この製品は AI を賢くするものではなく、AI を安全に更新・運用するための品質管理レイヤです。
-
-最初の市場導線として、社内文書（規程・FAQ・手順書・ナレッジ記事・社内 Wiki）向け縦パックを同梱しています。
-現在は HR プロファイルと Wiki/FAQ プロファイルの 2 つを見本として提供します。
-
-## アーキテクチャ
-
-```mermaid
-flowchart LR
-    subgraph Input
-        D[documents/]
-        C[cases.csv]
-        Y[.rqg.yml]
-    end
-    subgraph "rqg gate （ワンコマンド）"
-        I[ingest] -->|FAISS index| E[eval]
-        C --> E
-        E -->|JSONL logs| CH[check]
-        Y --> CH
-    end
-    CH --> R[gate-report.md]
-    CH --> J[gate-decision.json]
-    J -->|exit 0/1| CI[CI / CD pipeline]
-
-    style I fill:#e8f5e9
-    style E fill:#e3f2fd
-    style CH fill:#fff3e0
-```
-
-**データフロー**: documents → FAISS ingest → eval（キーワード + retrieval + reference 評価）→ check（閾値判定）→ pass/fail 出力
-
-## この製品が解決すること
-
-| 課題 | RQG の解決策 |
-|------|-------------|
-| 変更のたびに品質確認が属人化する | `rqg gate` で定型化。毎回同じ基準 |
-| 重大ケースの取りこぼし | S1/S2 の severity 分離。S1 は 100% pass 必須 |
-| fail 時にどこから直すべきか不明 | gate-report.md に failure category + next action |
-| 判定自体の信頼性が見えない | judge / embedding fallback, reliability, needs_human_review を artifact に明示 |
-| PR の品質判定が曖昧 | CI exit code 0/1 で機械的に判定 |
-
-## なぜ RQG?（競合との位置づけ）
-
-| | RQG | Ragas / DeepEval | LangSmith | Braintrust |
-|---|---|---|---|---|
-| **主目的** | 運用チーム向け回帰ゲート | LLM 評価フレームワーク | LLM observability | LLM eval + logging |
-| **誰が使う** | QA・運用・ドメインオーナー | ML エンジニア | 開発者 | 開発者 |
-| **CI gate** | ネイティブ対応 (exit 0/1) | 自分で組む | webhook/API | 自分で組む |
-| **ケース資産管理** | cases.csv + merge/validate | なし | なし | Datasets |
-| **severity 運用** | S1/S2 分離・閾値別 | なし | なし | なし |
-| **API キー不要** | `--mock` で即体験 | 必要 | 必要 | 必要 |
-| **導入コスト** | `pip install` + 1 コマンド | SDK 統合 | SaaS 登録 | SaaS 登録 |
-
-**RQG は「評価の精度を極める」ツールではなく、「品質チェックを運用に定着させる」ためのゲート基盤です。**
-
-## CLI コマンドマップ
-
-```
-rqg gate     ← 最初はこれだけ（eval + check のワンコマンド）
- ├── eval        回帰テスト実行
- ├── check       閾値判定 + レポート出力
- └── ingest      文書の FAISS インデックス作成
-
-rqg validate-connection  外部RAG endpoint の接続/契約検証
-rqg serve-http-rag      内蔵RAG を localhost の /search contract で公開
-rqg validate-pack       pack 導入前の設定ミス検証
-rqg history             gate decision の時系列比較と差分要約
-rqg monthly-summary     月次の blocked run / fallback / unresolved issue 要約
-rqg export-weekly-review  uncovered category から GitHub issue payload を生成
-rqg gen-cases    ケース草案を文書から自動生成
-rqg merge-cases  生成ケースを cases.csv に安全マージ
-rqg validate-cases  cases.csv のバリデーション
-rqg impact       文書変更の影響ケース特定
-
-rqg init-pack    テンプレートから pack を初期化
-rqg init-snapshot / create-sample-case / create-sample-gate  scaffold 用
-rqg migrate-cases  レガシー参照の移行
-rqg serve-dashboard     pack / run / monthly summary の閲覧UI
-```
-
-GitHub Actions 向けの導入テンプレートは `templates/github/` に同梱しています。
-Reusable workflow は `templates/github/workflows/rqg-reusable-gate.yml`、caller 例は `templates/github/rqg-gate-*.yml` を使います。caller 側は `run_pack_validation` と `pack_validation_preset` を使うと、導入前 preflight を profile 別に揃えられます。
-`rqg gate --dry-run` を使うと、isolated な `log_dir/dry-run/...` にだけ artifacts を書き、通知送信と gate history append を止めたまま gate 判定を確認できます。
-
-**日常で使うのは `gate` (+ `gen-cases` / `merge-cases`) の 2-3 コマンドです。**
-
-## 評価ツールとの違い
-
-Ragas・DeepEval・LangSmith・Braintrust などの LLM 評価ツールは「スコアを出す」ところで完結します。
-RQG は評価の先にある **運用サイクル全体** をカバーします。
-
-| 能力 | 一般的な評価ツール | RQG |
-|---|---|---|
-| 回答品質スコアリング | ✅ | ✅ |
-| 文書変更 → 影響ケース特定 (impact analysis) | — | ✅ |
-| pass/warn/fail リリース判定 (release gate) | — | ✅ CI 統合済み |
-| fail → 原因分類 → 改善アクション (next actions) | — | ✅ |
-| 週次レビューと指標蓄積 (weekly review) | — | ✅ |
-| severity 別運用 S1/S2 | — | ✅ |
-| ドメイン縦パック (pack 運用) | — | ✅ |
-| ケース自動追従 (migrate-cases) | — | ✅ |
-
-一言で言えば、**eval で終わらず、gate → review → fix → re-eval のループを回す基盤** です。
-
-## 縦パック（社内文書向けプロファイル）
-
-このリポジトリでは、社内文書を知識源とする業務支援 AI 向けに次の 2 プロファイルを同梱しています。
-
-- packs/hr: 人事・就業規程中心の HR プロファイル
-- packs/wiki: 社内 FAQ/ナレッジベース中心の Wiki/FAQ プロファイル
-
-- 文書更新時に impacted cases を特定する
-- 重大ケース（S1）を優先して eval/check する
-- pass/warn/fail で本番反映の可否を判断する
-- fail を review と改善アクションに接続する
-
-中身は水平な品質ゲート基盤のまま維持し、縦パックは導入しやすく価値を伝えるための入口として提供します。
-
-## 使い方（3パターン）
-
-### パターン A: ワンコマンド体験（30秒）
-
-```bash
-pip install -e ".[embedding]"
-export EMB_MODEL=local-fallback-hash-embedding
-rqg gate --pack packs/hr --mock --index-dir index --log-dir runs/quality
-cat runs/quality/gate-report.md
-```
-
-### パターン B: デモで全機能を体験（5-10分）
-
-```bash
-python -m rqg.demo.onboarding_quickstart
-# Wiki/FAQ profile:
-python -m rqg.demo.onboarding_quickstart --profile wiki
-```
-
-出力: `demo_runs/onboarding_quickstart/<run-id>/` 配下に summary.json, review.md, impact_review.md
-
-### パターン D: 外部 RAG contract を 1 本通す（10分）
-
-外部 endpoint 境界を先に固めたい場合は、`serve-http-rag -> validate-connection -> gate --dry-run -> gate -> notify -> history -> export-weekly-review` を 1 本で確認します。
-
-- localhost quickstart: `docs/demo/external-contract-localhost.md`
-- `gate-report.json` から weekly review payload までつなぐ downstream 例を含みます
-- 最後に tunnel 越しで次段へ進む準備も載せています
-
-### パターン C: 段階的に導入
-
-```bash
-# 1. テンプレート配置
-rqg init-pack packs/my_pack
-
-# 2. 導入前チェック
-rqg validate-pack --pack packs/my_pack
-
-# 3. Pack から直接 eval / check / gate
-rqg eval --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
-rqg check --pack packs/my_pack --log-dir runs/quality
-rqg gate --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
-
-# 4. 出力を確認
-cat runs/quality/gate-report.md
-cat runs/quality/gate-decision.json
-cat runs/quality/gate-report.json
-
-# 5. ケースを育てる（任意）
-rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.json --review-output runs/casegen/review.csv
-rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
-```
-
-Dry-run で本番用 history や通知を汚さずに gate 判定だけ見たい場合:
-
-```bash
-rqg gate --pack packs/my_pack \
-    --mock --index-dir index --log-dir runs/quality \
-    --dry-run
-```
-
-`--pack` は convenience option です。`cases` / `--docs` / `--cases-file` / `--quality-pack` / `--config` を明示した場合はその明示値を優先し、足りない値だけを `<pack>/cases.csv`、`<pack>/documents`、`<pack>/quality-pack.yml`、`<pack>/gate.yml` から補完します。
-
-`gate-report.json` は Markdown report、gate-decision.json、gate-history-summary.json を一つに束ねた machine-readable bundle です。GitHub 以外の downstream consumer はまずこの JSON を読むのが最短です。たとえば `rqg export-weekly-review --bundle-file runs/quality/gate-report.json` で weekly review issue payload を直接生成できます。
-
-`gate-decision.json` には judge fallback、judge reliability、embedding fallback、needs_human_review、pack metadata も含まれます。Proof Gate の PoC では、この JSON を中心に意思決定と UI 表示を揃えます。
-
-## ドキュメント案内
-
-README は製品概要と導入に絞っています。技術仕様・運用設計の詳細は docs を参照してください。
-
-- docs ポータル（日英）: docs/README.md
-
-導入とデモ:
-
-- docs/demo/onboarding-quickstart.md
-- docs/demo/fail-fix-cycle.md
-- docs/demo/impact-cycle.md
-- docs/demo/external-contract-localhost.md
-- packs/hr/README.md
-
-技術設計:
-
-- docs/adr/0001-model-boundaries.md
-- docs/adr/0002-product-charter-and-development-priorities.md
-
-運用設計（Phase2 / Phase2.5）:
-
-- docs/ops/archive/phase2-migration-playbook.md
-- docs/ops/archive/phase2-kickoff-board.md
-- docs/ops/operations/phase2-weekly-metrics-register.md
-- docs/ops/archive/phase2-5-hardening-plan.md
-- docs/ops/operations/phase2-5-weekly-metrics-register.md
-- docs/ops/operations/phase2-5-investigate-response-flow.md
-- docs/ops/operations/phase2-5-case-quality-weekly-review.md
-- docs/ops/operations/phase3-internal-docs-vertical-pack.md
-
-## ライセンス
-
-MIT
-
----
-
-## English
-
-RAG Quality Gate is a production-oriented quality-gate foundation that lets teams validate RAG/Agent quality in a repeatable way and connect results directly to release decisions.
-
-This product does not make models smarter. It provides a quality-management layer for safe updates and operations.
-
-As the first market-facing entry point, this repository includes internal-documents vertical packs (policy docs, FAQs, SOPs, knowledge pages, internal wiki style content).
-There are two bundled profiles: HR and Wiki/FAQ.
-
-## Architecture
-
-```mermaid
-flowchart LR
-    subgraph Input
-        D[documents/]
-        C[cases.csv]
-        Y[.rqg.yml]
-    end
-    subgraph "rqg gate (one command)"
-        I[ingest] -->|FAISS index| E[eval]
-        C --> E
-        E -->|JSONL logs| CH[check]
-        Y --> CH
-    end
-    CH --> R[gate-report.md]
-    CH --> J[gate-decision.json]
-    J -->|exit 0/1| CI[CI / CD pipeline]
-
-    style I fill:#e8f5e9
-    style E fill:#e3f2fd
-    style CH fill:#fff3e0
-```
-
-**Data flow**: documents → FAISS ingest → eval (keyword + retrieval + reference scoring) → check (threshold decision) → pass/fail output
-
-## Problems It Solves
-
-| Problem | RQG Solution |
-|---------|-------------|
-| Quality checks become inconsistent | `rqg gate` standardizes them — same criteria every time |
-| Critical cases are missed | S1/S2 severity separation; S1 requires 100% pass |
-| Unclear what to fix on failure | gate-report.md shows failure category + next action |
-| Ambiguous PR quality criteria | CI exit code 0/1 for machine-readable decisions |
-
-## Why RQG? (Competitive Positioning)
-
-| | RQG | Ragas / DeepEval | LangSmith | Braintrust |
-|---|---|---|---|---|
-| **Primary purpose** | Regression gate for ops teams | LLM evaluation framework | LLM observability | LLM eval + logging |
-| **Target user** | QA, ops, domain owners | ML engineers | Developers | Developers |
-| **CI gate** | Native (exit 0/1) | DIY | Webhook/API | DIY |
-| **Case asset management** | cases.csv + merge/validate | None | None | Datasets |
-| **Severity-based ops** | S1/S2 split with separate thresholds | None | None | None |
-| **No API key needed** | `--mock` mode for instant demo | Required | Required | Required |
-| **Setup cost** | `pip install` + 1 command | SDK integration | SaaS signup | SaaS signup |
-
-**RQG is not about maximizing evaluation accuracy — it's about making quality checks stick in daily operations.**
-
-## CLI Command Map
-
-```
-rqg gate     ← start here (eval + check in one command)
- ├── eval        run regression tests
- ├── check       threshold decision + report
- └── ingest      build FAISS index from documents
-
-rqg gen-cases    auto-generate draft cases from documents
-rqg merge-cases  safely merge generated cases into cases.csv
-rqg validate-cases  validate cases.csv rows
-rqg impact       identify impacted cases from document changes
-
-rqg init-pack    scaffold a pack from bundled templates
-rqg init-snapshot / create-sample-case / create-sample-gate  scaffolding
-rqg migrate-cases  migrate legacy evidence references
-rqg validate-connection  validate an external HTTP RAG endpoint
-rqg serve-http-rag      expose the built-in RAG behind localhost /search
-rqg export-weekly-review  export weekly review issue payload JSON
-```
-
-GitHub Actions templates live in `templates/github/`. Copy `templates/github/workflows/rqg-reusable-gate.yml` plus one caller example from `templates/github/rqg-gate-*.yml`. Use `pack_validation_preset` for common caller profiles (`local_docs`, `external`, `external_notify`).
-
-**Day-to-day you only need `gate` (+ `gen-cases` / `merge-cases`) — 2-3 commands.**
-
-## How RQG Differs From Eval Tools
-
-Tools like Ragas, DeepEval, LangSmith, and Braintrust stop at scoring.
-RQG covers the **full operational cycle** beyond evaluation.
-
-| Capability | Typical eval tools | RQG |
-|---|---|---|
-| Answer quality scoring | ✅ | ✅ |
-| Document change → impacted case detection (impact analysis) | — | ✅ |
-| pass/warn/fail release decision (release gate) | — | ✅ CI-integrated |
-| fail → root cause → corrective action (next actions) | — | ✅ |
-| Weekly review and metrics accumulation (weekly review) | — | ✅ |
-| Severity-based operations S1/S2 | — | ✅ |
-| Domain vertical packs (pack operations) | — | ✅ |
-| Automatic case migration (migrate-cases) | — | ✅ |
-
-In short: **RQG does not stop at eval — it drives the gate → review → fix → re-eval loop.**
-
-## Vertical Pack Profiles (Internal Documents)
-
-This repository includes two internal-documents profiles for assistant AI.
-
-- packs/hr: HR policy/procedure profile
-- packs/wiki: internal FAQ/wiki operations profile
-
-- Identify impacted cases when documents change
-- Protect critical cases (S1) first during eval/check
-- Decide production rollout with pass/warn/fail
-- Connect failures to review and corrective actions
-
-The product core remains horizontal. The vertical pack is an adoption and value-communication entry point.
-
-## Usage (3 Patterns)
-
-### Pattern A: One-Command Experience (30 seconds)
-
-Bash:
-
-```bash
-pip install -e ".[embedding]"
-export EMB_MODEL=local-fallback-hash-embedding
-rqg gate --pack packs/hr --mock --index-dir index --log-dir runs/quality
-cat runs/quality/gate-report.md
-```
-
-PowerShell:
-
-```powershell
-pip install -e ".[embedding]"
-$env:EMB_MODEL = "local-fallback-hash-embedding"
-rqg gate --pack packs\hr --mock --index-dir index --log-dir runs\quality
-Get-Content runs\quality\gate-report.md -Encoding UTF8
-```
-
-### Install Profiles
-
-Use the smallest install profile that matches the job:
-
-```bash
-# Pack validation, checking existing logs, and report viewing.
-pip install -e .
-
-# External RAG HTTP adapter and connection validation.
-pip install -e ".[external]"
-
-# Local document gate demos, FAISS index, and sentence-transformers features.
-pip install -e ".[embedding]"
-
-# Developer tools only: tests and formatting commands.
-pip install -e ".[dev]"
-
-# Full local test setup, including external, serve, and embedding extras.
-pip install -e ".[all]"
-```
-
-Full test runs that exercise local FAISS-backed retrieval should use `pip install -e ".[all]"`. `--mock` disables the LLM call, but local document retrieval still needs the embedding extra because it builds or reads a FAISS index.
-
-For client-facing local demos, set `EMB_MODEL=local-fallback-hash-embedding` to avoid first-run model downloads and keep the reliability section clean.
-
-### Pattern B: Full Demo (5-10 minutes)
-
-Bash / PowerShell:
-
-```bash
-python -m rqg.demo.onboarding_quickstart
-# Wiki/FAQ profile:
-python -m rqg.demo.onboarding_quickstart --profile wiki
-```
-
-Outputs: `demo_runs/onboarding_quickstart/<run-id>/` with summary.json, review.md, impact_review.md
-
-### Pattern D: External RAG contract proof (10 minutes)
-
-If you want to prove the external endpoint boundary first, use the `serve-http-rag -> validate-connection -> gate --dry-run -> gate -> notify -> history -> export-weekly-review` story.
-
-- localhost quickstart: `docs/demo/external-contract-localhost.md`
-- includes one downstream example from `gate-report.json` to weekly review payload
-- ends with tunnel-ready prep for the next external-like hop
-
-### Pattern C: Gradual Adoption
-
-Bash:
-
-```bash
-# 1. Scaffold a pack
-rqg init-pack packs/my_pack
-
-# 2. Validate pack onboarding inputs
-rqg validate-pack --pack packs/my_pack
-
-# 3. Run eval / check / gate from the pack root
-rqg eval --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
-rqg check --pack packs/my_pack --log-dir runs/quality
-rqg gate --pack packs/my_pack --mock --index-dir index --log-dir runs/quality
-
-# 4. Review outputs
-cat runs/quality/gate-report.md
-cat runs/quality/gate-decision.json
-
-# 5. Grow your cases (optional)
-rqg gen-cases --snapshot runs/snapshots/latest.json --output runs/casegen/cases.json --review-output runs/casegen/review.csv
-rqg merge-cases --cases packs/my_pack/cases.csv --review runs/casegen/review.csv --in-place
-```
-
-PowerShell:
-
-```powershell
-# Optional: keep Markdown and report output readable in Windows PowerShell.
-chcp 65001
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
-
-# 1. Scaffold a pack
-rqg init-pack packs\my_pack
-
-# 2. Validate pack onboarding inputs
-rqg validate-pack --pack packs\my_pack
-
-# 3. Run eval / check / gate from the pack root
-rqg eval --pack packs\my_pack --mock --index-dir index --log-dir runs\quality
-rqg check --pack packs\my_pack --log-dir runs\quality
-rqg gate --pack packs\my_pack --mock --index-dir index --log-dir runs\quality
-
-# 4. Review outputs
-Get-Content runs\quality\gate-report.md -Encoding UTF8
-python -m json.tool runs\quality\gate-decision.json
-python -m json.tool runs\quality\gate-report.json
-
-# 5. Grow your cases (optional)
-rqg gen-cases --snapshot runs\snapshots\latest.json --output runs\casegen\cases.json --review-output runs\casegen\review.csv
-rqg merge-cases --cases packs\my_pack\cases.csv --review runs\casegen\review.csv --in-place
-```
-
-`--pack` is a convenience option. When explicit `cases`, `--docs`, `--cases-file`, `--quality-pack`, or `--config` values are also provided, the explicit values win and only the missing paths are filled from `<pack>/cases.csv`, `<pack>/documents`, `<pack>/quality-pack.yml`, and `<pack>/gate.yml`.
-
-For virtual environment setup, environment variables, UTF-8 console notes, and more PowerShell examples, see [Windows PowerShell command guide](docs/user-guide/windows-powershell.md).
-
-If Markdown output looks garbled on Windows PowerShell, run the UTF-8 setup commands above or open the file in VS Code.
-
-## Documentation
-
-This README focuses on product overview and onboarding. See docs for detailed technical and operational guidance.
-
-- docs portal (JP/EN): docs/README.md
-
-Getting started and demos:
-
-- docs/user-guide/windows-powershell.md
-- docs/demo/vendor-poc-walkthrough.md
-- docs/demo/onboarding-quickstart.md
-- docs/demo/fail-fix-cycle.md
-- docs/demo/impact-cycle.md
-- docs/demo/external-contract-localhost.md
-- packs/hr/README.md
-
-Architecture:
-
-- docs/adr/0001-model-boundaries.md
-- docs/adr/0002-product-charter-and-development-priorities.md
-
-Operations (Phase2 / Phase2.5):
-
-- docs/ops/archive/phase2-migration-playbook.md
-- docs/ops/archive/phase2-kickoff-board.md
-- docs/ops/operations/phase2-weekly-metrics-register.md
-- docs/ops/archive/phase2-5-hardening-plan.md
-- docs/ops/operations/phase2-5-weekly-metrics-register.md
-- docs/ops/operations/phase2-5-investigate-response-flow.md
-- docs/ops/operations/phase2-5-case-quality-weekly-review.md
-- docs/ops/operations/phase3-internal-docs-vertical-pack.md
-
-## License
-
-MIT
+Proof Gate は、当面は CLI、Quality Pack、外部RAG adapter、レポートを中心に整備します。SaaS、認証、課金、マルチテナント、重い管理画面は、顧客PoCで繰り返し価値が確認できるまで後回しにします。

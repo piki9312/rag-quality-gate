@@ -77,6 +77,7 @@ class TestCLIHelp:
         assert "impact" in result.stdout
         assert "migrate-cases" in result.stdout
         assert "merge-cases" in result.stdout
+        assert "build-poc-set" in result.stdout
         assert "validate-cases" in result.stdout
         assert "validate-pack" in result.stdout
         assert "history" in result.stdout
@@ -160,6 +161,7 @@ class TestCLIParserContract:
             "--output-file",
             "--decision-file",
             "--bundle-file",
+            "--report-mode",
             "--dry-run",
             "--warn-exit-code",
         }.issubset(options)
@@ -184,6 +186,7 @@ class TestCLIParserContract:
             "--output-file",
             "--decision-file",
             "--bundle-file",
+            "--report-mode",
             "--warn-exit-code",
         }.issubset(options)
 
@@ -204,6 +207,25 @@ class TestCLIParserContract:
             "--connection-top-k",
             "--connection-timeout-sec",
             "--output",
+        }.issubset(options)
+
+    def test_build_poc_set_option_contract(self):
+        options = _subparser_option_strings("build-poc-set")
+
+        assert {
+            "--pack",
+            "--generated-cases",
+            "--template-cases",
+            "--output",
+            "--summary-output",
+            "--total",
+            "--s1",
+            "--s2",
+            "--s3",
+            "--risk-profile",
+            "--strict",
+            "--allow-fill",
+            "--warn-if-s1-missing",
         }.issubset(options)
 
     def test_downstream_review_and_external_contract_options(self):
@@ -583,6 +605,45 @@ class TestCLIParsing:
         assert args.dry_run is False
         assert args.report == "runs/merge_report.json"
 
+    def test_build_poc_set_args(self):
+        from rqg.cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "build-poc-set",
+                "--pack",
+                "packs/customer_support_pack",
+                "--generated-cases",
+                "generated_cases.csv",
+                "--template-cases",
+                "template_cases.csv",
+                "--output",
+                "cases.csv",
+                "--summary-output",
+                "case_set_summary.json",
+                "--total",
+                "30",
+                "--s1",
+                "10",
+                "--s2",
+                "15",
+                "--s3",
+                "5",
+                "--risk-profile",
+                "customer_support",
+                "--strict",
+            ]
+        )
+
+        assert args.command == "build-poc-set"
+        assert args.pack == "packs/customer_support_pack"
+        assert args.generated_cases == "generated_cases.csv"
+        assert args.template_cases == "template_cases.csv"
+        assert args.output == "cases.csv"
+        assert args.summary_output == "case_set_summary.json"
+        assert args.strict is True
+
     def test_init_pack_args(self):
         from rqg.cli import build_parser
 
@@ -740,6 +801,61 @@ class TestPhase1CLI:
         assert exit_code == 1
         assert "missing required documents/" in captured.err
         gate_mock.assert_not_called()
+
+    def test_build_poc_set_writes_pack_relative_outputs(self, tmp_path):
+        pack_dir = _create_pack_dir(tmp_path)
+        generated_cases = pack_dir / "generated_cases.csv"
+        template_cases = pack_dir / "template_cases.csv"
+        generated_cases.write_text(
+            "\n".join(
+                [
+                    "case_id,name,status,severity,eval_mode,question,expected_answer,expected_evidence,expected_keywords,category,risk_domain,required_action,evidence_required,owner_role,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes",
+                    "GEN-001,Generated S1,active,S1,evidence_keyword,refund generated one?,,refund.md#sec-1,refund;policy,refund,refund,block,true,support_quality_owner,refund.md,ops,100,2026-05-01,2026-05-01,poc_band:S1",
+                    "GEN-002,Generated S3,active,S2,evidence_keyword,deadline generated s3?,,deadline.md#sec-1,deadline;policy,deadline_procedure,deadline_procedure,allow_with_warning,true,support_ops,deadline.md,ops,85,2026-05-01,2026-05-01,poc_band:S3",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        template_cases.write_text(
+            "\n".join(
+                [
+                    "case_id,name,status,severity,eval_mode,question,expected_answer,expected_evidence,expected_keywords,category,risk_domain,required_action,evidence_required,owner_role,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes",
+                    "TPL-001,Template S1,active,S1,evidence_keyword,refund template one?,,refund.md#sec-2,refund;policy,refund,refund,block,true,support_quality_owner,refund.md,ops,100,2026-05-01,2026-05-01,template_id:refund_001;poc_band:S1",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        exit_code = main(
+            [
+                "build-poc-set",
+                "--pack",
+                str(pack_dir),
+                "--generated-cases",
+                "generated_cases.csv",
+                "--template-cases",
+                "template_cases.csv",
+                "--output",
+                "cases.csv",
+                "--summary-output",
+                "case_set_summary.json",
+                "--total",
+                "2",
+                "--s1",
+                "1",
+                "--s2",
+                "0",
+                "--s3",
+                "1",
+                "--risk-profile",
+                "customer_support",
+                "--strict",
+            ]
+        )
+
+        assert exit_code == 0
+        assert (pack_dir / "cases.csv").exists()
+        assert (pack_dir / "case_set_summary.json").exists()
 
     def test_eval_old_style_args_still_work_without_pack(self):
         with patch("rqg.cli.cmd_eval", return_value=0) as eval_mock:

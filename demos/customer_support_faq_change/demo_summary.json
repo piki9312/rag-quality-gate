@@ -1,0 +1,28 @@
+{
+  "before": {
+    "overall_decision": "ng",
+    "policy_status": "BLOCK",
+    "overall_pass_rate": 16.666666666666664,
+    "s1_pass_rate": 0.0,
+    "s1_failures": 3,
+    "report_path": "reports/before_stale_v1/gate-report.md",
+    "bundle_path": "reports/before_stale_v1/gate-report.json"
+  },
+  "after": {
+    "overall_decision": "ok",
+    "policy_status": "PASS",
+    "overall_pass_rate": 100.0,
+    "s1_pass_rate": 100.0,
+    "s1_failures": 0,
+    "report_path": "reports/after_v2_reference/gate-report.md",
+    "bundle_path": "reports/after_v2_reference/gate-report.json"
+  },
+  "representative_s1_failure": {
+    "case_id": "customer_support_faq_001",
+    "question": "キャンペーン商品は購入から7日以内なら返金できますか。",
+    "ai_answer": "キャンペーン商品は購入から7日以内なら返金できますか。については、通常商品もキャンペーン商品も、購入から7日以内であれば返金を案内できます。サポート担当者は、まず返金フォームを案内してください。",
+    "fail_reason": "Keyword match 33% < 80%",
+    "risk_domain": "refund"
+  },
+  "key_message": "FAQ変更後に古い回答が残る事故をProof GateがS1重大失敗として検知し、修正後のv2 reference runでS1失敗の解消とGate改善を確認できる。"
+}
