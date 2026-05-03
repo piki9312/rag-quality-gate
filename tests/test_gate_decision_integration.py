@@ -658,9 +658,7 @@ def test_check_command_rejects_full_report_mode_in_github_actions(monkeypatch, c
     assert "--report-mode full is not allowed" in captured.err
 
 
-def test_check_command_defaults_to_ci_report_mode_in_github_actions(
-    monkeypatch, capsys
-) -> None:
+def test_check_command_defaults_to_ci_report_mode_in_github_actions(monkeypatch, capsys) -> None:
     log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-github-actions-default"
     fake_result = CheckResult(
         run_id="run-github-actions-default",

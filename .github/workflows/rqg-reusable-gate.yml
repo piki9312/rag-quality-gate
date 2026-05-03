@@ -83,7 +83,7 @@ on:
         default: true
         type: boolean
       install_embedding_deps:
-        description: Install faiss-cpu for local document evaluation
+        description: Install local embedding dependencies for document evaluation
         required: false
         default: false
         type: boolean
@@ -221,7 +221,7 @@ jobs:
           eval "${{ inputs.rqg_install_command }}"
 
           if [ "${{ inputs.install_embedding_deps }}" = "true" ] || [ -n "${{ inputs.docs_dir }}" ]; then
-            python -m pip install "faiss-cpu>=1.7.4" --retries 10 --timeout 120 --progress-bar off
+            python -m pip install "faiss-cpu>=1.7.4" "sentence-transformers>=2.2.0" --retries 10 --timeout 120 --progress-bar off
           fi
 
       - name: Validate pack onboarding

@@ -207,7 +207,9 @@ def build_poc_case_set(
 
     actual_band_counts = {band: _count_band(selected, band) for band in ("S1", "S2", "S3")}
     if len(selected) < total:
-        blocking_warnings.append(f"Requested total={total}, but selected only {len(selected)} cases.")
+        blocking_warnings.append(
+            f"Requested total={total}, but selected only {len(selected)} cases."
+        )
     for band, requested in {"S1": s1, "S2": s2, "S3": s3}.items():
         actual = actual_band_counts[band]
         if actual < requested:
@@ -289,7 +291,9 @@ def build_case_set_summary(
     }
 
 
-def write_poc_cases_csv(path: str | Path, rows: list[dict[str, str]] | tuple[dict[str, str], ...]) -> Path:
+def write_poc_cases_csv(
+    path: str | Path, rows: list[dict[str, str]] | tuple[dict[str, str], ...]
+) -> Path:
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -304,7 +308,9 @@ def write_poc_cases_csv(path: str | Path, rows: list[dict[str, str]] | tuple[dic
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
-            writer.writerow({field: _stringify_csv_value(row.get(field, "")) for field in fieldnames})
+            writer.writerow(
+                {field: _stringify_csv_value(row.get(field, "")) for field in fieldnames}
+            )
     return output_path
 
 
@@ -343,7 +349,9 @@ def _scaled_risk_targets(profile_key: str, total: int) -> dict[str, int]:
     return scaled
 
 
-def _planned_source_targets(profile_key: str, band_targets: dict[str, int]) -> dict[str, dict[str, int]]:
+def _planned_source_targets(
+    profile_key: str, band_targets: dict[str, int]
+) -> dict[str, dict[str, int]]:
     planned: dict[str, dict[str, int]] = {}
     for band, defaults in _DEFAULT_SOURCE_TARGETS[profile_key].items():
         remaining = band_targets.get(band, 0)
@@ -384,7 +392,8 @@ def _row_to_candidate(row: dict[str, str], *, source_type: str) -> PocSetCandida
         "expected_keywords": ";".join(expected_keywords),
         "category": row.get("category", "") or "general",
         "risk_domain": risk_domain,
-        "required_action": row.get("required_action", "") or _infer_required_action(output_severity),
+        "required_action": row.get("required_action", "")
+        or _infer_required_action(output_severity),
         "evidence_required": _normalize_evidence_required(
             row.get("evidence_required", ""),
             expected_evidence=expected_evidence,
@@ -392,7 +401,8 @@ def _row_to_candidate(row: dict[str, str], *, source_type: str) -> PocSetCandida
         "owner_role": row.get("owner_role", ""),
         "source_doc": row.get("source_doc", ""),
         "owner": row.get("owner", ""),
-        "min_case_score": row.get("min_case_score", "") or ("100" if output_severity == "S1" else "85"),
+        "min_case_score": row.get("min_case_score", "")
+        or ("100" if output_severity == "S1" else "85"),
         "updated_at": row.get("updated_at", "") or _today_iso(),
         "last_reviewed_at": row.get("last_reviewed_at", ""),
         "notes": normalized_notes,
@@ -492,7 +502,11 @@ def _selection_rank(
     allowed_sources: list[str],
 ) -> tuple[int, int, int, str]:
     remaining = remaining_risk_targets.get(candidate.risk_domain, 0)
-    source_rank = allowed_sources.index(candidate.source_type) if candidate.source_type in allowed_sources else len(allowed_sources)
+    source_rank = (
+        allowed_sources.index(candidate.source_type)
+        if candidate.source_type in allowed_sources
+        else len(allowed_sources)
+    )
     return (-remaining, source_rank, _risk_domain_index(candidate.risk_domain), candidate.case_id)
 
 
@@ -507,7 +521,10 @@ def _append_selected(
             continue
         selected.append(candidate)
         selected_ids.add(candidate.case_id)
-        if candidate.risk_domain in remaining_risk_targets and remaining_risk_targets[candidate.risk_domain] > 0:
+        if (
+            candidate.risk_domain in remaining_risk_targets
+            and remaining_risk_targets[candidate.risk_domain] > 0
+        ):
             remaining_risk_targets[candidate.risk_domain] -= 1
 
 
@@ -527,7 +544,9 @@ def _count_band(selected: list[PocSetCandidate], band: str) -> int:
 
 def _question_signature(question: str, expected_evidence: tuple[str, ...], risk_domain: str) -> str:
     normalized_question = " ".join(question.lower().split())
-    normalized_evidence = "|".join(sorted({item.strip().lower() for item in expected_evidence if item.strip()}))
+    normalized_evidence = "|".join(
+        sorted({item.strip().lower() for item in expected_evidence if item.strip()})
+    )
     return f"{risk_domain.lower()}||{normalized_question}||{normalized_evidence}"
 
 

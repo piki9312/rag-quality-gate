@@ -954,9 +954,7 @@ def _case_next_actions(
     if record.judge_fallback_used:
         actions.append("Re-run judge-enabled evaluation and confirm model/API connectivity")
     if record.embedding_fallback_used:
-        actions.append(
-            "Check embedding dependency/model loading and rebuild the retrieval index"
-        )
+        actions.append("Check embedding dependency/model loading and rebuild the retrieval index")
     if needs_human_review:
         actions.append("Route this case for manual review before approving the update")
 
@@ -1174,12 +1172,16 @@ def _render_customer_report_markdown(
     case_rows = build_case_report_rows(result, failure_actions)
     target_docs = collect_target_docs(result)
     pack_metadata = pack_metadata or {}
-    client_name = str(
-        pack_metadata.get("client_name") or pack_metadata.get("tenant_name") or "未設定"
-    ).strip() or "未設定"
-    app_name = str(
-        pack_metadata.get("app_name") or pack_metadata.get("pack_name") or "未設定"
-    ).strip() or "未設定"
+    client_name = (
+        str(
+            pack_metadata.get("client_name") or pack_metadata.get("tenant_name") or "未設定"
+        ).strip()
+        or "未設定"
+    )
+    app_name = (
+        str(pack_metadata.get("app_name") or pack_metadata.get("pack_name") or "未設定").strip()
+        or "未設定"
+    )
     change_event = pack_metadata.get("change_event")
     s1_failures = [
         row
@@ -1229,7 +1231,11 @@ def _render_customer_report_markdown(
         lines.append("|---------|------|-------------|--------------|")
         for row in s1_failures:
             next_actions = row["next_actions"] or []
-            action_text = "; ".join(_customer_action_label(item) for item in next_actions) if next_actions else "-"
+            action_text = (
+                "; ".join(_customer_action_label(item) for item in next_actions)
+                if next_actions
+                else "-"
+            )
             lines.append(
                 "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
                     case_id=row["case_id"],
@@ -1526,7 +1532,11 @@ def _render_customer_report_markdown_clean(
         lines.append("|---------|------|-------------|--------------|")
         for row in s1_failures:
             next_actions = row["next_actions"] or []
-            action_text = "; ".join(_customer_action_label(item) for item in next_actions) if next_actions else "-"
+            action_text = (
+                "; ".join(_customer_action_label(item) for item in next_actions)
+                if next_actions
+                else "-"
+            )
             lines.append(
                 "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
                     case_id=row["case_id"],

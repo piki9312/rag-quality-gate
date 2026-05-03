@@ -86,21 +86,15 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,
         "artifact_paths": {
-            "report_path": safe_relative_artifact_path(
-                artifacts.report_path, artifact_base_dir
-            ),
+            "report_path": safe_relative_artifact_path(artifacts.report_path, artifact_base_dir),
             "decision_path": safe_relative_artifact_path(
                 artifacts.decision_path, artifact_base_dir
             ),
             "history_summary_path": safe_relative_artifact_path(
                 artifacts.history_summary_path, artifact_base_dir
             ),
-            "history_path": safe_relative_artifact_path(
-                artifacts.history_path, artifact_base_dir
-            ),
-            "bundle_path": safe_relative_artifact_path(
-                artifacts.bundle_path, artifact_base_dir
-            ),
+            "history_path": safe_relative_artifact_path(artifacts.history_path, artifact_base_dir),
+            "bundle_path": safe_relative_artifact_path(artifacts.bundle_path, artifact_base_dir),
         },
     }
 

@@ -23,13 +23,9 @@ def cmd_monthly_summary(args: argparse.Namespace) -> int:
     print(markdown, end="")
 
     markdown_output = (
-        Path(args.markdown_output)
-        if args.markdown_output
-        else log_dir / "monthly-summary.md"
+        Path(args.markdown_output) if args.markdown_output else log_dir / "monthly-summary.md"
     )
-    json_output = (
-        Path(args.json_output) if args.json_output else log_dir / "monthly-summary.json"
-    )
+    json_output = Path(args.json_output) if args.json_output else log_dir / "monthly-summary.json"
     saved_markdown = write_text_output(markdown_output, markdown)
     saved_json = write_json_data_output(json_output, summary)
     print(f"Saved monthly summary markdown to {saved_markdown}")

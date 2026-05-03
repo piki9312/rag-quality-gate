@@ -41,7 +41,9 @@ def _case_row(
 ) -> dict[str, str]:
     row_notes = notes
     if source_type:
-        row_notes = f"{row_notes};source_type:{source_type}" if row_notes else f"source_type:{source_type}"
+        row_notes = (
+            f"{row_notes};source_type:{source_type}" if row_notes else f"source_type:{source_type}"
+        )
     return {
         "case_id": case_id,
         "name": case_id,
