@@ -1,9 +1,29 @@
 from __future__ import annotations
 
+import importlib.util
+import sys
 from pathlib import Path
 
-from scripts import create_customer_support_faq_change_sales_demo as sales_demo
-from scripts import create_faq_change_accident_demo as accident_demo
+
+def _load_script_module(module_name: str, script_name: str):
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / script_name
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+sales_demo = _load_script_module(
+    "create_customer_support_faq_change_sales_demo",
+    "create_customer_support_faq_change_sales_demo.py",
+)
+accident_demo = _load_script_module(
+    "create_faq_change_accident_demo",
+    "create_faq_change_accident_demo.py",
+)
 
 
 def assert_customer_safe_path(value: str) -> None:
