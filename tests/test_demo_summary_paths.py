@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts import (
-    create_customer_support_faq_change_sales_demo as sales_demo,
-    create_faq_change_accident_demo as accident_demo,
-)
+from scripts import create_customer_support_faq_change_sales_demo as sales_demo
+from scripts import create_faq_change_accident_demo as accident_demo
 
 
 def assert_customer_safe_path(value: str) -> None:

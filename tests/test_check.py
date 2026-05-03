@@ -20,8 +20,7 @@ from rqg.quality.check import (
     render_gate_markdown,
     run_check,
 )
-from rqg.quality.models import QARunRecord
-from rqg.quality.models import QATestCase
+from rqg.quality.models import QARunRecord, QATestCase
 from rqg.quality.staleness import CaseStalenessItem
 
 # ------------------------------------------------------------------
