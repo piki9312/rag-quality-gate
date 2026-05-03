@@ -26,6 +26,7 @@ from .staleness import CaseStalenessItem, summarize_case_staleness
 logger = logging.getLogger(__name__)
 
 VALID_AGGREGATION_POLICIES = {"latest_run", "window"}
+VALID_REPORT_MODES = {"ci", "redacted", "full"}
 
 
 def normalize_aggregation_policy(value: object) -> str:
@@ -43,6 +44,25 @@ def normalize_aggregation_policy(value: object) -> str:
 
     allowed = ", ".join(sorted(VALID_AGGREGATION_POLICIES))
     raise ValueError(f"Invalid aggregation_policy '{value}' (allowed: {allowed})")
+
+
+def normalize_report_mode(value: object) -> str:
+    """Normalize additive report mode names."""
+    if value is None:
+        return "full"
+
+    normalized = str(value).strip().lower().replace("-", "_")
+    if normalized == "":
+        return "full"
+    if normalized in VALID_REPORT_MODES:
+        return normalized
+
+    allowed = ", ".join(sorted(VALID_REPORT_MODES))
+    raise ValueError(f"Invalid report_mode '{value}' (allowed: {allowed})")
+
+
+def report_mode_exposes_sensitive_fields(report_mode: object) -> bool:
+    return normalize_report_mode(report_mode) == "full"
 
 
 # ------------------------------------------------------------------
@@ -818,41 +838,52 @@ def build_customer_report_summary(result: CheckResult) -> dict[str, object]:
 def build_case_report_rows(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
+    *,
+    report_mode: str = "full",
 ) -> list[dict[str, object]]:
     case_by_id = {case.case_id: case for case in result.active_cases}
     rows: list[dict[str, object]] = []
+    expose_sensitive_fields = report_mode_exposes_sensitive_fields(report_mode)
 
     for record in sorted(result.current_records, key=_case_report_sort_key):
         case = case_by_id.get(record.case_id)
         needs_human_review = _case_needs_human_review(record)
-        rows.append(
-            {
-                "case_id": record.case_id,
-                "name": case.name if case else record.case_id,
-                "question": case.question if case else "",
-                "severity": case.severity if case else record.severity,
-                "category": case.category if case else record.category,
-                "risk_domain": (
-                    case.risk_domain if case and case.risk_domain else record.risk_domain or ""
-                ),
-                "ai_answer": record.answer,
-                "expected_answer": case.expected_answer if case else "",
-                "expected_evidence": list(case.expected_evidence) if case else [],
-                "retrieved_evidence": list(record.retrieved_ids),
-                "decision": _case_decision(record, needs_human_review),
-                "pass_fail": "pass" if record.passed else "fail",
-                "fail_reason": _case_fail_reason(record),
-                "next_actions": _case_next_actions(
-                    record,
-                    failure_actions=failure_actions,
-                    needs_human_review=needs_human_review,
-                ),
-                "judge_fallback_used": bool(record.judge_fallback_used),
-                "judge_fallback_reason": record.judge_fallback_reason,
-                "judge_reliability": result.judge_reliability,
-                "needs_human_review": needs_human_review,
-            }
-        )
+        row: dict[str, object] = {
+            "case_id": record.case_id,
+            "name": case.name if case else record.case_id,
+            "severity": case.severity if case else record.severity,
+            "category": case.category if case else record.category,
+            "risk_domain": (
+                case.risk_domain if case and case.risk_domain else record.risk_domain or ""
+            ),
+            "decision": _case_decision(record, needs_human_review),
+            "pass_fail": "pass" if record.passed else "fail",
+            "fail_reason": (
+                _case_fail_reason(record)
+                if expose_sensitive_fields
+                else _safe_case_fail_reason(record)
+            ),
+            "next_actions": _case_next_actions(
+                record,
+                failure_actions=failure_actions,
+                needs_human_review=needs_human_review,
+            ),
+            "judge_fallback_used": bool(record.judge_fallback_used),
+            "judge_fallback_reason": record.judge_fallback_reason,
+            "judge_reliability": result.judge_reliability,
+            "needs_human_review": needs_human_review,
+        }
+        if expose_sensitive_fields:
+            row.update(
+                {
+                    "question": case.question if case else "",
+                    "ai_answer": record.answer,
+                    "expected_answer": case.expected_answer if case else "",
+                    "expected_evidence": list(case.expected_evidence) if case else [],
+                    "retrieved_evidence": list(record.retrieved_ids),
+                }
+            )
+        rows.append(row)
 
     return rows
 
@@ -886,6 +917,16 @@ def _case_fail_reason(record: QARunRecord) -> str:
     reasons = [str(reason).strip() for reason in record.reasons if str(reason).strip()]
     if reasons:
         return "; ".join(reasons)
+    if record.failure_category:
+        return str(record.failure_category)
+    if record.failure_type:
+        return str(record.failure_type)
+    if record.passed:
+        return ""
+    return "Gate check failed"
+
+
+def _safe_case_fail_reason(record: QARunRecord) -> str:
     if record.failure_category:
         return str(record.failure_category)
     if record.failure_type:
@@ -1556,8 +1597,13 @@ def render_gate_markdown(
     history_decisions: list[GateDecision] | None = None,
     compare_offset: int = 1,
     trend_window: int = 5,
+    report_mode: str = "full",
 ) -> str:
     """Render a gate check result as customer-facing Markdown plus ops details."""
+    normalized_report_mode = normalize_report_mode(report_mode)
+    if normalized_report_mode != "full":
+        return render_gate_safe_summary_markdown(result, report_mode=normalized_report_mode)
+
     customer_markdown = _render_customer_report_markdown_clean(
         result,
         failure_actions=failure_actions,
@@ -1571,3 +1617,30 @@ def render_gate_markdown(
         trend_window=trend_window,
     )
     return customer_markdown.rstrip() + "\n\n" + operations_markdown.lstrip()
+
+
+def render_gate_safe_summary_markdown(result: CheckResult, *, report_mode: str) -> str:
+    """Render aggregate-only gate output for CI/redacted report modes."""
+    summary = build_customer_report_summary(result)
+    status = result.gate_status.upper()
+    policy_status = _policy_status_for_result(result).upper()
+    s1_failure_count = max(0, result.s1_total - result.s1_passed)
+    lines = [
+        "# Proof Gate Safe Summary",
+        "",
+        f"- report_mode: {normalize_report_mode(report_mode)}",
+        f"- gate_status: {status}",
+        f"- policy_status: {policy_status}",
+        f"- run_id: {result.run_id}",
+        f"- total_cases: {summary['total_cases']}",
+        f"- passed_cases: {summary['passed_cases']}",
+        f"- failed_cases: {summary['failed_cases']}",
+        f"- s1_failed_cases: {s1_failure_count}",
+        f"- overall_pass_rate: {result.overall_rate:.1f}%",
+        f"- s1_pass_rate: {result.s1_rate:.1f}%",
+        f"- aggregation_policy: {result.aggregation_policy}",
+        f"- main_failure_category: {summary['main_failure_category']}",
+        f"- needs_human_review: {'YES' if result.needs_human_review else 'NO'}",
+        f"- judge_fallback_count: {result.judge_fallback_count}",
+    ]
+    return "\n".join(lines) + "\n"

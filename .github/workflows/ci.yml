@@ -9,6 +9,9 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+permissions:
+  contents: read
+
 jobs:
   install-smoke:
     runs-on: ubuntu-latest
@@ -33,7 +36,7 @@ jobs:
             smoke-command: |
               rqg --help
               rqg doctor
-              rqg gate --pack examples/demo-client-pack --mock --reset-log-dir --index-dir indexes/ci-demo-client-pack --log-dir logs/ci-demo-client-pack
+              rqg gate --pack examples/demo-client-pack --mock --reset-log-dir --index-dir indexes/ci-demo-client-pack --log-dir logs/ci-demo-client-pack --report-mode ci
 
     steps:
       - uses: actions/checkout@v4
@@ -89,6 +92,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}
+          retention-days: 14
           path: .coverage
 
   quality-gate:
@@ -131,7 +135,8 @@ jobs:
             --s1-threshold 0 \
             --overall-threshold 0 \
             --output-file runs/quality/gate-report.md \
-            --decision-file runs/quality/gate-decision.json
+            --decision-file runs/quality/gate-decision.json \
+            --report-mode ci
 
       - name: Verify legacy match migration baseline
         run: |
@@ -261,10 +266,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: quality-gate-artifacts
+          retention-days: 14
+          if-no-files-found: ignore
           path: |
-            runs/quality/
-            runs/quality-audit/
-            index/snapshots/
+            runs/quality/gate-decision.json
+            runs/quality/gate-history-summary.json
 
   phase2-5-exit-gate:
     runs-on: ubuntu-latest
@@ -295,7 +301,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase2-5-exit-gate
-          path: runs/phase2-5-exit-gate/
+          retention-days: 14
+          path: runs/phase2-5-exit-gate/summary.json
 
   phase2-5-risk-closure:
     runs-on: ubuntu-latest
@@ -325,7 +332,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase2-5-risk-closure
-          path: runs/phase2-5-risk-closure/
+          retention-days: 14
+          path: runs/phase2-5-risk-closure/summary.json
 
   internal-docs-pack-contract:
     runs-on: ubuntu-latest

@@ -10,6 +10,7 @@ from pathlib import Path
 
 from rqg.cli import main as cli_main
 from rqg.quality.poc_set import build_case_set_summary, load_poc_candidates
+from rqg.quality.reporting import safe_relative_artifact_path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DIR = ROOT / "packs" / "customer_support_pack"
@@ -74,8 +75,8 @@ def _phase_stats(bundle: dict[str, object], report_path: Path, bundle_path: Path
         overall_pass_rate=overall_pass_rate,
         s1_pass_rate=s1_pass_rate,
         s1_failures=s1_failures,
-        report_path=str(report_path),
-        bundle_path=str(bundle_path),
+        report_path=safe_relative_artifact_path(report_path, SUMMARY_PATH.parent),
+        bundle_path=safe_relative_artifact_path(bundle_path, SUMMARY_PATH.parent),
     )
 
 

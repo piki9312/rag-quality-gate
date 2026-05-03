@@ -168,6 +168,8 @@ def test_build_poc_set_generates_30_case_output_and_summary(tmp_path: Path) -> N
     assert len(result.selected_rows) == 30
     assert result.summary["severity_mix"] == {"S1": 10, "S2": 15, "S3": 5}
     assert result.summary["runtime_severity_mix"] == {"S1": 10, "S2": 20}
+    assert result.summary["runtime_severity_mapping"] == {"S1": "S1", "S2": "S2", "S3": "S2"}
+    assert "selection/classification band" in str(result.summary["runtime_severity_note"])
 
 
 def test_s3_selection_band_rounds_runtime_severity_to_s2(tmp_path: Path) -> None:
@@ -210,8 +212,10 @@ def test_s3_selection_band_rounds_runtime_severity_to_s2(tmp_path: Path) -> None
 
     row_by_id = {row["case_id"]: row for row in result.selected_rows}
     assert row_by_id["GEN-S3-001"]["severity"] == "S2"
+    assert "poc_band:S3" in row_by_id["GEN-S3-001"]["notes"]
     assert result.summary["severity_mix"] == {"S1": 1, "S2": 0, "S3": 1}
     assert result.summary["runtime_severity_mix"] == {"S1": 1, "S2": 1}
+    assert result.summary["runtime_severity_mapping"]["S3"] == "S2"
 
 
 def test_strict_fails_when_s1_pool_is_short(tmp_path: Path) -> None:
@@ -405,3 +409,5 @@ def test_output_writer_preserves_additive_columns_and_loader_compatibility(tmp_p
 
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["total"] == 30
+    assert summary["runtime_severity_mapping"]["S3"] == "S2"
+    assert "severity=S2" in summary["runtime_severity_note"]

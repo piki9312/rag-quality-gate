@@ -5,17 +5,17 @@
     "overall_pass_rate": 16.666666666666664,
     "s1_pass_rate": 0.0,
     "s1_failures": 3,
-    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.md",
-    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.json"
+    "report_path": "reports/before_stale_v1/gate-report.md",
+    "bundle_path": "reports/before_stale_v1/gate-report.json"
   },
   "after": {
-    "overall_decision": "needs_confirmation",
-    "policy_status": "NEEDS_HUMAN_REVIEW",
+    "overall_decision": "ok",
+    "policy_status": "PASS",
     "overall_pass_rate": 100.0,
     "s1_pass_rate": 100.0,
     "s1_failures": 0,
-    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.md",
-    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.json"
+    "report_path": "reports/after_v2_reference/gate-report.md",
+    "bundle_path": "reports/after_v2_reference/gate-report.json"
   },
   "representative_s1_failure": {
     "case_id": "customer_support_faq_001",

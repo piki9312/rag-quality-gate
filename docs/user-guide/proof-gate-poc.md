@@ -94,6 +94,10 @@ Proof Gate付き RAG AI導入診断PoCです。
 - before / after 比較メモ
 - 月額Monitorに引き継ぐ確認項目
 
+## Runtime severity note
+
+PoC case selection may use `S3` as a classification band in `case_set_summary.json`, but `S3` is not a new runtime severity. The runtime CSV contract remains compatible with the existing formal schema: S3-selected rows are emitted in `cases.csv` as `severity=S2`, while the original selection band is preserved in `notes` as `poc_band:S3`. This is why `case_set_summary.json` includes both `severity_mix` and `runtime_severity_mix`.
+
 ## 顧客データの扱い
 
 ローカルPoCでは、文書・ケース・評価ログは指定した作業ディレクトリに保存されます。外部RAG診断では、Proof Gate は外部RAG APIの検索結果と回答を評価し、顧客RAG本体を置き換えません。

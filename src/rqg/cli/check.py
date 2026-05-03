@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
@@ -17,6 +18,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         load_quality_pack_payload,
         load_review_steward_from_quality_pack,
         normalize_aggregation_policy,
+        normalize_report_mode,
         render_gate_markdown,
         run_check,
     )
@@ -28,9 +30,20 @@ def cmd_check(args: argparse.Namespace) -> int:
         GateReportArtifacts,
         HistorySummaryJsonReportAdapter,
         MarkdownFileReportAdapter,
+        safe_relative_artifact_path,
     )
 
     try:
+        report_mode = normalize_report_mode(getattr(args, "report_mode", None))
+        if os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true" and report_mode == "full":
+            import sys
+
+            print(
+                "[ERROR] --report-mode full is not allowed when GITHUB_ACTIONS=true",
+                file=sys.stderr,
+            )
+            return 1
+
         if args.config and Path(args.config).exists():
             config = GateConfig.from_yaml(args.config)
         else:
@@ -105,8 +118,12 @@ def cmd_check(args: argparse.Namespace) -> int:
         failure_actions=failure_actions,
         pack_metadata=pack_metadata,
         history_decisions=history_decisions,
+        report_mode=report_mode,
     )
-    print(md)
+    if report_mode == "ci":
+        print(md.rstrip())
+    else:
+        print(md)
 
     report_path = (
         Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
@@ -132,25 +149,41 @@ def cmd_check(args: argparse.Namespace) -> int:
         history_path=decision_history_path,
         bundle_path=bundle_path,
         check_result=result,
+        report_mode=report_mode,
     )
 
     report_path = MarkdownFileReportAdapter(report_path).emit(artifacts)
-    print(f"Saved report to {report_path}")
+    if report_mode != "ci":
+        print(f"Saved report to {report_path}")
 
     history_summary_path = HistorySummaryJsonReportAdapter(history_summary_path).emit(artifacts)
-    print(f"Saved history summary JSON to {history_summary_path}")
+    if report_mode != "ci":
+        print(f"Saved history summary JSON to {history_summary_path}")
 
     decision_path = DecisionJsonReportAdapter(decision_path).emit(artifacts)
-    print(f"Saved gate decision JSON to {decision_path}")
+    if report_mode != "ci":
+        print(f"Saved gate decision JSON to {decision_path}")
 
     bundle_path = BundleJsonReportAdapter(bundle_path).emit(artifacts)
-    print(f"Saved report bundle JSON to {bundle_path}")
+    if report_mode != "ci":
+        print(f"Saved report bundle JSON to {bundle_path}")
 
     appended_history = DecisionHistoryJsonlReportAdapter(
         decision_history_path,
         enabled=append_history,
     ).emit(artifacts)
-    if appended_history is not None:
+    if report_mode == "ci":
+        artifact_base_dir = bundle_path.parent
+        artifact_refs = [
+            safe_relative_artifact_path(report_path, artifact_base_dir),
+            safe_relative_artifact_path(history_summary_path, artifact_base_dir),
+            safe_relative_artifact_path(decision_path, artifact_base_dir),
+            safe_relative_artifact_path(bundle_path, artifact_base_dir),
+        ]
+        if appended_history is not None:
+            artifact_refs.append(safe_relative_artifact_path(appended_history, artifact_base_dir))
+        print(f"Artifact refs: {', '.join(artifact_refs)}")
+    elif appended_history is not None:
         print(f"Appended gate decision JSONL to {appended_history}")
     else:
         print("Skipped gate decision JSONL append")
@@ -164,9 +197,13 @@ def cmd_check(args: argparse.Namespace) -> int:
             decision_path=decision_path,
         )
     else:
-        print("Skipped notifications")
+        if report_mode != "ci":
+            print("Skipped notifications")
     for warning in warnings:
-        print(f"[WARN] {warning}")
+        if report_mode == "ci":
+            print("[WARN] notification warning omitted in ci report mode")
+        else:
+            print(f"[WARN] {warning}")
 
     status = result.gate_status.upper()
     print(f"Gate: {status}")

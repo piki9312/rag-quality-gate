@@ -270,6 +270,16 @@ def build_case_set_summary(
             "S1": runtime_severity_mix.get("S1", 0),
             "S2": runtime_severity_mix.get("S2", 0),
         },
+        "runtime_severity_note": (
+            "S3 is a PoC selection/classification band only. The runtime case schema "
+            "continues to emit S1/S2 severities, so selected S3 candidates are written "
+            "to cases.csv as severity=S2 with poc_band:S3 retained in notes."
+        ),
+        "runtime_severity_mapping": {
+            "S1": "S1",
+            "S2": "S2",
+            "S3": "S2",
+        },
         "risk_domain_mix": dict(sorted(risk_domain_mix.items())),
         "source_mix": {
             "template": source_mix.get("template", 0),

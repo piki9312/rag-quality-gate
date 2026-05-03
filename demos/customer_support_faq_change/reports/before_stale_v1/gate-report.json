@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "decision": {
-    "run_id": "cc15aea9-174",
+    "run_id": "2c3f56bf-688",
     "status": "fail",
     "policy_status": "block",
     "reasons": [
@@ -11,14 +11,10 @@
       "case:customer_support_faq_002: 0.0 < 100.0 (無料トライアル解約期限)",
       "case:customer_support_faq_003: 0.0 < 100.0 (年額契約の自動更新通知)",
       "case:customer_support_faq_005: 0.0 < 85.0 (解約後のデータ保持)",
-      "case:customer_support_faq_006: 0.0 < 85.0 (契約変更の反映条件)",
-      "Embedding fallback detected; confirm embedding dependency/model health and rebuild the index",
-      "Human review required because run reliability signals were degraded"
+      "case:customer_support_faq_006: 0.0 < 85.0 (契約変更の反映条件)"
     ],
     "reason_codes": [
-      "answer_quality_fail",
-      "embedding_fallback_used",
-      "needs_human_review"
+      "answer_quality_fail"
     ],
     "metrics": {
       "overall_pass_rate": 16.666666666666664,
@@ -27,7 +23,7 @@
       "current_runs": 6.0,
       "baseline_runs": 0.0,
       "judge_fallback_count": 0.0,
-      "embedding_fallback_count": 6.0,
+      "embedding_fallback_count": 0.0,
       "avg_faithfulness": 79.66666666666667,
       "faithfulness_scored_runs": 6.0,
       "avg_judge_relevance": 100.0,
@@ -51,42 +47,26 @@
           "customer_support_faq_005",
           "customer_support_faq_006"
         ]
-      },
-      {
-        "failure_category": "embedding_reliability",
-        "count": 6,
-        "action": "Check embedding dependency/model loading and rebuild the retrieval index",
-        "owner": "T.B.D.",
-        "due": "T.B.D.",
-        "affected_case_ids": []
-      },
-      {
-        "failure_category": "human_review",
-        "count": 1,
-        "action": "Route this run for manual review before approving the update",
-        "owner": "T.B.D.",
-        "due": "T.B.D.",
-        "affected_case_ids": []
       }
     ],
     "judge_fallback_used": false,
     "judge_fallback_count": 0,
     "judge_failure_types": {},
     "judge_reliability": "high",
-    "embedding_fallback_used": true,
-    "embedding_fallback_count": 6,
-    "embedding_fallback_reason": "model_load_error",
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
     "retrieval_reliability": "high",
     "fallback_summary": {
       "judge_fallback_used": false,
       "judge_fallback_count": 0,
       "judge_failure_types": {},
-      "embedding_fallback_used": true,
-      "embedding_fallback_count": 6,
-      "embedding_fallback_reason": "model_load_error",
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
       "retrieval_reliability": "high"
     },
-    "needs_human_review": true,
+    "needs_human_review": false,
     "approval": {
       "approval_required": false,
       "approval_status": "not_required",
@@ -112,7 +92,7 @@
       "created_from_template": true,
       "description": "Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks."
     },
-    "created_at": "2026-05-01T09:30:26.056567Z"
+    "created_at": "2026-05-02T13:51:51.039177Z"
   },
   "history_summary": {
     "entries": 1,
@@ -125,18 +105,17 @@
     "compare_offset": 1,
     "trend_window": 5,
     "summary_lines": [
-      "- Latest status: FAIL (cc15aea9-174)",
+      "- Latest status: FAIL (2c3f56bf-688)",
       "- Current streak: FAIL x1",
       "- Overall pass rate trend: 16.7% -> 16.7% (0.0 pts)",
       "- S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)",
-      "- Failure action coverage (last 1): 2/3 categories (66.7%)",
+      "- Failure action coverage (last 1): 0/1 categories (0.0%)",
       "- Uncovered categories: synthesis (5 cases)",
       "- Judge reliability: HIGH",
-      "- Embedding fallback: YES (model_load_error)",
-      "- Needs human review: YES"
+      "- Needs human review: NO"
     ],
     "trend": {
-      "latest_run_id": "cc15aea9-174",
+      "latest_run_id": "2c3f56bf-688",
       "latest_status": "FAIL",
       "streak_count": 1,
       "status_sequence": [
@@ -220,14 +199,14 @@
     },
     "comparison": null,
     "failure_action_coverage": {
-      "total_categories": 3,
-      "covered_categories": 2,
-      "coverage_rate": 66.66666666666666,
+      "total_categories": 1,
+      "covered_categories": 0,
+      "coverage_rate": 0.0,
       "uncovered_categories": [
         {
           "failure_category": "synthesis",
           "total_count": 5,
-          "last_seen_run_id": "cc15aea9-174",
+          "last_seen_run_id": "2c3f56bf-688",
           "covered": false,
           "affected_case_ids": [
             "customer_support_faq_001",
@@ -244,7 +223,7 @@
       {
         "failure_category": "synthesis",
         "total_count": 5,
-        "last_seen_run_id": "cc15aea9-174",
+        "last_seen_run_id": "2c3f56bf-688",
         "covered": false,
         "affected_case_ids": [
           "customer_support_faq_001",
@@ -269,34 +248,34 @@
       "judge_fallback_count": 0,
       "judge_failure_types": {},
       "judge_reliability": "high",
-      "embedding_fallback_used": true,
-      "embedding_fallback_count": 6,
-      "embedding_fallback_reason": "model_load_error",
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
       "retrieval_reliability": "high",
       "fallback_summary": {
         "judge_fallback_used": false,
         "judge_fallback_count": 0,
         "judge_failure_types": {},
-        "embedding_fallback_used": true,
-        "embedding_fallback_count": 6,
-        "embedding_fallback_reason": "model_load_error",
+        "embedding_fallback_used": false,
+        "embedding_fallback_count": 0,
+        "embedding_fallback_reason": null,
         "retrieval_reliability": "high"
       },
       "policy_status": "block",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     "review_steward": "proofgate-demo"
   },
-  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: NG\n- policy_status: BLOCK\n- summary: NG。重大な失敗または block 判定があるため、本番反映は推奨されません。\n\n## 2. 実行概要\n- client_name: 未設定\n- app_name: 未設定\n- run_id: cc15aea9-174\n- current_cases: 6\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: YES\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 16.7%\n- s1_pass_rate: 0.0%\n- failed_cases: 5\n- s1_failed_cases: 3\n- main_failure_category: synthesis (5 cases)\n\n## 5. S1重大失敗一覧\n| Case ID | Name | Fail Reason | Next Actions |\n|---------|------|-------------|--------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | Keyword match 33% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する; このケースは人手で確認してから更新を承認する |\n| customer_support_faq_002 | 無料トライアル解約期限 | Keyword match 0% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する; このケースは人手で確認してから更新を承認する |\n| customer_support_faq_003 | 年額契約の自動更新通知 | Keyword match 67% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する; このケースは人手で確認してから更新を承認する |\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ng | fail | Keyword match 33% < 80% |\n| customer_support_faq_002 | 無料トライアル解約期限 | S1 | ng | fail | Keyword match 0% < 80% |\n| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | ng | fail | Keyword match 67% < 80% |\n| customer_support_faq_005 | 解約後のデータ保持 | S2 | ng | fail | Keyword match 0% < 50% |\n| customer_support_faq_006 | 契約変更の反映条件 | S2 | ng | fail | Keyword match 33% < 50% |\n| customer_support_faq_004 | 料金ページの確認先 | S2 | needs_confirmation | pass | - |\n\n## 7. 推奨アクション\n- 失敗ケースの原因を確認し、週次レビューで対応方針を決める\n- 本番反映を止め、該当FAQ・規約・回答ロジックを修正する\n- 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する\n- このケースは人手で確認してから更新を承認する\n- 注意付きで扱い、必要に応じてサポート担当者の確認を入れる\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: FAIL\n\n### Executive Summary\n- Production promotion: Not recommended. This pack should not be promoted to production.\n- Gate status: FAIL\n- Policy status: BLOCK\n- S1 pass rate: 0.0% (3 S1 failures)\n- Overall pass rate: 16.7%\n- Main failure category: synthesis (5 cases)\n- Recommended next action: Define next action in weekly review issue\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: FAIL (cc15aea9-174)\n- Current streak: FAIL x1\n- Overall pass rate trend: 16.7% -> 16.7% (0.0 pts)\n- S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)\n- Failure action coverage (last 1): 2/3 categories (66.7%)\n- Uncovered categories: synthesis (5 cases)\n- Judge reliability: HIGH\n- Embedding fallback: YES (model_load_error)\n- Needs human review: YES\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 0.0% | 100.0% | NG |\n| Overall pass rate | 16.7% | 85.0% | NG |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 79.7% | 6 |\n| Avg judge relevance | 100.0% | 6 |\n| Avg evidence recall | 100.0% | 6 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: YES\n- Embedding fallback reason: model_load_error\n- Retrieval reliability: HIGH\n- Needs human review: YES\n\n### Case Staleness\n- Fresh review rate: 100.0% (6/6) within 45 days\n- No stale active cases detected.\n\n### Per-case Failures\n| Case | Actual | Threshold | Name |\n|------|--------|-----------|------|\n| case:customer_support_faq_001 | 0.0% | 100.0% | キャンペーン商品の返金条件 |\n| case:customer_support_faq_002 | 0.0% | 100.0% | 無料トライアル解約期限 |\n| case:customer_support_faq_003 | 0.0% | 100.0% | 年額契約の自動更新通知 |\n| case:customer_support_faq_005 | 0.0% | 85.0% | 解約後のデータ保持 |\n| case:customer_support_faq_006 | 0.0% | 85.0% | 契約変更の反映条件 |\n\n### Failure Categories\n| Category | Count |\n|----------|-------|\n| synthesis | 5 |\n\n### Next Actions\n| Failure Category | Affected Cases | Next Action | Owner | Due |\n|------------------|----------------|-------------|-------|-----|\n| synthesis | customer_support_faq_001, customer_support_faq_002, customer_support_faq_003, customer_support_faq_005, customer_support_faq_006 | Define next action in weekly review issue | T.B.D. | T.B.D. |\n| embedding_reliability | - | Check embedding dependency/model loading and rebuild the retrieval index | T.B.D. | T.B.D. |\n| human_review | - | Route this run for manual review before approving the update | T.B.D. | T.B.D. |\n",
+  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: NG\n- policy_status: BLOCK\n- summary: NG。重大な失敗または block 判定があるため、本番反映は推奨されません。\n\n## 2. 実行概要\n- client_name: 未設定\n- app_name: 未設定\n- run_id: 2c3f56bf-688\n- current_cases: 6\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 16.7%\n- s1_pass_rate: 0.0%\n- failed_cases: 5\n- s1_failed_cases: 3\n- main_failure_category: synthesis (5 cases)\n\n## 5. S1重大失敗一覧\n| Case ID | Name | Fail Reason | Next Actions |\n|---------|------|-------------|--------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | Keyword match 33% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; このケースは人手で確認してから更新を承認する |\n| customer_support_faq_002 | 無料トライアル解約期限 | Keyword match 0% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; このケースは人手で確認してから更新を承認する |\n| customer_support_faq_003 | 年額契約の自動更新通知 | Keyword match 67% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; このケースは人手で確認してから更新を承認する |\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ng | fail | Keyword match 33% < 80% |\n| customer_support_faq_002 | 無料トライアル解約期限 | S1 | ng | fail | Keyword match 0% < 80% |\n| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | ng | fail | Keyword match 67% < 80% |\n| customer_support_faq_005 | 解約後のデータ保持 | S2 | ng | fail | Keyword match 0% < 50% |\n| customer_support_faq_006 | 契約変更の反映条件 | S2 | ng | fail | Keyword match 33% < 50% |\n| customer_support_faq_004 | 料金ページの確認先 | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- 失敗ケースの原因を確認し、週次レビューで対応方針を決める\n- 本番反映を止め、該当FAQ・規約・回答ロジックを修正する\n- このケースは人手で確認してから更新を承認する\n- 注意付きで扱い、必要に応じてサポート担当者の確認を入れる\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: FAIL\n\n### Executive Summary\n- Production promotion: Not recommended. This pack should not be promoted to production.\n- Gate status: FAIL\n- Policy status: BLOCK\n- S1 pass rate: 0.0% (3 S1 failures)\n- Overall pass rate: 16.7%\n- Main failure category: synthesis (5 cases)\n- Recommended next action: Define next action in weekly review issue\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: FAIL (2c3f56bf-688)\n- Current streak: FAIL x1\n- Overall pass rate trend: 16.7% -> 16.7% (0.0 pts)\n- S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)\n- Failure action coverage (last 1): 0/1 categories (0.0%)\n- Uncovered categories: synthesis (5 cases)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 0.0% | 100.0% | NG |\n| Overall pass rate | 16.7% | 85.0% | NG |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 79.7% | 6 |\n| Avg judge relevance | 100.0% | 6 |\n| Avg evidence recall | 100.0% | 6 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (6/6) within 45 days\n- No stale active cases detected.\n\n### Per-case Failures\n| Case | Actual | Threshold | Name |\n|------|--------|-----------|------|\n| case:customer_support_faq_001 | 0.0% | 100.0% | キャンペーン商品の返金条件 |\n| case:customer_support_faq_002 | 0.0% | 100.0% | 無料トライアル解約期限 |\n| case:customer_support_faq_003 | 0.0% | 100.0% | 年額契約の自動更新通知 |\n| case:customer_support_faq_005 | 0.0% | 85.0% | 解約後のデータ保持 |\n| case:customer_support_faq_006 | 0.0% | 85.0% | 契約変更の反映条件 |\n\n### Failure Categories\n| Category | Count |\n|----------|-------|\n| synthesis | 5 |\n\n### Next Actions\n| Failure Category | Affected Cases | Next Action | Owner | Due |\n|------------------|----------------|-------------|-------|-----|\n| synthesis | customer_support_faq_001, customer_support_faq_002, customer_support_faq_003, customer_support_faq_005, customer_support_faq_006 | Define next action in weekly review issue | T.B.D. | T.B.D. |\n",
   "artifact_paths": {
-    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.md",
-    "decision_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_before_stale_v1_5d49776b4d6849d9bdeb87676d975939\\gate-decision.json",
-    "history_summary_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_before_stale_v1_5d49776b4d6849d9bdeb87676d975939\\gate_logs\\gate-history-summary.json",
-    "history_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_before_stale_v1_5d49776b4d6849d9bdeb87676d975939\\gate_logs\\gate-decisions.jsonl",
-    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\before_stale_v1\\gate-report.json"
+    "report_path": "gate-report.md",
+    "decision_path": "gate-decision.json",
+    "history_summary_path": "gate-history-summary.json",
+    "history_path": "gate-decisions.jsonl",
+    "bundle_path": "gate-report.json"
   },
   "report_version": "1.0",
-  "executed_at": "2026-05-01T09:30:26.056567Z",
+  "executed_at": "2026-05-02T13:51:51.039177Z",
   "client_name": "demo_customer",
   "app_name": "Customer Support AI Quality Pack",
   "target_docs": [
@@ -312,7 +291,7 @@
     "overall_pass_rate": 16.666666666666664,
     "s1_pass_rate": 0.0,
     "main_failure_category": "synthesis (5 cases)",
-    "needs_human_review": true,
+    "needs_human_review": false,
     "judge_fallback_count": 0
   },
   "overall_decision": "ng",
@@ -338,7 +317,6 @@
       "next_actions": [
         "Define next action in weekly review issue",
         "block",
-        "Check embedding dependency/model loading and rebuild the retrieval index",
         "Route this case for manual review before approving the update"
       ],
       "judge_fallback_used": false,
@@ -367,7 +345,6 @@
       "next_actions": [
         "Define next action in weekly review issue",
         "block",
-        "Check embedding dependency/model loading and rebuild the retrieval index",
         "Route this case for manual review before approving the update"
       ],
       "judge_fallback_used": false,
@@ -396,7 +373,6 @@
       "next_actions": [
         "Define next action in weekly review issue",
         "block",
-        "Check embedding dependency/model loading and rebuild the retrieval index",
         "Route this case for manual review before approving the update"
       ],
       "judge_fallback_used": false,
@@ -424,14 +400,12 @@
       "fail_reason": "Keyword match 0% < 50%",
       "next_actions": [
         "Define next action in weekly review issue",
-        "allow_with_warning",
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
+        "allow_with_warning"
       ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_006",
@@ -453,14 +427,12 @@
       "fail_reason": "Keyword match 33% < 50%",
       "next_actions": [
         "Define next action in weekly review issue",
-        "allow_with_warning",
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
+        "allow_with_warning"
       ],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_004",
@@ -477,17 +449,14 @@
       "retrieved_evidence": [
         "demo_faq.md@c9620c0a1569d464#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     }
   ]
 }

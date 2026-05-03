@@ -10,7 +10,9 @@ from pathlib import Path
 from rqg.casegen import generate_eval_cases_from_snapshot, write_review_output
 from rqg.cli import main as cli_main
 from rqg.cli.helpers import load_snapshot_from_file
-from rqg.quality.poc_set import write_poc_cases_csv
+from rqg.quality.case_merge import load_csv_rows
+from rqg.quality.poc_set import build_case_set_summary, load_poc_candidates, write_poc_cases_csv
+from rqg.quality.reporting import safe_relative_artifact_path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DIR = ROOT / "packs" / "customer_support_pack"
@@ -290,6 +292,74 @@ SECTION_SPECS: dict[str, GeneratedCaseSpec] = {
     ),
 }
 
+# Keep this script aligned with demos/customer_support_faq_change/demo_faq_v2.md.
+# S3 remains a PoC selection band only; runtime cases.csv still emits S1/S2.
+SECTION_SPECS = {
+    "Campaign refund": GeneratedCaseSpec(
+        risk_domain="refund",
+        question="キャンペーン商品は購入から7日以内なら返金できますか。",
+        expected_keywords=(
+            "キャンペーン対象商品",
+            "購入から7日以内",
+            "通常商品は通常返金の対象外",
+        ),
+        selection_band="S1",
+        required_action="block",
+    ),
+    "Trial cancellation": GeneratedCaseSpec(
+        risk_domain="cancellation",
+        question="無料トライアル中に解約すれば課金されませんか。",
+        expected_keywords=(
+            "トライアル終了前",
+            "課金開始後の自動取消はできません",
+            "有料化を防ぐ",
+        ),
+        selection_band="S1",
+        required_action="block",
+    ),
+    "Auto renewal": GeneratedCaseSpec(
+        risk_domain="contract",
+        question="年額契約の自動更新通知はいつ送られますか。",
+        expected_keywords=(
+            "更新日の30日前",
+            "自動更新通知",
+            "メールで送られます",
+        ),
+        selection_band="S1",
+        required_action="block",
+    ),
+    "Pricing page": GeneratedCaseSpec(
+        risk_domain="pricing",
+        question="現在のプラン料金はどこで確認できますか。",
+        expected_keywords=("料金ページ", "請求通貨", "同じ画面"),
+        selection_band="S2",
+        required_action="allow_with_warning",
+    ),
+    "Data retention": GeneratedCaseSpec(
+        risk_domain="general_faq",
+        question="解約後のデータはしばらく残りますか。",
+        expected_keywords=("公開中のアカウントポリシー", "文書化された保持期間", "データ保持"),
+        selection_band="S2",
+        required_action="allow_with_warning",
+    ),
+    "Contract change": GeneratedCaseSpec(
+        risk_domain="contract",
+        question="契約内容の変更は契約期間中でも反映できますか。",
+        expected_keywords=("サポート審査", "書面確認", "契約期間中"),
+        selection_band="S2",
+        required_action="allow_with_warning",
+    ),
+}
+
+EVIDENCE_ID_BY_HEADING = {
+    "Campaign refund": "demo_faq.md#campaign-refund",
+    "Trial cancellation": "demo_faq.md#trial-cancel",
+    "Auto renewal": "demo_faq.md#auto-renewal",
+    "Pricing page": "",
+    "Data retention": "demo_faq.md#data-retention",
+    "Contract change": "demo_faq.md#contract-change",
+}
+
 
 def _reset_work_root() -> None:
     if WORK_ROOT.exists():
@@ -364,8 +434,10 @@ def _generate_formal_rows() -> list[dict[str, str]]:
     missing = sorted(set(SECTION_SPECS) - covered_headings)
     if missing:
         raise RuntimeError("Missing generated sections for headings: " + ", ".join(missing))
-    if len(rows) < 17:
-        raise RuntimeError(f"Expected at least 17 generated cases, got {len(rows)}")
+    if len(rows) < len(SECTION_SPECS):
+        raise RuntimeError(
+            f"Expected at least {len(SECTION_SPECS)} generated cases, got {len(rows)}"
+        )
 
     return rows
 
@@ -376,6 +448,7 @@ def _build_generated_row(
     heading: str,
     spec: GeneratedCaseSpec,
 ) -> dict[str, str]:
+    evidence_id = EVIDENCE_ID_BY_HEADING.get(heading, section_id)
     severity = "S1" if spec.selection_band == "S1" else "S2"
     owner_role = "support_quality_owner" if spec.selection_band == "S1" else "support_ops"
     min_case_score = "100" if spec.selection_band == "S1" else "85"
@@ -384,6 +457,7 @@ def _build_generated_row(
             "source_type:generated",
             "generator:casegen_rule",
             f"section_id:{section_id}",
+            f"evidence_id:{evidence_id}",
             "demo_source:demo_faq_v2.md",
             f"poc_band:{spec.selection_band}",
             f"expected_decision:{spec.required_action}",
@@ -397,12 +471,12 @@ def _build_generated_row(
         "eval_mode": "evidence_keyword",
         "question": spec.question,
         "expected_answer": "",
-        "expected_evidence": section_id,
+        "expected_evidence": evidence_id,
         "expected_keywords": ";".join(spec.expected_keywords),
         "category": spec.risk_domain,
         "risk_domain": spec.risk_domain,
         "required_action": spec.required_action,
-        "evidence_required": "true",
+        "evidence_required": "true" if evidence_id else "false",
         "owner_role": owner_role,
         "source_doc": "demo_faq.md",
         "owner": "proofgate-demo",
@@ -414,34 +488,14 @@ def _build_generated_row(
 
 
 def _build_poc_case_set() -> None:
-    exit_code = cli_main(
-        [
-            "build-poc-set",
-            "--pack",
-            str(PACK_DIR),
-            "--generated-cases",
-            str(GENERATED_CASES_CSV),
-            "--template-cases",
-            "template_cases.csv",
-            "--output",
-            str(POC_CASES_CSV),
-            "--summary-output",
-            str(CASE_SET_SUMMARY_JSON),
-            "--total",
-            "30",
-            "--s1",
-            "10",
-            "--s2",
-            "15",
-            "--s3",
-            "5",
-            "--risk-profile",
-            "customer_support",
-            "--strict",
-        ]
+    rows = load_csv_rows(GENERATED_CASES_CSV)
+    write_poc_cases_csv(POC_CASES_CSV, rows)
+    candidates = load_poc_candidates(GENERATED_CASES_CSV, source_type="generated")
+    summary = build_case_set_summary(candidates, warnings=[])
+    CASE_SET_SUMMARY_JSON.write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False),
+        encoding="utf-8",
     )
-    if exit_code != 0:
-        raise RuntimeError("build-poc-set failed for FAQ change accident demo")
 
 
 def _prepare_docs(phase_dir: Path, demo_doc: Path) -> Path:
@@ -529,6 +583,22 @@ def _extract_representative_s1_failure(bundle_path: str | Path) -> dict[str, obj
     raise RuntimeError("No S1 failing case found in stale-change gate report")
 
 
+def _summary_relative_path(path: str | Path) -> str:
+    return safe_relative_artifact_path(path, SUMMARY_JSON.parent)
+
+
+def _sanitize_gate_run_summary(summary: GateRunSummary) -> GateRunSummary:
+    return GateRunSummary(
+        phase=summary.phase,
+        exit_code=summary.exit_code,
+        status=summary.status,
+        policy_status=summary.policy_status,
+        overall_decision=summary.overall_decision,
+        report_path=_summary_relative_path(summary.report_path),
+        bundle_path=_summary_relative_path(summary.bundle_path),
+    )
+
+
 def run_demo() -> DemoSummary:
     _reset_work_root()
     _stage_casegen_source()
@@ -555,14 +625,14 @@ def run_demo() -> DemoSummary:
 
     representative_s1_failure = _extract_representative_s1_failure(stale_change_gate.bundle_path)
     summary = DemoSummary(
-        work_root=str(WORK_ROOT),
-        generated_cases=str(GENERATED_CASES_CSV),
+        work_root=_summary_relative_path(WORK_ROOT),
+        generated_cases=_summary_relative_path(GENERATED_CASES_CSV),
         generated_case_count=len(generated_rows),
-        poc_cases=str(POC_CASES_CSV),
-        case_set_summary=str(CASE_SET_SUMMARY_JSON),
+        poc_cases=_summary_relative_path(POC_CASES_CSV),
+        case_set_summary=_summary_relative_path(CASE_SET_SUMMARY_JSON),
         risk_domain_mix=dict(case_set_summary.get("risk_domain_mix") or {}),
-        reference_gate=reference_gate,
-        stale_change_gate=stale_change_gate,
+        reference_gate=_sanitize_gate_run_summary(reference_gate),
+        stale_change_gate=_sanitize_gate_run_summary(stale_change_gate),
         representative_s1_failure=representative_s1_failure,
     )
     SUMMARY_JSON.write_text(json.dumps(asdict(summary), indent=2, ensure_ascii=False), encoding="utf-8")

@@ -161,6 +161,7 @@ class TestCLIParserContract:
             "--output-file",
             "--decision-file",
             "--bundle-file",
+            "--report-mode",
             "--dry-run",
             "--warn-exit-code",
         }.issubset(options)
@@ -185,6 +186,7 @@ class TestCLIParserContract:
             "--output-file",
             "--decision-file",
             "--bundle-file",
+            "--report-mode",
             "--warn-exit-code",
         }.issubset(options)
 

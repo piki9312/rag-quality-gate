@@ -44,6 +44,10 @@ After:
 - `sales_demo_script.md`: 2分営業デモ台本
 - `demo_summary.json`: before / after の機械可読サマリ
 
+## Runtime severity note
+
+`case_set_summary.json` reports both PoC selection bands and runtime severities. `S3` is used only to explain PoC case selection and classification. It is not a new runtime severity. Generated `cases.csv` rows keep the existing formal schema by writing S3-selected cases as `severity=S2` and preserving the original band in `notes` as `poc_band:S3`.
+
 ## before reportで見る場所
 
 - `1. 本番反映判定`: `NG` と `policy_status: BLOCK`

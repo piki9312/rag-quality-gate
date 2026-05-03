@@ -1,17 +1,11 @@
 {
   "schema_version": "1.0",
   "decision": {
-    "run_id": "3449f46b-993",
+    "run_id": "3ab6031e-087",
     "status": "pass",
-    "policy_status": "needs_human_review",
-    "reasons": [
-      "Embedding fallback detected; confirm embedding dependency/model health and rebuild the index",
-      "Human review required because run reliability signals were degraded"
-    ],
-    "reason_codes": [
-      "embedding_fallback_used",
-      "needs_human_review"
-    ],
+    "policy_status": "pass",
+    "reasons": [],
+    "reason_codes": [],
     "metrics": {
       "overall_pass_rate": 100.0,
       "s1_pass_rate": 100.0,
@@ -19,7 +13,7 @@
       "current_runs": 6.0,
       "baseline_runs": 0.0,
       "judge_fallback_count": 0.0,
-      "embedding_fallback_count": 6.0,
+      "embedding_fallback_count": 0.0,
       "avg_faithfulness": 80.0,
       "faithfulness_scored_runs": 6.0,
       "avg_judge_relevance": 100.0,
@@ -29,46 +23,29 @@
       "fresh_case_review_rate": 100.0,
       "stale_case_count": 0.0
     },
-    "next_actions": [
-      {
-        "failure_category": "embedding_reliability",
-        "count": 6,
-        "action": "Check embedding dependency/model loading and rebuild the retrieval index",
-        "owner": "T.B.D.",
-        "due": "T.B.D.",
-        "affected_case_ids": []
-      },
-      {
-        "failure_category": "human_review",
-        "count": 1,
-        "action": "Route this run for manual review before approving the update",
-        "owner": "T.B.D.",
-        "due": "T.B.D.",
-        "affected_case_ids": []
-      }
-    ],
+    "next_actions": [],
     "judge_fallback_used": false,
     "judge_fallback_count": 0,
     "judge_failure_types": {},
     "judge_reliability": "high",
-    "embedding_fallback_used": true,
-    "embedding_fallback_count": 6,
-    "embedding_fallback_reason": "model_load_error",
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
     "retrieval_reliability": "high",
     "fallback_summary": {
       "judge_fallback_used": false,
       "judge_fallback_count": 0,
       "judge_failure_types": {},
-      "embedding_fallback_used": true,
-      "embedding_fallback_count": 6,
-      "embedding_fallback_reason": "model_load_error",
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
       "retrieval_reliability": "high"
     },
-    "needs_human_review": true,
+    "needs_human_review": false,
     "approval": {
-      "approval_required": true,
-      "approval_status": "pending",
-      "approver_role": "quality_owner",
+      "approval_required": false,
+      "approval_status": "not_required",
+      "approver_role": null,
       "approved_by": null,
       "approved_at": null,
       "approval_reason": null
@@ -90,7 +67,7 @@
       "created_from_template": true,
       "description": "Customer-facing FAQ RAG quality pack for refund, cancellation, pricing, contract, deadline, and eligibility risks."
     },
-    "created_at": "2026-05-01T09:31:20.041099Z"
+    "created_at": "2026-05-02T13:51:57.586162Z"
   },
   "history_summary": {
     "entries": 1,
@@ -103,17 +80,15 @@
     "compare_offset": 1,
     "trend_window": 5,
     "summary_lines": [
-      "- Latest status: PASS (3449f46b-993)",
+      "- Latest status: PASS (3ab6031e-087)",
       "- Current streak: PASS x1",
       "- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)",
       "- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)",
-      "- Failure action coverage (last 1): 2/2 categories (100.0%)",
       "- Judge reliability: HIGH",
-      "- Embedding fallback: YES (model_load_error)",
-      "- Needs human review: YES"
+      "- Needs human review: NO"
     ],
     "trend": {
-      "latest_run_id": "3449f46b-993",
+      "latest_run_id": "3ab6031e-087",
       "latest_status": "PASS",
       "streak_count": 1,
       "status_sequence": [
@@ -196,13 +171,7 @@
       "window_size": 1
     },
     "comparison": null,
-    "failure_action_coverage": {
-      "total_categories": 2,
-      "covered_categories": 2,
-      "coverage_rate": 100.0,
-      "uncovered_categories": [],
-      "window_size": 1
-    },
+    "failure_action_coverage": null,
     "uncovered_categories": [],
     "stale_case_review": {
       "stale_after_days": 45,
@@ -218,34 +187,34 @@
       "judge_fallback_count": 0,
       "judge_failure_types": {},
       "judge_reliability": "high",
-      "embedding_fallback_used": true,
-      "embedding_fallback_count": 6,
-      "embedding_fallback_reason": "model_load_error",
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
       "retrieval_reliability": "high",
       "fallback_summary": {
         "judge_fallback_used": false,
         "judge_fallback_count": 0,
         "judge_failure_types": {},
-        "embedding_fallback_used": true,
-        "embedding_fallback_count": 6,
-        "embedding_fallback_reason": "model_load_error",
+        "embedding_fallback_used": false,
+        "embedding_fallback_count": 0,
+        "embedding_fallback_reason": null,
         "retrieval_reliability": "high"
       },
-      "policy_status": "needs_human_review",
-      "needs_human_review": true
+      "policy_status": "pass",
+      "needs_human_review": false
     },
     "review_steward": "proofgate-demo"
   },
-  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: 要確認\n- policy_status: NEEDS_HUMAN_REVIEW\n- summary: 要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。\n\n## 2. 実行概要\n- client_name: 未設定\n- app_name: 未設定\n- run_id: 3449f46b-993\n- current_cases: 6\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: YES\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 100.0%\n- s1_pass_rate: 100.0%\n- failed_cases: 0\n- s1_failed_cases: 0\n- main_failure_category: None\n\n## 5. S1重大失敗一覧\n- 該当なし\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | needs_confirmation | pass | - |\n| customer_support_faq_002 | 無料トライアル解約期限 | S1 | needs_confirmation | pass | - |\n| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | needs_confirmation | pass | - |\n| customer_support_faq_004 | 料金ページの確認先 | S2 | needs_confirmation | pass | - |\n| customer_support_faq_005 | 解約後のデータ保持 | S2 | needs_confirmation | pass | - |\n| customer_support_faq_006 | 契約変更の反映条件 | S2 | needs_confirmation | pass | - |\n\n## 7. 推奨アクション\n- 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する\n- このケースは人手で確認してから更新を承認する\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: PASS\n\n### Executive Summary\n- Production promotion: Recommended. This pack meets the configured gate thresholds.\n- Gate status: PASS\n- Policy status: NEEDS_HUMAN_REVIEW\n- S1 pass rate: 100.0% (0 S1 failures)\n- Overall pass rate: 100.0%\n- Main failure category: None\n- Recommended next action: Check embedding dependency/model loading and rebuild the retrieval index\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: PASS (3449f46b-993)\n- Current streak: PASS x1\n- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- Failure action coverage (last 1): 2/2 categories (100.0%)\n- Judge reliability: HIGH\n- Embedding fallback: YES (model_load_error)\n- Needs human review: YES\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 100.0% | 100.0% | OK |\n| Overall pass rate | 100.0% | 85.0% | OK |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 80.0% | 6 |\n| Avg judge relevance | 100.0% | 6 |\n| Avg evidence recall | 100.0% | 6 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: YES\n- Embedding fallback reason: model_load_error\n- Retrieval reliability: HIGH\n- Needs human review: YES\n\n### Case Staleness\n- Fresh review rate: 100.0% (6/6) within 45 days\n- No stale active cases detected.\n\n### Next Actions\n| Failure Category | Affected Cases | Next Action | Owner | Due |\n|------------------|----------------|-------------|-------|-----|\n| embedding_reliability | - | Check embedding dependency/model loading and rebuild the retrieval index | T.B.D. | T.B.D. |\n| human_review | - | Route this run for manual review before approving the update | T.B.D. | T.B.D. |\n",
+  "report_markdown": "# Proof Gate 実行レポート\n\n## 1. 本番反映判定\n- 判定: OK\n- policy_status: PASS\n- summary: OK。現在の閾値では本番反映可能です。\n\n## 2. 実行概要\n- client_name: 未設定\n- app_name: 未設定\n- run_id: 3ab6031e-087\n- current_cases: 6\n- baseline_runs: 0\n- aggregation_policy: latest_run\n- needs_human_review: NO\n- judge_fallback_count: 0\n\n## 3. 対象ドキュメントと変更点\n- target_docs: demo_faq.md\n- change_event: 未設定\n\n## 4. 実行結果サマリ\n- overall_pass_rate: 100.0%\n- s1_pass_rate: 100.0%\n- failed_cases: 0\n- s1_failed_cases: 0\n- main_failure_category: None\n\n## 5. S1重大失敗一覧\n- 該当なし\n\n## 6. ケース別結果\n| Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |\n|---------|------|----------|----------|-----------|-------------|\n| customer_support_faq_001 | キャンペーン商品の返金条件 | S1 | ok | pass | - |\n| customer_support_faq_002 | 無料トライアル解約期限 | S1 | ok | pass | - |\n| customer_support_faq_003 | 年額契約の自動更新通知 | S1 | ok | pass | - |\n| customer_support_faq_004 | 料金ページの確認先 | S2 | ok | pass | - |\n| customer_support_faq_005 | 解約後のデータ保持 | S2 | ok | pass | - |\n| customer_support_faq_006 | 契約変更の反映条件 | S2 | ok | pass | - |\n\n## 7. 推奨アクション\n- 現時点で追加対応は不要です。\n\n## 8. 月額Monitorで継続確認すべき項目\n- FAQ・規約・料金表の更新後にS1ケースを再実行する\n- 返金・解約・料金・契約条件に関する回答を継続確認する\n- プロンプト変更後に高リスクケースを再実行する\n- 新しい問い合わせ傾向に応じて高リスクケースを追加する\n- 月次レポートで重大誤回答リスクと改善状況を確認する\n\n## 9. 運用向け詳細\n以下は運用・開発向けの詳細です。\n\n## RAG Quality Gate: PASS\n\n### Executive Summary\n- Production promotion: Recommended. This pack meets the configured gate thresholds.\n- Gate status: PASS\n- Policy status: PASS\n- S1 pass rate: 100.0% (0 S1 failures)\n- Overall pass rate: 100.0%\n- Main failure category: None\n- Recommended next action: No immediate action required.\n\n- Aggregation Policy: latest_run\n\n### Recent History Summary\n- Latest status: PASS (3ab6031e-087)\n- Current streak: PASS x1\n- Overall pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- S1 pass rate trend: 100.0% -> 100.0% (0.0 pts)\n- Judge reliability: HIGH\n- Needs human review: NO\n\n| Metric | Actual | Threshold | Status |\n|--------|--------|-----------|--------|\n| S1 pass rate | 100.0% | 100.0% | OK |\n| Overall pass rate | 100.0% | 85.0% | OK |\n| Avg evidence recall | 100.0% | 70.0% | OK |\n| Fresh case review rate | 100.0% | 80.0% | OK |\n\n### Observed Metrics\n| Metric | Average | Scored Runs |\n|--------|---------|-------------|\n| Avg faithfulness | 80.0% | 6 |\n| Avg judge relevance | 100.0% | 6 |\n| Avg evidence recall | 100.0% | 6 |\n\n### Reliability\n- Judge reliability: HIGH\n- Judge fallback count: 0\n- Embedding fallback: NO\n- Retrieval reliability: HIGH\n- Needs human review: NO\n\n### Case Staleness\n- Fresh review rate: 100.0% (6/6) within 45 days\n- No stale active cases detected.\n",
   "artifact_paths": {
-    "report_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.md",
-    "decision_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_after_v2_reference_b795477e9e934fc5a123f9403ebc320b\\gate-decision.json",
-    "history_summary_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_after_v2_reference_b795477e9e934fc5a123f9403ebc320b\\gate_logs\\gate-history-summary.json",
-    "history_path": "C:\\LLM\\portfolio\\rag-quality-gate\\.tmp\\sales_demo_after_v2_reference_b795477e9e934fc5a123f9403ebc320b\\gate_logs\\gate-decisions.jsonl",
-    "bundle_path": "C:\\LLM\\portfolio\\rag-quality-gate\\demos\\customer_support_faq_change\\reports\\after_v2_reference\\gate-report.json"
+    "report_path": "gate-report.md",
+    "decision_path": "gate-decision.json",
+    "history_summary_path": "gate-history-summary.json",
+    "history_path": "gate-decisions.jsonl",
+    "bundle_path": "gate-report.json"
   },
   "report_version": "1.0",
-  "executed_at": "2026-05-01T09:31:20.041099Z",
+  "executed_at": "2026-05-02T13:51:57.586162Z",
   "client_name": "demo_customer",
   "app_name": "Customer Support AI Quality Pack",
   "target_docs": [
@@ -253,7 +222,7 @@
   ],
   "change_event": null,
   "summary": {
-    "headline": "要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。",
+    "headline": "OK。現在の閾値では本番反映可能です。",
     "total_cases": 6,
     "passed_cases": 6,
     "failed_cases": 0,
@@ -261,10 +230,10 @@
     "overall_pass_rate": 100.0,
     "s1_pass_rate": 100.0,
     "main_failure_category": "None",
-    "needs_human_review": true,
+    "needs_human_review": false,
     "judge_fallback_count": 0
   },
-  "overall_decision": "needs_confirmation",
+  "overall_decision": "ok",
   "cases": [
     {
       "case_id": "customer_support_faq_001",
@@ -281,17 +250,14 @@
       "retrieved_evidence": [
         "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_002",
@@ -308,17 +274,14 @@
       "retrieved_evidence": [
         "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_003",
@@ -335,17 +298,14 @@
       "retrieved_evidence": [
         "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_004",
@@ -362,17 +322,14 @@
       "retrieved_evidence": [
         "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_005",
@@ -389,17 +346,14 @@
       "retrieved_evidence": [
         "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     },
     {
       "case_id": "customer_support_faq_006",
@@ -416,17 +370,14 @@
       "retrieved_evidence": [
         "demo_faq.md@8dda9c49eaf0f845#chunk0"
       ],
-      "decision": "needs_confirmation",
+      "decision": "ok",
       "pass_fail": "pass",
       "fail_reason": "",
-      "next_actions": [
-        "Check embedding dependency/model loading and rebuild the retrieval index",
-        "Route this case for manual review before approving the update"
-      ],
+      "next_actions": [],
       "judge_fallback_used": false,
       "judge_fallback_reason": null,
       "judge_reliability": "high",
-      "needs_human_review": true
+      "needs_human_review": false
     }
   ]
 }

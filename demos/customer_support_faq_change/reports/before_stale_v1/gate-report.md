@@ -8,11 +8,11 @@
 ## 2. 実行概要
 - client_name: 未設定
 - app_name: 未設定
-- run_id: cc15aea9-174
+- run_id: 2c3f56bf-688
 - current_cases: 6
 - baseline_runs: 0
 - aggregation_policy: latest_run
-- needs_human_review: YES
+- needs_human_review: NO
 - judge_fallback_count: 0
 
 ## 3. 対象ドキュメントと変更点
@@ -29,9 +29,9 @@
 ## 5. S1重大失敗一覧
 | Case ID | Name | Fail Reason | Next Actions |
 |---------|------|-------------|--------------|
-| customer_support_faq_001 | キャンペーン商品の返金条件 | Keyword match 33% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する; このケースは人手で確認してから更新を承認する |
-| customer_support_faq_002 | 無料トライアル解約期限 | Keyword match 0% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する; このケースは人手で確認してから更新を承認する |
-| customer_support_faq_003 | 年額契約の自動更新通知 | Keyword match 67% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する; このケースは人手で確認してから更新を承認する |
+| customer_support_faq_001 | キャンペーン商品の返金条件 | Keyword match 33% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; このケースは人手で確認してから更新を承認する |
+| customer_support_faq_002 | 無料トライアル解約期限 | Keyword match 0% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; このケースは人手で確認してから更新を承認する |
+| customer_support_faq_003 | 年額契約の自動更新通知 | Keyword match 67% < 80% | 失敗ケースの原因を確認し、週次レビューで対応方針を決める; 本番反映を止め、該当FAQ・規約・回答ロジックを修正する; このケースは人手で確認してから更新を承認する |
 
 ## 6. ケース別結果
 | Case ID | Name | Severity | Decision | Pass/Fail | Fail Reason |
@@ -41,12 +41,11 @@
 | customer_support_faq_003 | 年額契約の自動更新通知 | S1 | ng | fail | Keyword match 67% < 80% |
 | customer_support_faq_005 | 解約後のデータ保持 | S2 | ng | fail | Keyword match 0% < 50% |
 | customer_support_faq_006 | 契約変更の反映条件 | S2 | ng | fail | Keyword match 33% < 50% |
-| customer_support_faq_004 | 料金ページの確認先 | S2 | needs_confirmation | pass | - |
+| customer_support_faq_004 | 料金ページの確認先 | S2 | ok | pass | - |
 
 ## 7. 推奨アクション
 - 失敗ケースの原因を確認し、週次レビューで対応方針を決める
 - 本番反映を止め、該当FAQ・規約・回答ロジックを修正する
-- 検索モデルまたは依存関係を確認し、必要に応じて検索インデックスを再作成する
 - このケースは人手で確認してから更新を承認する
 - 注意付きで扱い、必要に応じてサポート担当者の確認を入れる
 
@@ -74,15 +73,14 @@
 - Aggregation Policy: latest_run
 
 ### Recent History Summary
-- Latest status: FAIL (cc15aea9-174)
+- Latest status: FAIL (2c3f56bf-688)
 - Current streak: FAIL x1
 - Overall pass rate trend: 16.7% -> 16.7% (0.0 pts)
 - S1 pass rate trend: 0.0% -> 0.0% (0.0 pts)
-- Failure action coverage (last 1): 2/3 categories (66.7%)
+- Failure action coverage (last 1): 0/1 categories (0.0%)
 - Uncovered categories: synthesis (5 cases)
 - Judge reliability: HIGH
-- Embedding fallback: YES (model_load_error)
-- Needs human review: YES
+- Needs human review: NO
 
 | Metric | Actual | Threshold | Status |
 |--------|--------|-----------|--------|
@@ -101,10 +99,9 @@
 ### Reliability
 - Judge reliability: HIGH
 - Judge fallback count: 0
-- Embedding fallback: YES
-- Embedding fallback reason: model_load_error
+- Embedding fallback: NO
 - Retrieval reliability: HIGH
-- Needs human review: YES
+- Needs human review: NO
 
 ### Case Staleness
 - Fresh review rate: 100.0% (6/6) within 45 days
@@ -128,5 +125,3 @@
 | Failure Category | Affected Cases | Next Action | Owner | Due |
 |------------------|----------------|-------------|-------|-----|
 | synthesis | customer_support_faq_001, customer_support_faq_002, customer_support_faq_003, customer_support_faq_005, customer_support_faq_006 | Define next action in weekly review issue | T.B.D. | T.B.D. |
-| embedding_reliability | - | Check embedding dependency/model loading and rebuild the retrieval index | T.B.D. | T.B.D. |
-| human_review | - | Route this run for manual review before approving the update | T.B.D. | T.B.D. |

@@ -691,10 +691,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase2-5-weekly-metrics
+          retention-days: 14
+          if-no-files-found: ignore
           path: |
-            runs/phase2-5-weekly/
-            runs/phase2-5-exit-gate/
-            runs/phase2-5-risk-closure/
+            runs/phase2-5-weekly/summary.json
+            runs/phase2-5-exit-gate/summary.json
+            runs/phase2-5-risk-closure/summary.json
 
       - name: Fail workflow on investigate decision or residual risk control miss
         if: always() && (steps.collect.outputs.collector_exit_code != '0' || steps.risk_closure.outputs.risk_closure_exit_code != '0')

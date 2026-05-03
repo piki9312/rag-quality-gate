@@ -282,6 +282,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional consolidated JSON bundle path (default: <log-dir>/gate-report.json)",
     )
     p_gate.add_argument(
+        "--report-mode",
+        choices=["ci", "redacted", "full"],
+        default=None,
+        help="Report exposure mode: ci and redacted omit sensitive case content; full preserves existing detail",
+    )
+    p_gate.add_argument(
         "--dry-run",
         action="store_true",
         help="Run the gate in an isolated dry-run log_dir without notifications or history append",
@@ -345,6 +351,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--bundle-file",
         default=None,
         help="Optional consolidated JSON bundle path (default: <log-dir>/gate-report.json)",
+    )
+    p_check.add_argument(
+        "--report-mode",
+        choices=["ci", "redacted", "full"],
+        default=None,
+        help="Report exposure mode: ci and redacted omit sensitive case content; full preserves existing detail",
     )
     p_check.add_argument(
         "--warn-exit-code",

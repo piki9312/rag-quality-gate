@@ -11,7 +11,7 @@ from rqg.quality.monthly_summary import (
     build_monthly_summary_payload,
     render_monthly_summary_markdown,
 )
-from rqg.quality.reporting import GATE_REPORT_SCHEMA_VERSION
+from rqg.quality.reporting import GATE_REPORT_SCHEMA_VERSION, safe_relative_artifact_path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_ROOT = ROOT / "packs" / "customer_support_pack" / "reports" / "demo_runs"
@@ -45,11 +45,21 @@ def main() -> int:
                     "history_summary": history_summary,
                     "report_markdown": markdown,
                     "artifact_paths": {
-                        "report_path": str(run_dir / "gate-report.md"),
-                        "decision_path": str(run_dir / "gate-decision.json"),
-                        "history_summary_path": str(run_dir / "gate-history-summary.json"),
-                        "history_path": str(PACK_DIR / "gate-decisions.jsonl"),
-                        "bundle_path": str(run_dir / "gate-report.json"),
+                        "report_path": safe_relative_artifact_path(
+                            run_dir / "gate-report.md", run_dir
+                        ),
+                        "decision_path": safe_relative_artifact_path(
+                            run_dir / "gate-decision.json", run_dir
+                        ),
+                        "history_summary_path": safe_relative_artifact_path(
+                            run_dir / "gate-history-summary.json", run_dir
+                        ),
+                        "history_path": safe_relative_artifact_path(
+                            PACK_DIR / "gate-decisions.jsonl", run_dir
+                        ),
+                        "bundle_path": safe_relative_artifact_path(
+                            run_dir / "gate-report.json", run_dir
+                        ),
                     },
                 },
                 indent=2,
