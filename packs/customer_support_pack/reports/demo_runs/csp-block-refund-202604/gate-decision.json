@@ -1,0 +1,80 @@
+{
+  "run_id": "csp-block-refund-202604",
+  "status": "fail",
+  "policy_status": "block",
+  "reasons": [
+    "S1 pass rate: 66.7 < 100.0 (4/6)",
+    "Refund policy S1 case failed: digital product refund was incorrectly allowed",
+    "This block is caused by business-risk answer quality, not evaluator fallback"
+  ],
+  "reason_codes": [
+    "answer_quality_fail",
+    "evidence_mismatch"
+  ],
+  "metrics": {
+    "overall_pass_rate": 80.0,
+    "s1_pass_rate": 66.7,
+    "s1_fail_count": 2.0,
+    "current_runs": 10.0,
+    "baseline_runs": 1.0,
+    "judge_fallback_count": 0.0,
+    "embedding_fallback_count": 0.0
+  },
+  "next_actions": [
+    {
+      "failure_category": "answer_quality_fail",
+      "count": 2,
+      "action": "Fix refund and cancellation answers, then rerun the gate before customer release",
+      "owner": "support_quality_owner",
+      "due": "before-release",
+      "affected_case_ids": [
+        "CS-S1-REFUND-001",
+        "CS-S1-CANCEL-001"
+      ]
+    }
+  ],
+  "judge_fallback_used": false,
+  "judge_fallback_count": 0,
+  "judge_failure_types": {},
+  "judge_reliability": "high",
+  "embedding_fallback_used": false,
+  "embedding_fallback_count": 0,
+  "embedding_fallback_reason": null,
+  "retrieval_reliability": "high",
+  "fallback_summary": {
+    "judge_fallback_used": false,
+    "judge_fallback_count": 0,
+    "judge_failure_types": {},
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
+    "retrieval_reliability": "high",
+    "block_origin": "business_risk"
+  },
+  "needs_human_review": false,
+  "approval": {
+    "approval_required": false,
+    "approval_status": "not_required",
+    "approver_role": null,
+    "approved_by": null,
+    "approved_at": null,
+    "approval_reason": null
+  },
+  "pack": {
+    "pack_id": "customer_support_pack",
+    "name": "",
+    "version": "",
+    "review_steward": "",
+    "pack_name": "Customer Support AI Quality Pack",
+    "tenant_name": "demo_customer",
+    "use_case": "customer_support_faq",
+    "vertical": "customer_support",
+    "risk_profile": "high_external_response",
+    "owner": "proofgate-demo",
+    "environment": "demo",
+    "pack_version": "0.1.0",
+    "source_pack": null,
+    "created_from_template": true
+  },
+  "created_at": "2026-04-08T09:00:00Z"
+}

@@ -56,7 +56,8 @@ def test_check_sends_notifications_from_rqg_config() -> None:
     assert payload["decision_path"] == str(decision_path)
 
 
-def test_check_warns_when_notification_delivery_fails(capsys) -> None:
+def test_check_warns_when_notification_delivery_fails(capsys, monkeypatch) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     workspace = Path("tests/.tmp") / f"{uuid.uuid4()}-notify-fail"
     workspace.mkdir(parents=True, exist_ok=True)
     log_dir = workspace / "logs"

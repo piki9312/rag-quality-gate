@@ -814,7 +814,8 @@ def test_check_command_appends_gate_decision_history_jsonl() -> None:
     assert [json.loads(line)["run_id"] for line in lines] == ["run-101", "run-102"]
 
 
-def test_check_command_gate_report_includes_recent_history_summary() -> None:
+def test_check_command_gate_report_includes_recent_history_summary(monkeypatch) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-report-history"
     quality_pack = log_dir.parent / f"{uuid.uuid4()}-quality-pack.yml"
     quality_pack.write_text(

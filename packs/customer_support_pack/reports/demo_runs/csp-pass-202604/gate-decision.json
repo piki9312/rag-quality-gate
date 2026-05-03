@@ -1,0 +1,60 @@
+{
+  "run_id": "csp-pass-202604",
+  "status": "pass",
+  "policy_status": "pass",
+  "reasons": [],
+  "reason_codes": [],
+  "metrics": {
+    "overall_pass_rate": 100.0,
+    "s1_pass_rate": 100.0,
+    "s1_fail_count": 0.0,
+    "current_runs": 10.0,
+    "baseline_runs": 0.0,
+    "judge_fallback_count": 0.0,
+    "embedding_fallback_count": 0.0
+  },
+  "next_actions": [],
+  "judge_fallback_used": false,
+  "judge_fallback_count": 0,
+  "judge_failure_types": {},
+  "judge_reliability": "high",
+  "embedding_fallback_used": false,
+  "embedding_fallback_count": 0,
+  "embedding_fallback_reason": null,
+  "retrieval_reliability": "high",
+  "fallback_summary": {
+    "judge_fallback_used": false,
+    "judge_fallback_count": 0,
+    "judge_failure_types": {},
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
+    "retrieval_reliability": "high"
+  },
+  "needs_human_review": false,
+  "approval": {
+    "approval_required": false,
+    "approval_status": "not_required",
+    "approver_role": null,
+    "approved_by": null,
+    "approved_at": null,
+    "approval_reason": null
+  },
+  "pack": {
+    "pack_id": "customer_support_pack",
+    "name": "",
+    "version": "",
+    "review_steward": "",
+    "pack_name": "Customer Support AI Quality Pack",
+    "tenant_name": "demo_customer",
+    "use_case": "customer_support_faq",
+    "vertical": "customer_support",
+    "risk_profile": "high_external_response",
+    "owner": "proofgate-demo",
+    "environment": "demo",
+    "pack_version": "0.1.0",
+    "source_pack": null,
+    "created_from_template": true
+  },
+  "created_at": "2026-04-01T09:00:00Z"
+}

@@ -1,0 +1,57 @@
+{
+  "entries": 1,
+  "status_mix": {
+    "pass": 1,
+    "warn": 0,
+    "fail": 0
+  },
+  "week_start": "2026-03-30",
+  "compare_offset": 1,
+  "trend_window": 5,
+  "summary_lines": [
+    "- Latest status: PASS (csp-needs-review-fallback-202604)",
+    "- Policy status: NEEDS_HUMAN_REVIEW",
+    "- Judge reliability: LOW"
+  ],
+  "trend": {
+    "latest_run_id": "csp-needs-review-fallback-202604",
+    "latest_status": "PASS",
+    "streak_count": 1,
+    "status_sequence": [
+      "PASS"
+    ],
+    "metric_deltas": [],
+    "window_size": 1
+  },
+  "comparison": null,
+  "failure_action_coverage": null,
+  "uncovered_categories": [],
+  "stale_case_review": null,
+  "reliability": {
+    "judge_fallback_used": true,
+    "judge_fallback_count": 1,
+    "judge_failure_types": {
+      "provider_error": 1
+    },
+    "judge_reliability": "low",
+    "embedding_fallback_used": false,
+    "embedding_fallback_count": 0,
+    "embedding_fallback_reason": null,
+    "retrieval_reliability": "high",
+    "fallback_summary": {
+      "judge_fallback_used": true,
+      "judge_fallback_count": 1,
+      "judge_failure_types": {
+        "provider_error": 1
+      },
+      "embedding_fallback_used": false,
+      "embedding_fallback_count": 0,
+      "embedding_fallback_reason": null,
+      "retrieval_reliability": "high",
+      "block_origin": "evaluator_reliability"
+    },
+    "policy_status": "needs_human_review",
+    "needs_human_review": true
+  },
+  "review_steward": "proofgate-demo"
+}
