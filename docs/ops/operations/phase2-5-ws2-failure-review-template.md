@@ -54,4 +54,4 @@ fail 母数が小さい週の検知力を補完するため、月次で syntheti
 | executed_date | run_or_pr | scenario | result | evidence | notes |
 | --- | --- | --- | --- | --- | --- |
 | YYYY-MM-DD | run id / PR | scenario-name | pass / fail | run URL / report path | monthly synthetic regression evidence |
-| 2026-03-29 | run 23701830709 | legacy migration baseline | pass | https://github.com/piki9312/rag-quality-gate/actions/runs/23701830709 | CI quality-gate workflow の synthetic regression check |
+| 2026-05-03 | run 23701830709 | legacy migration baseline | pass | https://github.com/piki9312/rag-quality-gate/actions/runs/23701830709 | CI quality-gate workflow の synthetic regression check |
