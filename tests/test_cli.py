@@ -131,6 +131,7 @@ class TestCLIParserContract:
             "--rag-endpoint",
             "--rag-api-key-env",
             "--adapter-config",
+            "--report-mode",
         }.issubset(options)
 
     def test_gate_option_contract(self):

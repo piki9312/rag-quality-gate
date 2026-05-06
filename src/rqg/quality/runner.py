@@ -636,7 +636,13 @@ class RAGQualityRunner:
         )
 
     @staticmethod
-    def save_jsonl(run: EvalRun, cases: list[QATestCase], log_dir: str) -> Path:
+    def save_jsonl(
+        run: EvalRun,
+        cases: list[QATestCase],
+        log_dir: str,
+        *,
+        report_mode: str = "full",
+    ) -> Path:
         """EvalRun を JSONL ファイルに永続化する。"""
         log_path = Path(log_dir)
         log_path.mkdir(parents=True, exist_ok=True)
@@ -647,7 +653,12 @@ class RAGQualityRunner:
         with open(jsonl_file, "a", encoding="utf-8") as f:
             for result in run.results:
                 case = case_map.get(result.case_id, cases[0])
-                record = QARunRecord.from_eval_result(result, run.run_id, case)
+                record = QARunRecord.from_eval_result(
+                    result,
+                    run.run_id,
+                    case,
+                    report_mode=report_mode,
+                )
                 f.write(record.model_dump_json() + "\n")
 
         return jsonl_file
