@@ -10,6 +10,21 @@ from ..quality.notifications import send_gate_notifications
 from .helpers import github_actions_enabled, github_actions_fail_fast_message
 
 
+def _exit_code_for_gate_result(*, policy_status: str, gate_status: str, warn_exit_code: int) -> int:
+    normalized_policy = str(policy_status or "").strip().lower()
+    normalized_gate = str(gate_status or "").strip().lower()
+
+    if normalized_policy == "block":
+        return 1
+    if normalized_policy in {"warn", "needs_human_review"}:
+        return warn_exit_code
+    if normalized_gate == "fail":
+        return 1
+    if normalized_gate == "warn":
+        return warn_exit_code
+    return 0
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     """Run the quality gate check and emit stable ASCII output."""
     from ..quality.check import (
@@ -214,12 +229,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     print(f"Policy: {policy_status}")
 
     warn_exit_code = getattr(args, "warn_exit_code", 0)
-    if decision.policy_status == "block":
-        return 1
-    if decision.policy_status in {"warn", "needs_human_review"}:
-        return warn_exit_code
-    if result.gate_status == "fail":
-        return 1
-    if result.gate_status == "warn":
-        return warn_exit_code
-    return 0
+    return _exit_code_for_gate_result(
+        policy_status=decision.policy_status,
+        gate_status=result.gate_status,
+        warn_exit_code=warn_exit_code,
+    )
