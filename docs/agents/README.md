@@ -15,8 +15,9 @@
 3. [assetization-policy.md](assetization-policy.md)
 4. [quality-pack-spec.md](quality-pack-spec.md)
 5. [asset-versioning.md](asset-versioning.md)
-6. [poc-asset-review.md](poc-asset-review.md)
-7. [repository-rules.md](repository-rules.md)
+6. [ci-release-gate-policy.md](ci-release-gate-policy.md)
+7. [poc-asset-review.md](poc-asset-review.md)
+8. [repository-rules.md](repository-rules.md)
 
 ## 各ファイルの役割
 
@@ -25,6 +26,7 @@
 - `assetization-policy.md`: PoCや診断案件から何を共通資産化するか
 - `quality-pack-spec.md`: 再利用可能な Quality Pack の共通仕様
 - `asset-versioning.md`: 資産変更の追跡・版管理ルール
+- `ci-release-gate-policy.md`: CI、Secrets、外部RAG接続、Release Gate の運用方針
 - `poc-asset-review.md`: 案件終了後の資産化レビュー手順
 - `repository-rules.md`: repo に置いてよいもの / 置いてはいけないもの
 

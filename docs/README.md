@@ -23,6 +23,7 @@
 - [assetization policy](agents/assetization-policy.md)
 - [quality pack spec](agents/quality-pack-spec.md)
 - [asset versioning](agents/asset-versioning.md)
+- [CI / Release Gate policy](agents/ci-release-gate-policy.md)
 - [PoC asset review](agents/poc-asset-review.md)
 - [repository rules](agents/repository-rules.md)
 
