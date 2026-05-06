@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 from ..domain import GateDecision
+from ..security import redact_text, sanitize_error_message, sanitize_mapping
 
 NotificationKind = Literal["slack", "teams", "webhook"]
 
@@ -125,7 +126,8 @@ def _send_notification(
         with urllib.request.urlopen(request, timeout=target.timeout_sec):
             return
     except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Notification delivery failed for {target.kind}: {exc}") from exc
+        safe_error = sanitize_error_message(exc)
+        raise RuntimeError(f"Notification delivery failed for {target.kind}: {safe_error}") from exc
 
 
 def _build_payload(
@@ -141,23 +143,25 @@ def _build_payload(
         decision_path=decision_path,
     )
     if kind in {"slack", "teams"}:
-        return {"text": summary}
-    return {
-        "event": "rqg.gate_decision",
-        "status": decision.status,
-        "policy_status": decision.policy_status,
-        "run_id": decision.run_id,
-        "created_at": decision.created_at.isoformat(),
-        "reasons": decision.reasons,
-        "metrics": decision.metrics,
-        "next_actions": [item.model_dump(mode="json") for item in decision.next_actions],
-        "judge_reliability": decision.judge_reliability,
-        "fallback_summary": decision.fallback_summary,
-        "needs_human_review": decision.needs_human_review,
-        "report_path": str(report_path) if report_path else None,
-        "decision_path": str(decision_path) if decision_path else None,
-        "summary": summary,
-    }
+        return {"text": redact_text(summary)}
+    return sanitize_mapping(
+        {
+            "event": "rqg.gate_decision",
+            "status": decision.status,
+            "policy_status": decision.policy_status,
+            "run_id": decision.run_id,
+            "created_at": decision.created_at.isoformat(),
+            "reasons": decision.reasons,
+            "metrics": decision.metrics,
+            "next_actions": [item.model_dump(mode="json") for item in decision.next_actions],
+            "judge_reliability": decision.judge_reliability,
+            "fallback_summary": decision.fallback_summary,
+            "needs_human_review": decision.needs_human_review,
+            "report_path": str(report_path) if report_path else None,
+            "decision_path": str(decision_path) if decision_path else None,
+            "summary": summary,
+        }
+    )
 
 
 def _build_summary_text(
@@ -174,13 +178,13 @@ def _build_summary_text(
     s1_fail_count = int(decision.metrics.get("s1_fail_count", 0.0) or 0.0)
     lines.append(f"S1 failures: {s1_fail_count}")
     if decision.reasons:
-        lines.append(f"Top reasons: {'; '.join(decision.reasons[:3])}")
+        lines.append(f"Top reasons: {redact_text('; '.join(decision.reasons[:3]))}")
     lines.append(f"Judge reliability: {decision.judge_reliability}")
     fallback_used = decision.judge_fallback_used or decision.embedding_fallback_used
     lines.append(f"Fallback used: {'yes' if fallback_used else 'no'}")
     lines.append(f"Needs human review: {'yes' if decision.needs_human_review else 'no'}")
     if decision.next_actions:
-        lines.append(f"Next action: {decision.next_actions[0].action}")
+        lines.append(f"Next action: {redact_text(decision.next_actions[0].action)}")
     if report_path:
         lines.append(f"Report: {report_path}")
     if decision_path:
