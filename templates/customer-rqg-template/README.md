@@ -19,6 +19,27 @@ Use it when you want a clean project skeleton for:
 - `quality-pack.yml`: pack metadata and failure next-action hints
 - `.github/workflows/monthly-gate.yml`: scheduled and manual gate workflow
 - `reports/`: a place for reviewed report exports that you want to keep
+- `reviews/`: a file-based Gate Review, Investigation, and Action Item register for early PoC operations
+
+## How The Template Connects PoC Artifacts
+
+Use the template as a small operating folder, not as a copy of the runtime code:
+
+| Template area | Role in the PoC |
+|---|---|
+| `cases.csv` | The agreed high-risk questions and expected behavior. |
+| `documents/` | Customer-approved or sanitized source material for local runs. |
+| `gate.yml` | The pass/block thresholds for the PoC. |
+| `quality-pack.yml` | Ownership, pack metadata, and next-action hints. |
+| `adapter/` | External RAG connection mapping when the customer already has a RAG API. |
+| `reports/` | Reviewed report exports or final customer-facing summaries. |
+| `reviews/gate_reviews/` | Gate Reviews used as the main customer decision record. |
+| `reviews/investigations/` | Optional cause records for BLOCK, REVIEW, or CONDITIONAL outcomes. |
+| `reviews/action_items/` | Optional follow-up tasks and owner tracking. |
+
+The normal customer-facing decision packet should start with a Gate Review. Gate
+Report and safe summaries support that decision. Raw artifacts are for audit or
+automation and should not become the main customer review material.
 
 ## How To Start A Customer PoC
 
@@ -195,12 +216,37 @@ python -m json.tool logs/customer-poc/gate-report.json
 
 The Markdown report is for human review. The JSON bundle is for CI, automation, or downstream dashboards.
 
+## Use reviews/ For Customer Decisions
+
+`reviews/` is a lightweight file-based operations register for early PoC work.
+
+The main customer-facing decision artifact is the Gate Review. Use it to summarize whether a change can go to production, must be blocked, needs review, or can proceed with conditions. Gate Report remains the detailed evidence behind that decision.
+
+Investigation and Action Item records are optional supporting artifacts. Create an Investigation only when a Gate result is BLOCK, REVIEW, or CONDITIONAL and the cause needs to be recorded. Create an Action Item only when follow-up work or confirmation is required.
+
+Gate Review does not replace `gate_history`, `gate-decision.json`, `gate-report.json`, or `gate-history-summary.json`. Those machine-readable artifacts remain the source of truth. Gate Review is the human-facing decision layer built from them.
+
+GitHub Issues are not required for early PoC. They are an option for continued operations after the customer wants issue tracking, project boards, or integration with Jira, Linear, or Notion.
+
 ## Handle Secrets Safely
 
 - Keep API keys and bearer tokens in environment variables during local work.
 - Use GitHub Actions secrets such as `CUSTOMER_RAG_API_TOKEN` in CI.
 - Do not commit `.env`, `adapter/secrets.yml`, or copied adapter configs that include live credentials.
 - If you need customer-private endpoints, keep them in repo variables or environment-specific deployment config, not in tracked template files.
+
+## Report Modes And Safe Artifacts
+
+- Use `ci` mode for GitHub-hosted automation. It keeps stdout and artifacts to
+  safe summaries.
+- Use `redacted` mode when sharing structure and results without raw question,
+  answer, expected answer, retrieved evidence, or chunk text.
+- Use `full` mode only in local, private runner, or customer-controlled
+  environments.
+- Do not upload raw JSONL, full report bundles, vector indexes, or raw external
+  RAG responses from GitHub-hosted Actions.
+- For external RAG validation, prefer staging, test, or read-only endpoints and
+  keep API keys in secrets.
 
 ## How A Customer Repo Uses This Template
 
