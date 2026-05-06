@@ -15,6 +15,17 @@
 5. [営業デモ手順](../demos/customer_support_faq_change/README.md)
 6. [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md)
 
+## エージェント・共同開発者向け
+
+- [Agent docs entry](agents/README.md)
+- [business context](agents/business-context.md)
+- [data management policy](agents/data-management-policy.md)
+- [assetization policy](agents/assetization-policy.md)
+- [quality pack spec](agents/quality-pack-spec.md)
+- [asset versioning](agents/asset-versioning.md)
+- [PoC asset review](agents/poc-asset-review.md)
+- [repository rules](agents/repository-rules.md)
+
 ## 目的別に読む
 
 初めて導入する:
