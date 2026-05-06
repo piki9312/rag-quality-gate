@@ -39,69 +39,69 @@ reviews/ = human decision and response layer
 
 ### `weekly_review.py`
 
-- `src/rqg/quality/weekly_review.py` は `gate-history-summary.json` を基に GitHub Issue payload を生成する。
-- 出力概念は `Gate Review` ではなく `Weekly Review issue` で、title prefix も既定で `[Phase2.5][Weekly Review]`。
-- payload は本文中心で、`review_id` / `gate_history_ref` / `decision` などの構造化 review metadata を持たない。
+- `src/rqg/quality/weekly_review.py` generates a GitHub Issue payload from `gate-history-summary.json`.
+- The output concept is `Weekly Review issue`, not `Gate Review`, and the default title prefix is `[Phase2.5][Weekly Review]`.
+- The payload is body-centric and does not carry structured review metadata such as `review_id`, `gate_history_ref`, or `decision`.
 
 ### `export-weekly-review`
 
-- `src/rqg/cli/export_weekly_review.py` は `gate-history-summary.json` または `gate-report.json` の `history_summary` を読み、`weekly-review-issue.json` を出力する。
-- CLI 名称も export 先も `weekly review issue` 前提で、Gate Review 生成器ではない。
+- `src/rqg/cli/export_weekly_review.py` reads `history_summary` from `gate-history-summary.json` or `gate-report.json` and writes `weekly-review-issue.json`.
+- Both the CLI name and the export target assume a `weekly review issue`, so it is not a Gate Review generator.
 
 ### gate history generation
 
-- `src/rqg/cli/check.py` が `gate-report.md` / `gate-report.json` / `gate-decision.json` / `gate-history-summary.json` / `gate-decisions.jsonl` を生成する。
-- `src/rqg/quality/history.py` が recent history summary, comparison, coverage, stale case review, reliability を構造化して `gate-history-summary.json` に出す。
-- `src/rqg/quality/reporting.py` の bundle は `artifact_paths` を持ち、`gate-report.json` に `decision`, `history_summary`, `report_markdown` をまとめる。
+- `src/rqg/cli/check.py` generates `gate-report.md`, `gate-report.json`, `gate-decision.json`, `gate-history-summary.json`, and `gate-decisions.jsonl`.
+- `src/rqg/quality/history.py` structures recent history summary, comparison, coverage, stale case review, and reliability into `gate-history-summary.json`.
+- The bundle in `src/rqg/quality/reporting.py` includes `artifact_paths` and aggregates `decision`, `history_summary`, and `report_markdown` into `gate-report.json`.
 
 ### phase2-5 workflows
 
-- `.github/workflows/phase2-5-weekly-review-issue.yml` と `.github/workflows/phase2-5-weekly-metrics.yml` は内部運用の weekly issue フローを持つ。
-- 命名、labels、本文、関連 docs が `Phase2.5` / `weekly review` / `ops` に強く寄っている。
+- `.github/workflows/phase2-5-weekly-review-issue.yml` and `.github/workflows/phase2-5-weekly-metrics.yml` implement the internal weekly-issue workflow.
+- Their naming, labels, body content, and related docs are tightly coupled to `Phase2.5`, `weekly review`, and `ops`.
 
 ### `templates/github/rqg-gate-weekly-review.yml`
 
-- 顧客向けテンプレートでも downstream automation は `weekly review issue` を upsert する設計。
-- optional な GitHub Project / Slack 連携はあるが、顧客向け主資料が Gate Review であるという概念整理はない。
+- Even in the customer-facing template, the downstream automation is designed to upsert a `weekly review issue`.
+- There are optional GitHub Project and Slack integrations, but the template does not establish Gate Review as the primary customer-facing artifact.
 
 ### customer template
 
-- `templates/customer-rqg-template/` は `cases.csv`, `documents/`, `adapter/`, `reports/` などを持つが、`reviews/` は存在しない。
-- README は `gate-report.md` を人間確認の中心資料として案内している。
+- `templates/customer-rqg-template/` includes `cases.csv`, `documents/`, `adapter/`, and `reports/`, but it does not include `reviews/`.
+- The README points readers to `gate-report.md` as the main human review artifact.
 
 ### tests
 
-- `tests/test_weekly_review_export.py` は current contract を `weekly review issue` として固定している。
-- `tests/test_github_templates.py` は `[Phase2.5][Weekly Review]` や `phase2-5` labels を repo/workflow contract として確認している。
+- `tests/test_weekly_review_export.py` locks the current contract around the `weekly review issue`.
+- `tests/test_github_templates.py` verifies `[Phase2.5][Weekly Review]` and `phase2-5` labels as part of the repository/workflow contract.
 
 ## 4. Gap Analysis
 
 | Area | Current State | Target State | Gap | Priority |
 |---|---|---|---|---|
-| Naming | `Weekly Review`, `Phase2.5`, `issue` が前面に出る | 顧客向けは `Gate Review`、内部運用は別名で分離 | 顧客向け概念と内部運用名が混在 | P0 |
-| Gate History relation | history artifacts は生成済み、bundle に artifact refs あり | `gate_history` を source of truth として明示し、review から参照する | review 側の link metadata と概念説明が不足 | P0 |
-| Gate Review concept | 独立概念として未実装。weekly issue が代替 | 人間向け主判断資料として独立 | 判断レイヤーが issue 本文に埋没 | P0 |
-| Customer review burden | README は report 中心、raw artifacts / weekly review / internal docs の境界が曖昧 | 顧客向け主資料を Gate Review に集約 | 顧客が何を見ればよいか一意でない | P0 |
-| file-based `reviews/` | customer template に存在しない | 初期 PoC は file-based `reviews/` を標準化 | 軽量運用の受け皿がない | P0 |
-| GitHub Issues automation | weekly issue automation は Phase2.5/internal naming 前提 | 顧客向け generic workflow を optional 提供 | 顧客 repo にそのまま出しづらい | P1 |
-| Metadata for LLM search | history summary は一部構造化済み | review / investigation / action item まで id/link/status を構造化 | 検索・監査・追跡用 metadata が不足 | P1 |
-| Customer template | reports はあるが reviews layer 不在 | gate_history と reviews layer を併記 | 判断レイヤーの置き場所がない | P0 |
-| Docs | internal ops docs は豊富、顧客向け review architecture 説明は不足 | artifacts の役割差分を docs で固定 | internal terminology が顧客向け導線に漏れる | P0 |
+| Naming | `Weekly Review`, `Phase2.5`, and `issue` are front and center | Customer-facing terminology should be `Gate Review`, while internal operations use separate naming | Customer-facing concepts are mixed with internal operating terms | P0 |
+| Gate History relation | History artifacts already exist and the bundle includes artifact refs | `gate_history` should be explicitly framed as the source of truth and referenced from the review layer | Review-side link metadata and conceptual guidance are missing | P0 |
+| Gate Review concept | Not implemented as an independent concept; the weekly issue acts as a substitute | Gate Review should exist as the primary human decision artifact | The decision layer is buried inside issue body text | P0 |
+| Customer review burden | The README centers on reports, and the boundary between raw artifacts, weekly review, and internal docs is unclear | Customer-facing review should be centered on Gate Review | Customers do not have a single clear starting point | P0 |
+| file-based `reviews/` | Missing from the customer template | Early PoC operation should standardize a file-based `reviews/` layer | There is no lightweight operating model yet | P0 |
+| GitHub Issues automation | Weekly issue automation assumes Phase2.5/internal naming | A generic customer-facing workflow should be offered as an optional extension | The current workflow is hard to expose directly in customer repositories | P1 |
+| Metadata for LLM search | History summary is partially structured | Review, investigation, and action item layers should carry structured IDs, links, and status | Metadata for search, audit, and traceability is missing | P1 |
+| Customer template | Reports exist, but there is no reviews layer | The template should show both `gate_history` and the reviews layer | There is no dedicated home for the decision layer | P0 |
+| Docs | Internal ops docs are rich, but customer-facing review architecture guidance is limited | Docs should clearly define the role of each artifact type | Internal terminology leaks into customer-facing guidance | P0 |
 
 ## 5. Recommended Design
 
-- `gate_history` は引き続き source of truth とする。`gate-decision.json`, `gate-report.json`, `gate-history-summary.json`, `gate-decisions.jsonl` は置き換えない。
-- `Gate Review` は顧客向け主判断資料にする。顧客が本番反映可否を判断する主資料はここに集約する。
-- `Gate Report` は Gate Review の詳細根拠資料として扱い、通常の顧客判断資料を raw artifacts に拡散しない。
-- `Investigation` と `Action Item` は補助記録に限定し、問題時だけ作成する。
-- 初期 PoC では GitHub Issues を必須にせず、`reviews/` ディレクトリで file-based に運用する。
-- 継続運用や成熟顧客向けには、GitHub Issues / Project Board / Slack 通知を optional extension として提供する。
-- 既存の `Phase2.5` workflow は内部運用として残す。ただし顧客向け docs / templates / naming には露出させない。
-- 顧客向け workflow は `Phase2.5` ではなく `ProofGate` / `Gate Review` の命名で分離する。
+- `gate_history` remains the source of truth. `gate-decision.json`, `gate-report.json`, `gate-history-summary.json`, and `gate-decisions.jsonl` should not be replaced.
+- `Gate Review` becomes the primary customer-facing decision artifact. The main go/no-go conversation for production use should be concentrated there.
+- `Gate Report` should remain supporting evidence for Gate Review rather than becoming the default customer-facing artifact set.
+- `Investigation` and `Action Item` should remain supporting records that are created only when needed.
+- Early PoC operation should not require GitHub Issues and should support a file-based flow through the `reviews/` directory.
+- For longer-running or more mature customers, GitHub Issues, Project Boards, and Slack notifications can be offered as optional extensions.
+- The existing `Phase2.5` workflows should remain for internal operations, but should not be exposed in customer-facing docs, templates, or naming.
+- Customer-facing workflows should use `ProofGate` / `Gate Review` naming instead of `Phase2.5`.
 
 ## 6. Proposed Directory Structure
 
-`templates/customer-rqg-template/` 向けの推奨構成:
+Recommended structure for `templates/customer-rqg-template/`:
 
 ```text
 reviews/
@@ -118,11 +118,11 @@ reviews/
     action_item.md
 ```
 
-補足説明:
+Notes:
 
-- `reports/` は gate_history 関連の出力保管先として残してよい。
-- `reviews/` は顧客判断・調査・対応の human layer として新設する。
-- `logs/` や `runs/` は実行 artifacts であり、顧客向け primary review location にしない。
+- `reports/` can remain the storage location for gate-history-related outputs.
+- `reviews/` should be added as the human layer for customer decisions, investigations, and follow-up actions.
+- `logs/` and `runs/` are execution artifacts and should not become the primary customer review location.
 
 ## 7. Proposed Metadata Schema
 
@@ -170,32 +170,32 @@ reviews/
 
 ### P0
 
-- docs で `gate_history` / `Gate Review` / `Investigation` / `Action Item` の概念を固定する
-- customer template に `reviews/` を追加する
-- customer template README に Gate Review と他 artifact の違いを明記する
-- 顧客向け主資料を Gate Review に集約する導線を追加する
+- Define `gate_history`, `Gate Review`, `Investigation`, and `Action Item` clearly in docs.
+- Add `reviews/` to the customer template.
+- Update the customer template README to explain how Gate Review differs from the other artifacts.
+- Add a clear path that centers the customer-facing primary artifact on Gate Review.
 
 ### P1
 
-- 顧客向け GitHub Issues workflow を `Phase2.5` から分離する
-- title prefix を `[ProofGate][Gate Review]` にする
-- labels を `proofgate`, `gate-review`, `ops` にする
-- GitHub Projects / Slack 通知を optional extension として明記する
+- Separate the customer-facing GitHub Issues workflow from `Phase2.5`.
+- Use `[ProofGate][Gate Review]` as the title prefix.
+- Use `proofgate`, `gate-review`, and `ops` labels.
+- Document GitHub Projects and Slack notifications as optional extensions.
 
 ### P2
 
-- Gate Review payload exporter を追加する
-- `gate_history` から Gate Review draft を生成できるようにする
-- review / investigation / action item の metadata index を検討する
-- LLM 検索向けに review layer の structured export を検討する
+- Add a Gate Review payload exporter.
+- Generate a Gate Review draft from `gate_history`.
+- Evaluate a metadata index for reviews, investigations, and action items.
+- Evaluate a structured export for the review layer that supports LLM search.
 
 ## 9. Risks and Non-goals
 
-- 既存 `Phase2.5` workflow を壊さない。内部運用フローは互換維持する。
-- 今回は顧客横断 LLM 検索を実装しない。
-- 顧客固有情報や secret を共通 repo に入れない。
-- review 資料を増やすこと自体を目的にしない。判断資料は Gate Review に集約する。
-- `gate-report.json` / `GateDecision` / `QARunRecord` / `cases.csv` など既存契約は migration plan なしに壊さない。
+- Do not break the existing `Phase2.5` workflows. Internal operating flow must remain compatible.
+- This work does not implement cross-customer LLM search.
+- Do not place customer-specific information or secrets in the shared repository.
+- The goal is not to create more review artifacts for their own sake; decision-making should stay concentrated in Gate Review.
+- Do not break existing contracts such as `gate-report.json`, `GateDecision`, `QARunRecord`, or `cases.csv` without a migration plan.
 
 ## 10. TODO Issues
 
@@ -212,35 +212,35 @@ reviews/
 
 ## Current State by Review Lens
 
-### A. Naming・概念の差分
+### A. Naming and concept gap
 
-**現状**
+**Current state**
 
-- 実装・CLI・workflow・tests が `Weekly Review` を主語にしている。
-- `Gate Review` という独立概念は未定義。
-- `Phase2.5`, `hardening`, `weekly review`, `issue` が顧客向け template/README に露出している。
+- The implementation, CLI, workflows, and tests are all framed around `Weekly Review`.
+- `Gate Review` is not yet defined as an independent concept.
+- `Phase2.5`, `hardening`, `weekly review`, and `issue` are exposed in customer-facing templates and README content.
 
-**問題点**
+**Problems**
 
-- 顧客向け用語と内部運用用語が混ざる。
-- review 記録と GitHub Issue 実装手段が同一視される。
-- file-based 運用に切り替える概念上の余地が小さい。
+- Customer-facing terminology is mixed with internal operating terminology.
+- The review record is conflated with the GitHub Issue transport mechanism.
+- There is little conceptual space for switching to a file-based operating mode.
 
-**修正案**
+**Recommended adjustment**
 
-- 顧客向け総称を `Gate Review` に統一する。
-- `Weekly Review` は cadence 名、`Issue` は optional transport として格下げする。
-- `Phase2.5` は internal-only naming に閉じ込める。
+- Standardize on `Gate Review` as the customer-facing umbrella term.
+- Treat `Weekly Review` as a cadence label and `Issue` as an optional transport.
+- Keep `Phase2.5` as internal-only naming.
 
-### B. gate_historyとの関係
+### B. Relationship to `gate_history`
 
-**現状**
+**Current state**
 
-- `gate_history` 系 artifact は生成されており、bundle も存在する。
-- `gate-history-summary.json` は比較・coverage・stale/reliability を構造化済み。
-- ただし review 側 payload は `gate_run_id`, `gate_history_ref`, `source_report` を保持しない。
+- `gate_history` artifacts are already generated, and the reporting bundle exists.
+- `gate-history-summary.json` already structures comparison, coverage, stale-case review, and reliability.
+- However, the review payload does not carry `gate_run_id`, `gate_history_ref`, or `source_report`.
 
-**足りない metadata**
+**Missing metadata**
 
 - `review_id`
 - `gate_run_id`
@@ -250,38 +250,38 @@ reviews/
 - `gate_policy_version`
 - review decision/status
 
-**改善案**
+**Recommended adjustment**
 
-- review layer は常に `gate_history` を参照する metadata を持つ。
-- `gate_history` と review を相互参照できるようにする。
-- review を source of truth にせず、判断メモとして明示する。
+- The review layer should always carry metadata that points back to `gate_history`.
+- `gate_history` and the review layer should reference each other.
+- The review layer should be explicitly treated as decision notes, not as the source of truth.
 
-### C. 顧客向け判断負荷
+### C. Customer decision burden
 
-**現状**
+**Current state**
 
-- customer README は `gate-report.md` と `gate-report.json` を中心に案内している。
-- weekly review issue, internal ops docs, raw artifacts との違いは顧客向けに整理されていない。
+- The customer README points primarily to `gate-report.md` and `gate-report.json`.
+- The distinction between weekly review issues, internal ops docs, and raw artifacts is not organized for customer readers.
 
-**顧客が迷う点**
+**Where customers get confused**
 
-- 何が主判断資料か不明確。
-- `gate-report.md` と review/ticket の役割分担が不明。
-- raw artifacts をどこまで見ればよいか判断しづらい。
+- It is unclear which artifact is the primary decision document.
+- The division of responsibility between `gate-report.md` and the review/ticket layer is unclear.
+- It is hard to tell how deeply raw artifacts need to be inspected.
 
-**改善案**
+**Recommended adjustment**
 
-- 顧客向け README に「まず Gate Review、必要時のみ Gate Report / artifacts」を明記する。
-- Gate Review / Gate Report / Investigation / Action Item / raw artifacts の違いを表で固定する。
+- State clearly in the customer README: start with Gate Review, and only consult Gate Report or raw artifacts when needed.
+- Fix the distinction between Gate Review, Gate Report, Investigation, Action Item, and raw artifacts in a comparison table.
 
-### D. file-based `reviews/` 運用
+### D. File-based `reviews/` operation
 
-**現状**
+**Current state**
 
-- `templates/customer-rqg-template/reviews/` は存在しない。
-- gate review / investigation / action item テンプレートもない。
+- `templates/customer-rqg-template/reviews/` does not exist.
+- There are no templates for gate reviews, investigations, or action items.
 
-**追加すべきファイル**
+**Files to add**
 
 - `reviews/README.md`
 - `reviews/gate_reviews/.gitkeep`
@@ -291,47 +291,47 @@ reviews/
 - `reviews/templates/investigation.md`
 - `reviews/templates/action_item.md`
 
-**推奨ディレクトリ構成**
+**Recommended directory structure**
 
-- Section 6 の構成を customer template に追加する。
+- Add the Section 6 structure to the customer template.
 
-### E. GitHub Issues自動化との関係
+### E. Relationship to GitHub Issues automation
 
-**現状**
+**Current state**
 
-- Issue 自動化は `Phase2.5` internal ops 用に最適化されている。
-- title prefix と labels が固定で internal naming に依存する。
-- GitHub Projects / Slack は optional だが、顧客 workflow でも internal convention が前提。
+- Issue automation is optimized for `Phase2.5` internal ops.
+- The title prefix and labels are fixed around internal naming.
+- GitHub Projects and Slack are optional, but the customer workflow still assumes internal conventions.
 
-**顧客向けにそのまま使いづらい点**
+**Why it is hard to reuse as-is for customers**
 
-- 顧客 repo に `Phase2.5` を露出させる。
-- `Weekly Review issue` が唯一の review record に見える。
-- 顧客向け metadata schema がない。
+- It exposes `Phase2.5` in the customer repository.
+- It makes the `Weekly Review issue` look like the only review record.
+- It does not define customer-facing metadata.
 
-**汎用化案**
+**Generalization approach**
 
-- internal workflow は現状維持。
-- 追加で customer-facing workflow を分離し、`[ProofGate][Gate Review]` prefix と generic labels を採用する。
-- GitHub Projects / Slack は optional example として残す。
+- Keep the internal workflow unchanged.
+- Add a separate customer-facing workflow with a `[ProofGate][Gate Review]` prefix and generic labels.
+- Keep GitHub Projects and Slack as optional examples.
 
-### F. LLM検索・ナレッジ化への準備
+### F. Readiness for LLM search and knowledge reuse
 
-**現状**
+**Current state**
 
-- `gate_history` 側は比較的構造化されている。
-- review / investigation / action item layer は未整備。
-- docs/agents には「顧客固有情報を混ぜない」方針がある。
+- The `gate_history` side is relatively well structured.
+- The review / investigation / action item layer is still undefined.
+- `docs/agents` already includes a policy not to mix customer-specific information into shared assets.
 
-**LLM検索に足りない構造**
+**Structure still needed for LLM search**
 
-- review/investigation/action item の stable ID
+- Stable IDs for reviews, investigations, and action items
 - link fields
 - status / owner / due date
 - risk area / severity
 - client-scoped reference design
 
-**追加すべき metadata**
+**Metadata to add**
 
 - `client_id`
 - `review_id`
@@ -344,4 +344,4 @@ reviews/
 - `owner`
 - `due_date`
 
-また、顧客横断検索は原則避け、共通資産化する場合は failure pattern を匿名化・抽象化して docs に明記するのが望ましい。
+In addition, cross-customer search should generally be avoided. If failure-pattern knowledge is promoted into shared assets, it should be anonymized, abstracted, and documented explicitly.
