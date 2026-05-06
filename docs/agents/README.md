@@ -18,6 +18,7 @@
 6. [ci-release-gate-policy.md](ci-release-gate-policy.md)
 7. [poc-asset-review.md](poc-asset-review.md)
 8. [repository-rules.md](repository-rules.md)
+9. [gate-review-architecture-gap-analysis.md](gate-review-architecture-gap-analysis.md)
 
 ## 各ファイルの役割
 
@@ -29,6 +30,7 @@
 - `ci-release-gate-policy.md`: CI、Secrets、外部RAG接続、Release Gate の運用方針
 - `poc-asset-review.md`: 案件終了後の資産化レビュー手順
 - `repository-rules.md`: repo に置いてよいもの / 置いてはいけないもの
+- `gate-review-architecture-gap-analysis.md`: Gate History / Gate Review / Investigation / Action Item の差分分析と改善方針
 
 ## 他ドキュメントとの関係
 
