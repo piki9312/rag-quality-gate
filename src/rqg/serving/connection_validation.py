@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from ..domain import ConnectionValidationErrorType, ConnectionValidationResult
+from ..security import redact_text, sanitize_error_message, sanitize_source_ref, sanitize_url
 from .external_adapter import (
     ExternalRAGAuthError,
     ExternalRAGError,
@@ -83,7 +84,9 @@ def validate_http_rag_connection(
     sample_chunk_ids = [
         str(item.get("chunk_id", "")) for item in results[:5] if item.get("chunk_id")
     ]
-    sample_sources = [str(item.get("source", "")) for item in results[:5] if item.get("source")]
+    sample_sources = [
+        sanitize_source_ref(item.get("source", "")) for item in results[:5] if item.get("source")
+    ]
     issues = []
     if not results:
         issues.append(
@@ -96,11 +99,11 @@ def validate_http_rag_connection(
         if isinstance(metadata, dict):
             warnings = metadata.get("mapping_warnings")
             if isinstance(warnings, list):
-                issues.extend(str(warning) for warning in warnings)
+                issues.extend(sanitize_error_message(warning) for warning in warnings)
 
     return ConnectionValidationResult(
-        endpoint=endpoint,
-        query=query,
+        endpoint=sanitize_url(endpoint),
+        query=redact_text(query),
         top_k=top_k,
         ok=True,
         latency_ms=latency_ms,
@@ -122,13 +125,13 @@ def _error_result(
     issue: str,
 ) -> ConnectionValidationResult:
     return ConnectionValidationResult(
-        endpoint=endpoint,
-        query=query,
+        endpoint=sanitize_url(endpoint),
+        query=redact_text(query),
         top_k=top_k,
         ok=False,
         error_type=error_type,
         latency_ms=round((time.perf_counter() - started) * 1000, 1),
-        issues=[issue],
+        issues=[sanitize_error_message(issue)],
         checked_at=_utcnow(),
     )
 
