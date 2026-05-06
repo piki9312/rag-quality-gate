@@ -34,21 +34,21 @@ FAQ・規約・料金表が変わった後、RAG AI が古い条件で自然に�
 ### After
 
 1. `reports/after_v2_reference/gate-report.md` を開く。
-2. `1. 本番反映判定` で `要確認` と `policy_status: NEEDS_HUMAN_REVIEW` を見せる。
+2. `1. 本番反映判定` で `OK` と `policy_status: PASS` を見せる。
 3. `4. 実行結果サマリ` で S1 pass rate と overall pass rate の改善、S1重大失敗の解消を見せる。
-4. ローカルfallbackがあるため人手確認扱いだが、beforeの `BLOCK` から安全側に改善したことを説明する。
+4. 「before の BLOCK から、対象文書範囲では重大誤回答を解消した状態まで改善した」と説明する。
 5. 「同じ高リスク質問セットで再確認し、改善を証明できる」と説明する。
 
 ### Closing
 
-`before_after_onepager.md` または `demo_summary.json` を見せて、月額Monitorへつなげます。
+`before_after_onepager.md` または `demo_summary.json` を見せて、Build / Improve / Monitor の次の選択肢につなげます。
 
 月額Monitorの説明:
 
 - FAQ・規約・料金表・プロンプト変更は継続的に起きる。
-- 一度通ったAIでも、変更後に危険な回答へ戻ることがある。
+- 一度 PASS したAIでも、変更後に危険な回答へ戻ることがある。
 - 高リスク質問を定期実行し、S1重大失敗と未解決リスクを継続確認する。
 
 ## 顧客向け一言
 
-Proof Gate は、RAGを置き換えるものではありません。RAG AIの更新や運用の前後に、高リスク質問を再確認し、危険な回答を本番前に止めるための品質ゲートです。
+Proof Gate は、RAGを置き換えるものではありません。RAG AIの更新や運用の前後に、高リスク質問を再確認し、重大誤回答リスクを可視化してリリース判断を支援する品質ゲートです。

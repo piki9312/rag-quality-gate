@@ -28,8 +28,18 @@ After:
 
 - FAQ v2 に更新した後、同じ高リスク質問セットで再Gateします。
 - S1重大失敗が解消します。
-- ローカルfallback環境では gate report は `要確認` / `policy_status: NEEDS_HUMAN_REVIEW` になります。
-- これは回答品質の失敗ではなく、検索モデルfallbackを検知した運用品質上の確認です。
+- このコミット済みデモ artifact では gate report は `OK` / `policy_status: PASS` です。
+- つまり、対象文書範囲では重大誤回答を解消した状態まで改善できたことを説明できます。
+- 変更事故は今後も起こり得るため、PoC後は Monitor で継続確認する理由につなげます。
+
+> evaluator fallback による `NEEDS_HUMAN_REVIEW` の説明が必要な場合は、`packs/customer_support_pack/reports/demo_runs/csp-needs-review-fallback-202604/` の固定artifactを別シナリオとして使います。
+
+## 顧客向け資料と内部資料の役割
+
+- `before_after_onepager.md`: 顧客向けの1枚要約
+- `sales_demo_script.md`: 商談で話す順番の台本
+- `reports/.../gate-report.md`: 実行結果の詳細
+- `demo_summary.json`: 機械可読の要約
 
 ## ディレクトリ構成
 
@@ -57,10 +67,11 @@ After:
 
 ## after reportで見る場所
 
-- `1. 本番反映判定`: `要確認` と `policy_status: NEEDS_HUMAN_REVIEW`
+- `1. 本番反映判定`: `OK` と `policy_status: PASS`
 - `4. 実行結果サマリ`: `overall_pass_rate` と `s1_pass_rate`
 - `5. S1重大失敗一覧`: 重大失敗がなくなっていること
+- `8. 月額Monitorで継続確認すべき項目`: 変更後も継続監視が必要な理由
 
 ## 顧客向けメッセージ
 
-Proof Gate は、RAG AIを置き換えるものではありません。FAQ・規約・料金表・プロンプト変更後に、古い条件や危険な回答が本番に出ないかを確認する品質ゲートです。
+Proof Gate は、RAG AIを置き換えるものではありません。FAQ・規約・料金表・プロンプト変更後に、古い条件や危険な回答が本番に出ないかを検査し、リリース判断を支援する品質ゲートです。

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from pathlib import Path
 
@@ -77,3 +78,20 @@ def test_accident_demo_summary_paths_are_relative_to_summary(monkeypatch) -> Non
     assert sanitized.bundle_path == "02-stale-v1-fail/runs/gate-report.json"
     assert_customer_safe_path(sanitized.report_path)
     assert_customer_safe_path(sanitized.bundle_path)
+
+
+def test_customer_support_demo_summary_matches_committed_reports() -> None:
+    demo_root = Path("demos/customer_support_faq_change")
+    summary = json.loads((demo_root / "demo_summary.json").read_text(encoding="utf-8"))
+    before_bundle = json.loads(
+        (demo_root / "reports" / "before_stale_v1" / "gate-report.json").read_text(encoding="utf-8")
+    )
+    after_bundle = json.loads(
+        (demo_root / "reports" / "after_v2_reference" / "gate-report.json").read_text(encoding="utf-8")
+    )
+
+    assert summary["before"]["overall_decision"] == before_bundle["overall_decision"]
+    assert summary["before"]["policy_status"] == before_bundle["decision"]["policy_status"].upper()
+    assert summary["after"]["overall_decision"] == after_bundle["overall_decision"]
+    assert summary["after"]["policy_status"] == after_bundle["decision"]["policy_status"].upper()
+    assert summary["after"]["s1_failures"] == after_bundle["summary"]["s1_failed_cases"]

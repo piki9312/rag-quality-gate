@@ -4,13 +4,19 @@
 
 Proof Gate付き RAG AI導入診断PoC / 既存RAG品質診断PoC
 
+## 提供メニュー
+
+- **Build**: 顧客対応AI / FAQ RAG を小さく構築し、Proof Gate で重大誤回答リスクを診断する
+- **Improve**: 既存RAG / 既存チャットボットを診断し、改善優先度を整理する
+- **Monitor**: PoC後も変更時・月次で継続監視する
+
 ## 対象
 
 - FAQ、規約、料金表、社内ルールを使った業務AIを検討している企業
 - すでにRAG AIを持っているが、回答品質や変更後の劣化に不安がある企業
 - 返金、解約、料金、契約条件、期限、資格条件などの誤回答を避けたい企業
 
-## A軸: RAG未導入企業向け
+## A軸 / Build: RAG未導入企業向け
 
 Proof Gate付き RAG AI導入診断PoC
 
@@ -27,7 +33,7 @@ PoC後の導線:
 - 安全化した本格RAG構築
 - Proof Gate Monitor
 
-## B軸: 既存RAGあり企業向け
+## B軸 / Improve: 既存RAGあり企業向け
 
 既存RAG品質診断PoC
 
@@ -64,6 +70,13 @@ PoC後の導線:
 ## 価格感
 
 初回PoCは 30万〜80万円を想定します。対象文書数、既存RAG接続の有無、ケース作成数、報告会の範囲で調整します。
+
+## 補足資料
+
+- [顧客提出版 Gate Report テンプレート](customer_gate_report_template.md)
+- [顧客データ取扱い説明](customer_data_handling_onepager.md)
+- [PoC後の選択肢](post_poc_options_onepager.md)
+- [簡易RAG構築と本格RAG構築の違い](rag_build_scope.md)
 
 ## よくある質問
 
