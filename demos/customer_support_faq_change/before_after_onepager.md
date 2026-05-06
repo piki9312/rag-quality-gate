@@ -1,52 +1,54 @@
-# Customer Support FAQ変更事故 Before / After 1枚メモ
+# Proof Gate付き顧客対応AI PoC：Before / After Summary
 
-## 目的
+## 1. 対象
 
-FAQ・規約・料金表の変更後に、RAG AI が古い条件で答えてしまうリスクを、Proof Gate が本番前に検知できることを示します。
+- **対象AI**: 顧客対応FAQ AI（Customer Support FAQ Demo）
+- **対象文書**: FAQ、返金条件、解約条件、料金、契約条件に関するサンプル文書
+- **変更イベント**: FAQ v1 から FAQ v2 への更新
+- **評価観点**: 返金、解約、料金、契約条件に関する重大誤回答リスクの有無
 
-## Before / After Summary
+## 2. Before
 
-| 項目 | Before: stale v1 | After: v2 reference |
-|---|---:|---:|
-| 本番反映判定 | NG | 要確認 |
-| policy_status | BLOCK | NEEDS_HUMAN_REVIEW |
-| S1 pass rate | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
-| overall pass rate | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
-| S1 failures | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
-| 顧客向けメッセージ | 古いFAQ条件で回答しており、本番反映前に止める必要がある | S1重大失敗は解消。fallback検知により運用確認は必要 |
+変更前の FAQ v1 では、AI が古い条件で自然に回答していました。特に返金条件、無料トライアル解約期限、年額契約の自動更新通知で、現在のFAQと異なる案内が出ていました。
 
-## 代表的なS1重大失敗
+- 本番反映判定: **NG**
+- policy_status: **BLOCK**
+- S1 pass rate: **0.0%**
+- S1重大失敗: **3件**
 
-`demo_summary.json` の `representative_s1_failure` を参照します。
+## 3. Proof Gateで検出したこと
 
-見るポイント:
+Proof Gate は、高リスク質問セットに対して以下を検出しました。
 
-- `case_id`
-- `question`
-- `ai_answer`
-- `fail_reason`
-- `risk_domain`
+- キャンペーン商品の返金条件を古い条件で案内していた
+- 無料トライアル中の解約期限を誤案内していた
+- 年額契約の自動更新通知時期を曖昧に案内していた
 
-## 顧客向け説明
+これらは、顧客対応上の誤案内、返金・請求トラブル、契約条件の説明不足につながるため、本番公開前に止めるべき重大誤回答リスクです。
 
-Before:
+## 4. After
 
-AIの回答文は自然でも、現在のFAQ条件と違う回答をしている場合があります。返金・解約・料金・契約条件の誤案内は顧客影響が大きいため、本番反映前に止める必要があります。
+FAQ v2 に更新した後、同じ高リスク質問セットで再評価しました。重大誤回答リスクは解消し、対象文書範囲では次段階へ進める状態まで改善しました。
 
-After:
+- 本番反映判定: **OK**
+- policy_status: **PASS**
+- S1 pass rate: **100.0%**
+- S1重大失敗: **0件**
 
-FAQ更新後に、同じ高リスク質問セットで再Gateします。S1重大失敗が解消していれば、修正が有効だったことを説明できます。このローカル実行では検索モデルfallbackにより要確認扱いですが、回答品質の重大失敗は解消しています。
+## 5. 意思決定上の結論
 
-## 月額Monitorにつながる理由
+このPoCでは、Proof Gate により **変更前の重大誤回答リスクを本番前に検出**し、**修正後に同じ質問セットで改善を確認**できることを示しました。
 
-- FAQ・規約・料金表は継続的に変わる
-- プロンプトや検索設定の変更でも回答品質は劣化する
-- 一度通ったAIでも、変更後に危険な回答へ戻ることがある
-- 高リスク質問を定期実行することで、変更事故を見逃しにくくなる
+結論として、今回の対象文書範囲では **リリース判断を前に進められる状態**です。ただし、FAQ・規約・料金表・プロンプト・モデルが変更されれば、同じ事故が再発する可能性は残ります。
 
-## 開くファイル
+## 6. 次の推奨
 
-- `reports/before_stale_v1/gate-report.md`
-- `reports/after_v2_reference/gate-report.md`
-- `demo_summary.json`
-- `sales_demo_script.md`
+- **Build**: FAQ / 規約 / 料金表を対象にした本格RAG構築へ進む
+- **Improve**: 既存RAGや既存チャットボットに同じ高リスク質問セットを適用し、改善優先度を整理する
+- **Monitor**: 文書変更・設定変更後も定期的に再評価し、重大誤回答リスクの再発を継続監視する
+
+## 7. 補足
+
+- この資料は顧客共有向けの要約です。
+- 詳細なケース一覧、実行ログ、内部メトリクスは `reports/.../gate-report.md` と `demo_summary.json` を参照してください。
+- Proof Gate は AI の安全を完全保証するものではなく、重大誤回答リスクの検査・可視化とリリース判断支援を行う仕組みです。
