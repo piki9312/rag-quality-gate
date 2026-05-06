@@ -76,6 +76,8 @@ reviews/ = human decision and response layer
 
 ## 4. Gap Analysis
 
+Priority scale: P0 = immediate architectural priority, P1 = important follow-up, P2 = later enhancement.
+
 | Area | Current State | Target State | Gap | Priority |
 |---|---|---|---|---|
 | Naming | `Weekly Review`, `Phase2.5`, and `issue` are front and center | Customer-facing terminology should be `Gate Review`, while internal operations use separate naming | Customer-facing concepts are mixed with internal operating terms | P0 |
