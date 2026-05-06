@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import os
+import sys
 from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
+from .helpers import github_actions_enabled, github_actions_fail_fast_message
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -34,16 +35,16 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
 
     try:
-        github_actions = os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+        github_actions = github_actions_enabled()
         requested_report_mode = getattr(args, "report_mode", None)
         report_mode = normalize_report_mode(
             "ci" if github_actions and requested_report_mode is None else requested_report_mode
         )
         if github_actions and requested_report_mode == "full":
-            import sys
-
             print(
-                "[ERROR] --report-mode full is not allowed when GITHUB_ACTIONS=true",
+                github_actions_fail_fast_message(
+                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+                ),
                 file=sys.stderr,
             )
             return 1
@@ -62,8 +63,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         if args.aggregation_policy is not None:
             config.aggregation_policy = normalize_aggregation_policy(args.aggregation_policy)
     except ValueError as exc:
-        import sys
-
         print(f"[ERROR] Failed to load gate config: {exc}", file=sys.stderr)
         return 1
 
@@ -210,9 +209,15 @@ def cmd_check(args: argparse.Namespace) -> int:
             print(f"[WARN] {warning}")
 
     status = result.gate_status.upper()
+    policy_status = decision.policy_status.upper()
     print(f"Gate: {status}")
+    print(f"Policy: {policy_status}")
 
     warn_exit_code = getattr(args, "warn_exit_code", 0)
+    if decision.policy_status == "block":
+        return 1
+    if decision.policy_status in {"warn", "needs_human_review"}:
+        return warn_exit_code
     if result.gate_status == "fail":
         return 1
     if result.gate_status == "warn":

@@ -7,7 +7,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .helpers import reset_eval_log_dir, validate_index_dir, write_json_output
+from .helpers import (
+    github_actions_enabled,
+    github_actions_fail_fast_message,
+    reset_eval_log_dir,
+    validate_index_dir,
+    write_json_output,
+)
 
 
 def _load_rag_config() -> dict[str, Any]:
@@ -78,6 +84,25 @@ def cmd_eval(args: argparse.Namespace) -> int:
     rag_api_key_env = getattr(args, "rag_api_key_env", None)
     adapter_config_path = getattr(args, "adapter_config", None)
     adapter_config = None
+    requested_report_mode = str(getattr(args, "report_mode", "") or "").strip().lower()
+
+    if github_actions_enabled():
+        if requested_report_mode == "full":
+            print(
+                github_actions_fail_fast_message(
+                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        if rag_endpoint or adapter_config_path:
+            print(
+                github_actions_fail_fast_message(
+                    "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
+                ),
+                file=sys.stderr,
+            )
+            return 1
 
     if adapter_config_path:
         from ..serving.external_adapter import ExternalRAGError, load_http_rag_adapter_config
@@ -96,6 +121,15 @@ def cmd_eval(args: argparse.Namespace) -> int:
         if cfg.get("type") == "http" and cfg.get("endpoint"):
             rag_endpoint = cfg["endpoint"]
             rag_api_key_env = rag_api_key_env or cfg.get("api_key_env")
+
+    if github_actions_enabled() and rag_endpoint:
+        print(
+            github_actions_fail_fast_message(
+                "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
+            ),
+            file=sys.stderr,
+        )
+        return 1
 
     if rag_endpoint:
         # External RAG mode — retrieval stays external even when --mock is used for the LLM.

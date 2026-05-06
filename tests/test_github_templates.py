@@ -93,6 +93,26 @@ def test_reusable_gate_template_normalizes_pack_relative_overrides() -> None:
     assert 'docs_dir = normalize_pack_override("DOCS_DIR", pack_dir)' in run_script
 
 
+def test_reusable_gate_template_rejects_external_customer_modes_and_uploads_safe_artifacts() -> (
+    None
+):
+    payload = _load_yaml(Path("templates/github/workflows/rqg-reusable-gate.yml"))
+
+    preflight_step = _find_step(payload, "rqg_gate", "Preflight configuration")
+    preflight_script = preflight_step["run"]
+    upload_step = _find_step(payload, "rqg_gate", "Upload gate artifacts")
+    upload_paths = upload_step["with"]["path"]
+
+    assert "inputs.mock" in preflight_script
+    assert "sample/mock/dummy data only" in preflight_script
+    assert "RQG_RAG_API_ENDPOINT" in preflight_script
+    assert "RQG_RAG_API_KEY" in preflight_script
+    assert "inputs.run_connection_validation" in preflight_script
+    assert "inputs.pack_validation_preset" in preflight_script
+    assert "customer-controlled environment" in preflight_script
+    assert "pack-validation.json" not in upload_paths
+
+
 def test_template_callers_use_reusable_gate_workflow() -> None:
     expected_presets = {
         "rqg-gate-mock.yml": "local_docs",

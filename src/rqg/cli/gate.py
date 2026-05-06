@@ -3,14 +3,39 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from .check import cmd_check
 from .eval import cmd_eval
-from .helpers import build_dry_run_log_dir, validate_index_dir
+from .helpers import (
+    build_dry_run_log_dir,
+    github_actions_enabled,
+    github_actions_fail_fast_message,
+    validate_index_dir,
+)
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
+    requested_report_mode = str(getattr(args, "report_mode", "") or "").strip().lower()
+    if github_actions_enabled():
+        if requested_report_mode == "full":
+            print(
+                github_actions_fail_fast_message(
+                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        if getattr(args, "rag_endpoint", None) or getattr(args, "adapter_config", None):
+            print(
+                github_actions_fail_fast_message(
+                    "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
+                ),
+                file=sys.stderr,
+            )
+            return 1
+
     # Skip index-dir validation when using external RAG
     rag_endpoint = getattr(args, "rag_endpoint", None)
     adapter_config = getattr(args, "adapter_config", None)

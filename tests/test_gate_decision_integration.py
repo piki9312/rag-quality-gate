@@ -656,6 +656,83 @@ def test_check_command_rejects_full_report_mode_in_github_actions(monkeypatch, c
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "--report-mode full is not allowed" in captured.err
+    assert "sample/mock/dummy data only" in captured.err
+
+
+def test_gate_command_rejects_full_report_mode_in_github_actions_before_eval(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    log_dir = tmp_path / "logs"
+
+    with patch("rqg.cli.gate.cmd_eval") as mocked_eval:
+        exit_code = main(
+            [
+                "gate",
+                str(tmp_path / "cases.csv"),
+                "--log-dir",
+                str(log_dir),
+                "--report-mode",
+                "full",
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    mocked_eval.assert_not_called()
+    assert not log_dir.exists()
+    assert "--report-mode full is not allowed" in captured.err
+    assert "sample/mock/dummy data only" in captured.err
+
+
+def test_gate_command_rejects_external_endpoint_in_github_actions_before_eval(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    log_dir = tmp_path / "logs"
+
+    with patch("rqg.cli.gate.cmd_eval") as mocked_eval:
+        exit_code = main(
+            [
+                "gate",
+                str(tmp_path / "cases.csv"),
+                "--log-dir",
+                str(log_dir),
+                "--rag-endpoint",
+                "https://rag.example.com/search",
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    mocked_eval.assert_not_called()
+    assert not log_dir.exists()
+    assert "External/customer RAG execution is not allowed" in captured.err
+    assert "private runner" in captured.err
+
+
+def test_eval_command_rejects_external_endpoint_in_github_actions_without_artifacts(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    log_dir = tmp_path / "logs"
+
+    exit_code = main(
+        [
+            "eval",
+            str(tmp_path / "cases.csv"),
+            "--log-dir",
+            str(log_dir),
+            "--rag-endpoint",
+            "https://rag.example.com/search",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert not log_dir.exists()
+    assert "External/customer RAG execution is not allowed" in captured.err
+    assert "customer-controlled environment" in captured.err
 
 
 def test_check_command_defaults_to_ci_report_mode_in_github_actions(monkeypatch, capsys) -> None:
@@ -772,6 +849,54 @@ def test_check_command_overrides_aggregation_policy() -> None:
     assert exit_code == 0
     passed_config = mocked_run_check.call_args.kwargs["config"]
     assert passed_config.aggregation_policy == "window"
+
+
+def test_check_command_returns_non_zero_when_policy_status_is_block() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-policy-block"
+    fake_result = CheckResult(
+        run_id="run-policy-block",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=100.0,
+        s1_rate=100.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("Overall pass rate", 80.0, 100.0, True, "1/1"),
+        ],
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        with patch("rqg.quality.check.render_gate_markdown", return_value="md-policy-block"):
+            exit_code = main(["check", "--log-dir", str(log_dir)])
+
+    payload = json.loads((log_dir / "gate-decision.json").read_text(encoding="utf-8"))
+    assert payload["policy_status"] == "block"
+    assert exit_code == 1
+
+
+def test_check_command_returns_zero_when_policy_status_is_pass() -> None:
+    log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-policy-pass"
+    fake_result = CheckResult(
+        run_id="run-policy-pass",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=100.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1"),
+        ],
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        with patch("rqg.quality.check.render_gate_markdown", return_value="md-policy-pass"):
+            exit_code = main(["check", "--log-dir", str(log_dir)])
+
+    payload = json.loads((log_dir / "gate-decision.json").read_text(encoding="utf-8"))
+    assert payload["policy_status"] == "pass"
+    assert exit_code == 0
 
 
 def test_check_command_appends_gate_decision_history_jsonl() -> None:
