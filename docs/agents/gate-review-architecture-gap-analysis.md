@@ -2,13 +2,13 @@
 
 ## 1. Purpose
 
-このドキュメントは、現在の Proof Gate 実装・docs・templates が、`gate_history` を機械可読な正本、`Gate Review` を人間向け判断レイヤー、`Investigation` / `Action Item` を補助記録として分離する設計思想にどこまで一致しているかを整理するための差分分析です。
+This document analyzes how closely the current Proof Gate implementation, docs, and templates align with the target model that separates `gate_history` as the machine-readable source of truth, `Gate Review` as the human decision layer, and `Investigation` / `Action Item` as supporting records.
 
-目的は即時の大規模実装変更ではなく、現状のズレを明確にし、次に直すべき優先事項を設計レベルで固定することです。
+The goal is not to make large implementation changes immediately, but to clarify the current gaps and fix the next architectural priorities in an explicit design document.
 
 ## 2. Target Architecture
 
-理想形は、機械可読な実行履歴と、人間の判断・原因調査・対応管理を明確に分離することです。
+The target state is a clean separation between machine-readable execution history and the human layers for decision-making, root-cause investigation, and follow-up action tracking.
 
 ```text
 gate_history (machine-readable source of truth)
