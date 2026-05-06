@@ -1,4 +1,4 @@
-# Shared Packs
+# 共通パック
 
 このディレクトリは、Proof Gate の共通 Quality Pack とデモ用 pack を置く場所です。
 

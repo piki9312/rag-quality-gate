@@ -20,8 +20,8 @@
 - add unredacted customer names, contracts, logs, or reports to the repo
 - rename or restructure governed assets without compatibility review
 
-## 判断に迷ったとき
+## When in doubt
 
-- 顧客固有性が残るなら repo に入れない
-- reusable かどうか曖昧なら、先に Notion で整理する
-- 既存 contract に効く変更なら、migration plan を先に考える
+- do not add it to the repo if customer-specific context remains
+- move it to Notion first if reusability is still unclear
+- prepare a migration plan first if the change affects an existing contract
