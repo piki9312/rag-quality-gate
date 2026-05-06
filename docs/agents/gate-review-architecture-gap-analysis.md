@@ -39,7 +39,7 @@ reviews/ = human decision and response layer
 
 ### `weekly_review.py`
 
-- `src/rqg/quality/weekly_review.py` は `gate-history-summary.json` を元に GitHub Issue payload を生成する。
+- `src/rqg/quality/weekly_review.py` は `gate-history-summary.json` を基に GitHub Issue payload を生成する。
 - 出力概念は `Gate Review` ではなく `Weekly Review issue` で、title prefix も既定で `[Phase2.5][Weekly Review]`。
 - payload は本文中心で、`review_id` / `gate_history_ref` / `decision` などの構造化 review metadata を持たない。
 
@@ -118,7 +118,7 @@ reviews/
     action_item.md
 ```
 
-補足:
+補足説明:
 
 - `reports/` は gate_history 関連の出力保管先として残してよい。
 - `reviews/` は顧客判断・調査・対応の human layer として新設する。
