@@ -77,7 +77,10 @@ def test_accident_demo_summary_paths_are_relative_to_summary(monkeypatch) -> Non
 
     sanitized = accident_demo._sanitize_gate_run_summary(run_summary)
 
-    assert accident_demo._summary_relative_path(summary_path.parent / "cases.csv") == "cases.csv"
+    assert (
+        accident_demo._summary_relative_path(summary_path.parent / "cases.csv")
+        == "cases.csv"
+    )
     assert sanitized.report_path == "02-stale-v1-fail/runs/gate-report.md"
     assert sanitized.bundle_path == "02-stale-v1-fail/runs/gate-report.json"
     assert_customer_safe_path(sanitized.report_path)
