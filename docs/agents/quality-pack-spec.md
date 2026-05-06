@@ -20,7 +20,7 @@ packs/
     CHANGELOG.md
 ```
 
-> Note: 現在の runnable pack では `quality-pack.yml` や `gate.yml` を使う箇所がある。既存契約を壊さないことを優先し、`pack.yml` / `gate_policy.yml` を導入する場合は対応関係を README や CHANGELOG に明記する。
+> Note: この文書では移行時期を固定しない。既存の runnable pack は別途 migration plan / ADR が承認されるまで `quality-pack.yml` と `gate.yml` を継続利用し、`pack.yml` / `gate_policy.yml` を追加する場合は対応関係を README と CHANGELOG に明記する。
 
 ## 各ファイルの役割
 
