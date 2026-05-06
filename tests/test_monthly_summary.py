@@ -86,14 +86,50 @@ def test_monthly_summary_command_writes_markdown_and_json(tmp_path, capsys) -> N
     log_dir = tmp_path / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     history_path = log_dir / "gate-decisions.jsonl"
+    records = [
+        {
+            "run_id": "run-1",
+            "status": "pass",
+            "reasons": [],
+            "metrics": {
+                "overall_pass_rate": 100.0,
+                "s1_pass_rate": 100.0,
+                "s1_fail_count": 0.0,
+            },
+            "next_actions": [],
+            "judge_fallback_used": False,
+            "judge_fallback_count": 0,
+            "judge_failure_types": {},
+            "judge_reliability": "high",
+            "embedding_fallback_used": False,
+            "embedding_fallback_count": 0,
+            "embedding_fallback_reason": None,
+            "needs_human_review": False,
+            "created_at": "2026-04-01T00:00:00Z",
+        },
+        {
+            "run_id": "run-2",
+            "status": "fail",
+            "reasons": ["Overall pass rate: 40.0 < 80.0 (2/5)"],
+            "metrics": {
+                "overall_pass_rate": 40.0,
+                "s1_pass_rate": 100.0,
+                "s1_fail_count": 0.0,
+            },
+            "next_actions": [],
+            "judge_fallback_used": True,
+            "judge_fallback_count": 1,
+            "judge_failure_types": {"parse": 1},
+            "judge_reliability": "low",
+            "embedding_fallback_used": False,
+            "embedding_fallback_count": 0,
+            "embedding_fallback_reason": None,
+            "needs_human_review": True,
+            "created_at": "2026-04-02T00:00:00Z",
+        },
+    ]
     history_path.write_text(
-        "\n".join(
-            [
-                '{"run_id":"run-1","status":"pass","reasons":[],"metrics":{"overall_pass_rate":100.0,"s1_pass_rate":100.0,"s1_fail_count":0.0},"next_actions":[],"judge_fallback_used":false,"judge_fallback_count":0,"judge_failure_types":{},"judge_reliability":"high","embedding_fallback_used":false,"embedding_fallback_count":0,"embedding_fallback_reason":null,"needs_human_review":false,"created_at":"2026-04-01T00:00:00Z"}',
-                '{"run_id":"run-2","status":"fail","reasons":["Overall pass rate: 40.0 < 80.0 (2/5)"],"metrics":{"overall_pass_rate":40.0,"s1_pass_rate":100.0,"s1_fail_count":0.0},"next_actions":[],"judge_fallback_used":true,"judge_fallback_count":1,"judge_failure_types":{"parse":1},"judge_reliability":"low","embedding_fallback_used":false,"embedding_fallback_count":0,"embedding_fallback_reason":null,"needs_human_review":true,"created_at":"2026-04-02T00:00:00Z"}',
-            ]
-        )
-        + "\n",
+        "\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n",
         encoding="utf-8",
     )
 
