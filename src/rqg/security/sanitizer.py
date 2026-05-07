@@ -60,10 +60,10 @@ _SECRET_QUERY_KEYS = {
 _TOKEN_PATTERNS = [
     re.compile(r"(?i)\bAuthorization\s*:\s*Bearer\s+[A-Za-z0-9._~+/=-]{16,}"),
     re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{16,}"),
-    re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]{6,}\b"),
+    re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]{15,}\b"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{16,}"),
     re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{16,}"),
-    re.compile(r"(?i)\b(api_key|access_token|token|signature|secret)=([^&\s]{8,})"),
+    re.compile(r"(?i)\b(api_key|access_token|token|signature|secret)=([^&\s]{12,})"),
     re.compile(r"\b[A-Za-z0-9_]{32,}\b"),
 ]
 _URL_PATTERN = re.compile(r"(?i)\b(?:https?|wss?)://[^\s)>\]\"']+")
