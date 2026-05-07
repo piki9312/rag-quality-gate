@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
+import uuid
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import httpx
+import pytest
 
+from rqg.cli import main
 from rqg.serving.connection_validation import validate_http_rag_connection
 from rqg.serving.external_adapter import (
     ExternalRAGAuthError,
@@ -12,33 +17,34 @@ from rqg.serving.external_adapter import (
     HTTPRAGAdapter,
 )
 
+SENSITIVE_BODY = (
+    "SECRET_TOKEN_ABC prompt text retrieved evidence "
+    "/internal/customer/path.md sk-abcdefghijklmnopqrstuvwxyz1234567890"
+)
+
 
 def test_external_rag_500_body_is_redacted() -> None:
-    secret_body = (
-        "SECRET_TOKEN_ABC prompt=employee salary answer "
-        "retrieved evidence /internal/customer/path.md"
-    )
-    response = MagicMock()
-    response.status_code = 500
-    response.text = secret_body
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.text = SENSITIVE_BODY
 
-    adapter = HTTPRAGAdapter(endpoint="https://rag.example.com/search")
+    with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
+        adapter = HTTPRAGAdapter(
+            endpoint="https://rag.example.test/search?token=abcdefghijklmnopqrstuvwxyz1234567890"
+        )
+        with pytest.raises(ExternalRAGServerError) as excinfo:
+            adapter.search("prompt text", top_k=1)
 
-    with patch("rqg.serving.external_adapter.httpx.post", return_value=response):
-        try:
-            adapter.search("paid leave")
-        except ExternalRAGServerError as exc:
-            message = str(exc)
-        else:  # pragma: no cover
-            raise AssertionError("expected ExternalRAGServerError")
-
-    assert "500" in message
+    message = str(excinfo.value)
+    assert "External RAG API returned 500" in message
     assert "response body redacted" in message
     assert "SECRET_TOKEN_ABC" not in message
-    assert "employee salary" not in message
+    assert "prompt text" not in message
+    assert "retrieved evidence" not in message
     assert "/internal/customer/path.md" not in message
+    assert "abcdefghijklmnopqrstuvwxyz1234567890" not in message
 
-    with patch("rqg.serving.external_adapter.httpx.post", return_value=response):
+    with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
         result = validate_http_rag_connection(
             endpoint="https://rag.example.com/search",
             query="employee salary",
@@ -53,25 +59,77 @@ def test_external_rag_500_body_is_redacted() -> None:
     assert "/internal/customer/path.md" not in combined
 
 
-def test_external_rag_auth_error_body_is_redacted() -> None:
-    response = MagicMock()
-    response.status_code = 401
-    response.text = "Bearer SECRET_TOKEN_ABC prompt expected_answer"
+def test_validate_connection_stdout_redacts_endpoint_and_issue(capsys) -> None:
+    raw_endpoint = "https://rag.example.test/search?" "api_key=abcdefghijklmnopqrstuvwxyz1234567890"
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.text = SENSITIVE_BODY
 
-    adapter = HTTPRAGAdapter(endpoint="https://rag.example.com/search")
+    with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
+        exit_code = main(["validate-connection", "--endpoint", raw_endpoint])
 
-    with patch("rqg.serving.external_adapter.httpx.post", return_value=response):
-        try:
-            adapter.search("paid leave")
-        except ExternalRAGAuthError as exc:
-            message = str(exc)
-        else:  # pragma: no cover
-            raise AssertionError("expected ExternalRAGAuthError")
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Connection: NG" in captured.out
+    assert raw_endpoint not in captured.out
+    assert "abcdefghijklmnopqrstuvwxyz1234567890" not in captured.out
+    assert "SECRET_TOKEN_ABC" not in captured.out
+    assert "retrieved evidence" not in captured.out
+    assert "/internal/customer/path.md" not in captured.out
+    assert "response body redacted" in captured.out
 
-    assert "401" in message
+
+def test_validate_connection_json_redacts_endpoint_and_issue(capsys) -> None:
+    raw_endpoint = "https://rag.example.test/search?" "api_key=abcdefghijklmnopqrstuvwxyz1234567890"
+    output = Path("tests/.tmp") / f"{uuid.uuid4()}-connection-validation.json"
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.text = SENSITIVE_BODY
+
+    with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
+        exit_code = main(
+            [
+                "validate-connection",
+                "--endpoint",
+                raw_endpoint,
+                "--output",
+                str(output),
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Saved validation JSON" in captured.out
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    payload_text = json.dumps(payload, ensure_ascii=False)
+    assert payload["ok"] is False
+    assert payload["error_type"] == "server_error"
+    assert raw_endpoint not in payload_text
+    assert "abcdefghijklmnopqrstuvwxyz1234567890" not in payload_text
+    assert "SECRET_TOKEN_ABC" not in payload_text
+    assert "retrieved evidence" not in payload_text
+    assert "/internal/customer/path.md" not in payload_text
+    assert "response body redacted" in payload_text
+
+
+def test_auth_error_body_is_redacted() -> None:
+    mock_resp = MagicMock()
+    mock_resp.status_code = 401
+    mock_resp.text = SENSITIVE_BODY
+
+    with patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp):
+        adapter = HTTPRAGAdapter(endpoint="https://rag.example.test/search")
+        with pytest.raises(ExternalRAGAuthError) as excinfo:
+            adapter.search("prompt text", top_k=1)
+
+    message = str(excinfo.value)
+    assert "External RAG API returned 401" in message
     assert "response body redacted" in message
     assert "SECRET_TOKEN_ABC" not in message
-    assert "expected_answer" not in message
+    assert "prompt text" not in message
+    assert "retrieved evidence" not in message
+    assert "/internal/customer/path.md" not in message
 
 
 def test_external_rag_timeout_message_is_sanitized() -> None:
@@ -81,13 +139,10 @@ def test_external_rag_timeout_message_is_sanitized() -> None:
     )
 
     with patch("rqg.serving.external_adapter.httpx.post", side_effect=timeout):
-        try:
+        with pytest.raises(ExternalRAGTimeoutError) as excinfo:
             adapter.search("paid leave")
-        except ExternalRAGTimeoutError as exc:
-            message = str(exc)
-        else:  # pragma: no cover
-            raise AssertionError("expected ExternalRAGTimeoutError")
 
+    message = str(excinfo.value)
     assert "timed out after 5.0s" in message
     assert "https://rag.example.com/search" not in message
     assert "SECRET_TOKEN_ABC" not in message

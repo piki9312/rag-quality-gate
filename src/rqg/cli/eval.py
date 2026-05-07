@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -77,6 +78,7 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 def cmd_eval(args: argparse.Namespace) -> int:
     """テストケースを実行して品質評価する。"""
+    from ..quality.check import normalize_report_mode
     from ..quality.loader import filter_cases_by_status, load_cases
     from ..quality.runner import RAGQualityRunner
 
@@ -84,25 +86,20 @@ def cmd_eval(args: argparse.Namespace) -> int:
     rag_api_key_env = getattr(args, "rag_api_key_env", None)
     adapter_config_path = getattr(args, "adapter_config", None)
     adapter_config = None
-    requested_report_mode = str(getattr(args, "report_mode", "") or "").strip().lower()
+    requested_report_mode = getattr(args, "report_mode", None)
+    requested_report_mode = (
+        str(requested_report_mode).strip().lower() if requested_report_mode is not None else None
+    )
 
-    if github_actions_enabled():
-        if requested_report_mode == "full":
-            print(
-                github_actions_fail_fast_message(
-                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
-                ),
-                file=sys.stderr,
-            )
-            return 1
-        if rag_endpoint or adapter_config_path:
-            print(
-                github_actions_fail_fast_message(
-                    "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
-                ),
-                file=sys.stderr,
-            )
-            return 1
+    if github_actions_enabled() and requested_report_mode == "full":
+        print(
+            github_actions_fail_fast_message("--report-mode full is not allowed when GITHUB_ACTIONS=true."),
+            file=sys.stderr,
+        )
+        return 1
+    report_mode = normalize_report_mode(
+        "ci" if github_actions_enabled() and requested_report_mode is None else requested_report_mode
+    )
 
     if adapter_config_path:
         from ..serving.external_adapter import ExternalRAGError, load_http_rag_adapter_config
@@ -206,7 +203,12 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
     # JSONL 保存
     if args.log_dir:
-        jsonl_file = RAGQualityRunner.save_jsonl(run, cases, args.log_dir)
+        jsonl_file = RAGQualityRunner.save_jsonl(
+            run,
+            cases,
+            args.log_dir,
+            report_mode=report_mode,
+        )
         print(f"\nSaved -> {jsonl_file}")
 
     return 0 if run.failed == 0 else 1

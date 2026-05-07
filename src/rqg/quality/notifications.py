@@ -11,12 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 from ..domain import GateDecision
-from ..security import (
-    sanitize_artifact_path,
-    sanitize_error_message,
-    sanitize_payload,
-    sanitize_text,
-)
+from ..security import sanitize_artifact_path, sanitize_error_message, sanitize_payload, sanitize_text
 
 NotificationKind = Literal["slack", "teams", "webhook"]
 
@@ -132,8 +127,7 @@ def _send_notification(
             return
     except (urllib.error.URLError, OSError) as exc:
         raise RuntimeError(
-            f"Notification delivery failed for {target.kind}: "
-            f"{sanitize_error_message(str(exc))}"
+            f"Notification delivery failed for {target.kind}: {sanitize_error_message(exc)}"
         ) from exc
 
 
@@ -151,14 +145,13 @@ def _build_payload(
     )
     if kind in {"slack", "teams"}:
         return {"text": summary}
-    safe_reasons = _safe_reason_summaries(decision)
     return {
         "event": "rqg.gate_decision",
         "status": decision.status,
         "policy_status": decision.policy_status,
         "run_id": decision.run_id,
         "created_at": decision.created_at.isoformat(),
-        "reasons": safe_reasons,
+        "reasons": _safe_reason_summaries(decision),
         "metrics": decision.metrics,
         "next_actions": _safe_next_actions(decision),
         "judge_reliability": decision.judge_reliability,

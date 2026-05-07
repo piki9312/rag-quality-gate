@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -149,6 +150,9 @@ class QARunRecord(BaseModel):
     failure_category: str | None = Field(None)
     reasons: list[str] = Field(default_factory=list)
     answer: str = Field(default="")
+    answer_hash: str | None = Field(default=None)
+    answer_present: bool = Field(default=False)
+    answer_redacted: bool = Field(default=False)
     retrieved_ids: list[str] = Field(default_factory=list)
     latency_ms: float = Field(default=0.0)
     cost_usd: float | None = Field(None)
@@ -168,7 +172,14 @@ class QARunRecord(BaseModel):
     model_config = ConfigDict(ser_json_timedelta="float")
 
     @classmethod
-    def from_eval_result(cls, result: EvalResult, run_id: str, case: QATestCase) -> QARunRecord:
+    def from_eval_result(
+        cls,
+        result: EvalResult,
+        run_id: str,
+        case: QATestCase,
+        *,
+        report_mode: str = "full",
+    ) -> QARunRecord:
         reasons = [result.failure_reason] if result.failure_reason else []
         answer_match = result.answer_match
         if answer_match is None and case.expected_keywords and result.failure_type != "error":
@@ -177,6 +188,13 @@ class QARunRecord(BaseModel):
         evidence_match = result.evidence_match
         if evidence_match is None and case.expected_chunks:
             evidence_match = result.retrieval_hit
+
+        answer = result.answer or ""
+        answer_present = bool(answer.strip())
+        normalized_report_mode = _normalize_record_report_mode(report_mode)
+        answer_hash = _hash_text(answer) if answer_present else None
+        answer_redacted = normalized_report_mode != "full"
+        persisted_answer = "[REDACTED]" if answer_present and answer_redacted else answer
 
         return cls(
             timestamp=result.timestamp,
@@ -190,7 +208,10 @@ class QARunRecord(BaseModel):
             failure_type=result.failure_type,
             failure_category=result.failure_category,
             reasons=reasons,
-            answer=result.answer,
+            answer=persisted_answer,
+            answer_hash=answer_hash,
+            answer_present=answer_present,
+            answer_redacted=answer_redacted,
             retrieved_ids=result.retrieved_ids,
             latency_ms=result.latency_ms,
             cost_usd=result.cost_usd if result.cost_usd > 0 else None,
@@ -215,6 +236,17 @@ class QARunRecord(BaseModel):
             embedding_fallback_used=result.embedding_fallback_used or None,
             embedding_fallback_reason=result.embedding_fallback_reason,
         )
+
+
+def _normalize_record_report_mode(value: object) -> str:
+    normalized = str(value or "full").strip().lower().replace("-", "_")
+    if normalized in {"ci", "redacted", "full"}:
+        return normalized
+    return "full"
+
+
+def _hash_text(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _infer_required_action(severity: str) -> str:

@@ -65,6 +65,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             rag_endpoint=getattr(args, "rag_endpoint", None),
             rag_api_key_env=getattr(args, "rag_api_key_env", None),
             adapter_config=getattr(args, "adapter_config", None),
+            report_mode=getattr(args, "report_mode", None),
             verbose=args.verbose,
         )
     )

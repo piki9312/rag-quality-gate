@@ -5,12 +5,7 @@ from __future__ import annotations
 import time
 
 from ..domain import ConnectionValidationErrorType, ConnectionValidationResult
-from ..security import (
-    sanitize_endpoint,
-    sanitize_error_message,
-    sanitize_query_text,
-    sanitize_source_ref,
-)
+from ..security import sanitize_endpoint, sanitize_error_message, sanitize_query_text, sanitize_source_ref
 from .external_adapter import (
     ExternalRAGAuthError,
     ExternalRAGError,
@@ -90,9 +85,7 @@ def validate_http_rag_connection(
         str(item.get("chunk_id", "")) for item in results[:5] if item.get("chunk_id")
     ]
     sample_sources = [
-        sanitize_source_ref(str(item.get("source", "")))
-        for item in results[:5]
-        if item.get("source")
+        sanitize_source_ref(item.get("source", "")) for item in results[:5] if item.get("source")
     ]
     issues = []
     if not results:
@@ -106,7 +99,7 @@ def validate_http_rag_connection(
         if isinstance(metadata, dict):
             warnings = metadata.get("mapping_warnings")
             if isinstance(warnings, list):
-                issues.extend(sanitize_error_message(str(warning)) for warning in warnings)
+                issues.extend(sanitize_error_message(warning) for warning in warnings)
 
     return ConnectionValidationResult(
         endpoint=sanitize_endpoint(endpoint),

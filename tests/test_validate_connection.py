@@ -35,6 +35,7 @@ def test_validate_connection_success_writes_json(capsys) -> None:
     assert "https://rag.example.com/search" not in captured.out
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["ok"] is True
+    assert payload["endpoint"] == "[REDACTED]"
     assert payload["chunk_count"] == 1
     assert payload["endpoint"] == "[REDACTED]"
     assert payload["query"] == "[REDACTED]"

@@ -13,6 +13,24 @@ easy to run while avoiding production-quality claims from demo-only shortcuts.
 | Pre-production gate | Decide whether a release can proceed before production traffic. | Real RAG path, explicit judge and embedding configuration, S1 pass rate at `100%`, strict review of `gate-report.json` and `gate-report.md`. | Silent judge fallback, silent embedding fallback, lower S1 thresholds for production-blocking cases, demo packs. | `rqg gate --pack path/to/production-pack --rag-endpoint https://example.invalid/search --rag-api-key-env RAG_API_KEY --s1-threshold 100 --index-dir indexes/preprod --log-dir logs/preprod` |
 | CI blocking | Fail a PR or deployment when the quality gate blocks release. | Isolated CI `--index-dir` and `--log-dir`, `--warn-exit-code 1`, no real API keys unless the job is explicitly configured for secure customer or staging systems. | Shared indexes across packs, external calls without secret scoping, treating mock CI as production proof. | `rqg gate --pack path/to/pack --mock --warn-exit-code 1 --reset-log-dir --index-dir indexes/ci-pack --log-dir logs/ci-pack` |
 
+## Data And Evidence Boundary By Stage
+
+| Stage | Data | CI / artifact rule | Evidence location | External RAG rule |
+|---|---|---|---|---|
+| Demo | Sample, mock, or dummy data only. | GitHub-hosted Actions are acceptable with safe summary artifacts only. | No full customer evidence. | Local mock or sample endpoint only. |
+| PoC | Customer-approved data only. | GitHub Actions should keep safe summaries only. | Full evidence belongs in local, private runner, or customer-controlled storage. | Prefer staging, test, or read-only endpoints. |
+| Production | Customer-controlled production data. | Use controlled CI with explicit secret management and retention rules. | Customer-controlled storage with audit and deletion policy. | Production endpoint only under the customer's release policy. |
+
+Use `ci` mode for GitHub-hosted automation, `redacted` mode for customer review
+when structure is needed without raw text, and `full` mode only for local,
+private runner, or customer-controlled environments. `GITHUB_ACTIONS=true` must
+not produce full reports.
+
+Safe CI artifacts should include aggregate status, pass rates, S1 failed count,
+reason codes, and safe report references. They should not include raw JSONL,
+full `gate-report.json`, full `gate-report.md`, vector indexes, raw retrieved
+evidence, raw endpoint values, or customer documents.
+
 ## Recommended Commands
 
 Run `rqg doctor` before customer onboarding or CI setup:

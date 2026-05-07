@@ -313,11 +313,11 @@ class HTTPRAGAdapter:
         except httpx.TimeoutException as exc:
             raise ExternalRAGTimeoutError(
                 "External RAG API timed out after "
-                f"{self.timeout_sec}s: {sanitize_error_message(str(exc))}"
+                f"{self.timeout_sec}s: {sanitize_error_message(exc)}"
             ) from exc
         except httpx.HTTPError as exc:
             raise ExternalRAGError(
-                f"External RAG API request failed: {sanitize_error_message(str(exc))}"
+                f"External RAG API request failed: {sanitize_error_message(exc)}"
             ) from exc
 
         if resp.status_code in (401, 403):
@@ -331,8 +331,8 @@ class HTTPRAGAdapter:
             return resp.json()
         except Exception as exc:
             raise ExternalRAGSchemaError(
-                "External RAG API returned non-JSON response: "
-                f"{sanitize_error_message(str(exc))}"
+                "External RAG API returned non-JSON response "
+                f"(response body redacted): {sanitize_error_message(exc)}"
             ) from exc
 
     def _normalize(self, raw: Any) -> list[dict[str, Any]]:
