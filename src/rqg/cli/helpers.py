@@ -64,7 +64,7 @@ def github_actions_enabled() -> bool:
 def github_actions_data_boundary_guidance() -> str:
     return (
         "GitHub Actions may handle sample/mock/dummy data only; customer/full/external runs "
-        "must be executed locally, on a private runner, or in a customer-controlled environment."
+        "must be executed in a local/private runner or customer-controlled environment."
     )
 
 

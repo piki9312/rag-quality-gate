@@ -11,7 +11,12 @@ from pathlib import Path
 from typing import Literal
 
 from ..domain import GateDecision
-from ..security import sanitize_artifact_path, sanitize_error_message, sanitize_payload, sanitize_text
+from ..security import (
+    sanitize_artifact_path,
+    sanitize_error_message,
+    sanitize_payload,
+    sanitize_text,
+)
 
 NotificationKind = Literal["slack", "teams", "webhook"]
 

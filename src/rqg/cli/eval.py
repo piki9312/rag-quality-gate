@@ -93,12 +93,16 @@ def cmd_eval(args: argparse.Namespace) -> int:
 
     if github_actions_enabled() and requested_report_mode == "full":
         print(
-            github_actions_fail_fast_message("--report-mode full is not allowed when GITHUB_ACTIONS=true."),
+            github_actions_fail_fast_message(
+                "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+            ),
             file=sys.stderr,
         )
         return 1
     report_mode = normalize_report_mode(
-        "ci" if github_actions_enabled() and requested_report_mode is None else requested_report_mode
+        "ci"
+        if github_actions_enabled() and requested_report_mode is None
+        else requested_report_mode
     )
 
     if adapter_config_path:

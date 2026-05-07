@@ -5,7 +5,12 @@ from __future__ import annotations
 import time
 
 from ..domain import ConnectionValidationErrorType, ConnectionValidationResult
-from ..security import sanitize_endpoint, sanitize_error_message, sanitize_query_text, sanitize_source_ref
+from ..security import (
+    sanitize_endpoint,
+    sanitize_error_message,
+    sanitize_query_text,
+    sanitize_source_ref,
+)
 from .external_adapter import (
     ExternalRAGAuthError,
     ExternalRAGError,

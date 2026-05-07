@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-from rqg.domain import GateDecision
 from rqg.cli.eval import cmd_eval
+from rqg.domain import GateDecision
 from rqg.quality.check import GateConfig, build_gate_decision, run_check
 from rqg.quality.models import EvalResult, EvalRun, QARunRecord, QATestCase
 from rqg.quality.runner import RAGQualityRunner

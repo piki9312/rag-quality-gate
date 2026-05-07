@@ -145,17 +145,11 @@ def sanitize_query_text(value: str | None) -> str:
 
 
 def sanitize_source_ref(value: object) -> str:
-    """Sanitize a source reference while preserving short document IDs."""
+    """Sanitize a source reference."""
     source_ref = "" if value is None else str(value).strip()
     if not source_ref:
         return source_ref
-    if _URL_PATTERN.search(source_ref):
-        return sanitize_url(source_ref)
-    if _WINDOWS_ABSOLUTE_PATH_PATTERN.search(source_ref) or _POSIX_INTERNAL_PATH_PATTERN.search(
-        source_ref
-    ):
-        return REDACTED
-    return redact_text(source_ref)
+    return REDACTED
 
 
 def sanitize_artifact_path(value: str | Path | None) -> str | None:
