@@ -116,6 +116,12 @@ def _schema_context(value: Any) -> str:
     return f"Available fields: {_available_fields(value)}. {_response_mapping_hint()}"
 
 
+def _redacted_http_status_message(status_code: int, *, unexpected: bool = False) -> str:
+    if unexpected:
+        return f"External RAG API returned unexpected status {status_code} (response body redacted)"
+    return f"External RAG API returned {status_code} (response body redacted)"
+
+
 def load_http_rag_adapter_config(path: str | Path) -> ExternalRAGAdapterConfig:
     """Load an adapter_config.yml file without exposing secrets."""
     import yaml
@@ -315,18 +321,11 @@ class HTTPRAGAdapter:
             ) from exc
 
         if resp.status_code in (401, 403):
-            raise ExternalRAGAuthError(
-                f"External RAG API returned {resp.status_code} (response body redacted)"
-            )
+            raise ExternalRAGAuthError(_redacted_http_status_message(resp.status_code))
         if resp.status_code >= 500:
-            raise ExternalRAGServerError(
-                f"External RAG API returned {resp.status_code} (response body redacted)"
-            )
+            raise ExternalRAGServerError(_redacted_http_status_message(resp.status_code))
         if resp.status_code != 200:
-            raise ExternalRAGError(
-                f"External RAG API returned unexpected status {resp.status_code} "
-                "(response body redacted)"
-            )
+            raise ExternalRAGError(_redacted_http_status_message(resp.status_code, unexpected=True))
 
         try:
             return resp.json()

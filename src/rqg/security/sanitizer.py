@@ -8,7 +8,7 @@ from typing import Any
 
 REDACTED = "[REDACTED]"
 
-_URL_RE = re.compile(r"(?i)\b(?:https?|wss?)://[^\s<>()\[\]{}]+")
+_URL_RE = re.compile(r"(?i)\b(?:https?|wss?)://[A-Za-z0-9.-]+(?::\d+)?(?:/[^\s<>()\[\]{}]*)?")
 _BEARER_RE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+")
 _SK_API_KEY_RE = re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]{6,}\b")
 _SECRET_ASSIGNMENT_RE = re.compile(
@@ -21,10 +21,10 @@ _CONTENT_INLINE_RE = re.compile(
     r"(?i)\b(retrieved evidence|retrieved_evidence|chunk text|chunk_text|prompt text)\b"
 )
 _SECRET_WORD_RE = re.compile(
-    r"\b(?:[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|APIKEY|PASSWORD)[A-Z0-9_-]*)\b"
+    r"(?i)\b(?:[A-Z0-9_]*(?:TOKEN|SECRET|API_KEY|APIKEY|PASSWORD)[A-Z0-9_-]*)\b"
 )
 _WINDOWS_PATH_RE = re.compile(r"(?i)\b[A-Z]:\\(?:[^\\\s]+\\)*[^\\\s]+")
-_UNIX_PATH_RE = re.compile(r"(?<![\w.-])/(?:[^/\s]+/)*[^/\s]+")
+_UNIX_PATH_RE = re.compile(r"(?<![\w.-])/(?:home|Users|var|tmp|etc|opt|srv|internal)(?:/[^/\s]+)+")
 _WHITESPACE_RE = re.compile(r"\s+")
 
 

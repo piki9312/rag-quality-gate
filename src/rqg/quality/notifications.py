@@ -11,7 +11,12 @@ from pathlib import Path
 from typing import Literal
 
 from ..domain import GateDecision
-from ..security import sanitize_artifact_path, sanitize_payload, sanitize_text
+from ..security import (
+    sanitize_artifact_path,
+    sanitize_error_message,
+    sanitize_payload,
+    sanitize_text,
+)
 
 NotificationKind = Literal["slack", "teams", "webhook"]
 
@@ -126,7 +131,10 @@ def _send_notification(
         with urllib.request.urlopen(request, timeout=target.timeout_sec):
             return
     except (urllib.error.URLError, OSError) as exc:
-        raise RuntimeError(f"Notification delivery failed for {target.kind}: {exc}") from exc
+        raise RuntimeError(
+            f"Notification delivery failed for {target.kind}: "
+            f"{sanitize_error_message(str(exc))}"
+        ) from exc
 
 
 def _build_payload(
