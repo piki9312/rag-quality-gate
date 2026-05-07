@@ -341,6 +341,40 @@ def test_build_weekly_review_issue_payload_includes_reliability_signals() -> Non
     assert "Needs human review: yes" in payload["body"]
 
 
+def test_weekly_review_issue_payload_redacts_sensitive_text() -> None:
+    payload = build_weekly_review_issue_payload(
+        {
+            "entries": 1,
+            "week_start": "2026-04-20",
+            "status_mix": {"pass": 0, "warn": 0, "fail": 1},
+            "summary_lines": [
+                "- External error: https://rag.example.com/search SECRET_TOKEN_ABC "
+                "answer customer secret /internal/customer/path.md"
+            ],
+            "trend": {"latest_run_id": "run-1", "latest_status": "FAIL"},
+            "review_steward": "ops-team",
+            "stale_case_review": {
+                "stale_cases": [
+                    {
+                        "case_id": "QA-9",
+                        "owner": "hr-team",
+                        "severity": "S1",
+                        "age_days": 34,
+                        "reference_field": "source_path",
+                        "reference_value": "/internal/customer/path.md",
+                        "issue": "answer customer secret SECRET_TOKEN_ABC",
+                    }
+                ]
+            },
+        }
+    )
+
+    serialized = json.dumps(payload, ensure_ascii=False)
+    assert "https://rag.example.com/search" not in serialized
+    assert "SECRET_TOKEN_ABC" not in serialized
+    assert "/internal/customer/path.md" not in serialized
+
+
 def test_export_weekly_review_command_returns_error_when_summary_missing(capsys) -> None:
     missing_path = Path("tests/.tmp") / f"{uuid.uuid4()}-missing" / "gate-history-summary.json"
 

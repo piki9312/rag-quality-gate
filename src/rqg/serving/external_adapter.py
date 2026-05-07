@@ -30,6 +30,7 @@ try:
 except ImportError:  # pragma: no cover
     httpx = None  # type: ignore[assignment]
 
+from ..security import sanitize_error_message
 from .protocol import RetrievedChunk
 
 logger = logging.getLogger(__name__)
@@ -305,30 +306,34 @@ class HTTPRAGAdapter:
             )
         except httpx.TimeoutException as exc:
             raise ExternalRAGTimeoutError(
-                f"External RAG API timed out after {self.timeout_sec}s: {exc}"
+                "External RAG API timed out after "
+                f"{self.timeout_sec}s: {sanitize_error_message(str(exc))}"
             ) from exc
         except httpx.HTTPError as exc:
-            raise ExternalRAGError(f"External RAG API request failed: {exc}") from exc
+            raise ExternalRAGError(
+                f"External RAG API request failed: {sanitize_error_message(str(exc))}"
+            ) from exc
 
         if resp.status_code in (401, 403):
             raise ExternalRAGAuthError(
-                f"External RAG API returned {resp.status_code}: {resp.text[:200]}"
+                f"External RAG API returned {resp.status_code} (response body redacted)"
             )
         if resp.status_code >= 500:
             raise ExternalRAGServerError(
-                f"External RAG API returned {resp.status_code}: {resp.text[:200]}"
+                f"External RAG API returned {resp.status_code} (response body redacted)"
             )
         if resp.status_code != 200:
             raise ExternalRAGError(
-                f"External RAG API returned unexpected status {resp.status_code}: "
-                f"{resp.text[:200]}"
+                f"External RAG API returned unexpected status {resp.status_code} "
+                "(response body redacted)"
             )
 
         try:
             return resp.json()
         except Exception as exc:
             raise ExternalRAGSchemaError(
-                f"External RAG API returned non-JSON response: {exc}"
+                "External RAG API returned non-JSON response: "
+                f"{sanitize_error_message(str(exc))}"
             ) from exc
 
     def _normalize(self, raw: Any) -> list[dict[str, Any]]:

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 from ..domain import GateDecision
+from ..security import sanitize_artifact_path, sanitize_payload, sanitize_text
 
 NotificationKind = Literal["slack", "teams", "webhook"]
 
@@ -142,20 +143,21 @@ def _build_payload(
     )
     if kind in {"slack", "teams"}:
         return {"text": summary}
+    safe_reasons = _safe_reason_summaries(decision)
     return {
         "event": "rqg.gate_decision",
         "status": decision.status,
         "policy_status": decision.policy_status,
         "run_id": decision.run_id,
         "created_at": decision.created_at.isoformat(),
-        "reasons": decision.reasons,
+        "reasons": safe_reasons,
         "metrics": decision.metrics,
-        "next_actions": [item.model_dump(mode="json") for item in decision.next_actions],
+        "next_actions": _safe_next_actions(decision),
         "judge_reliability": decision.judge_reliability,
-        "fallback_summary": decision.fallback_summary,
+        "fallback_summary": sanitize_payload(decision.fallback_summary),
         "needs_human_review": decision.needs_human_review,
-        "report_path": str(report_path) if report_path else None,
-        "decision_path": str(decision_path) if decision_path else None,
+        "report_path": sanitize_artifact_path(report_path),
+        "decision_path": sanitize_artifact_path(decision_path),
         "summary": summary,
     }
 
@@ -166,26 +168,54 @@ def _build_summary_text(
     report_path: str | Path | None,
     decision_path: str | Path | None,
 ) -> str:
-    pack_name = decision.pack.pack_name if decision.pack else "unknown-pack"
+    pack_name = sanitize_text(decision.pack.pack_name if decision.pack else "unknown-pack")
     lines = [
         f"Proof Gate {decision.policy_status.upper()} for {pack_name} update.",
         f"Run: {decision.run_id}",
     ]
     s1_fail_count = int(decision.metrics.get("s1_fail_count", 0.0) or 0.0)
     lines.append(f"S1 failures: {s1_fail_count}")
-    if decision.reasons:
-        lines.append(f"Top reasons: {'; '.join(decision.reasons[:3])}")
+    safe_reasons = _safe_reason_summaries(decision)
+    if safe_reasons:
+        lines.append(f"Failure categories: {'; '.join(safe_reasons[:3])}")
     lines.append(f"Judge reliability: {decision.judge_reliability}")
     fallback_used = decision.judge_fallback_used or decision.embedding_fallback_used
     lines.append(f"Fallback used: {'yes' if fallback_used else 'no'}")
     lines.append(f"Needs human review: {'yes' if decision.needs_human_review else 'no'}")
     if decision.next_actions:
-        lines.append(f"Next action: {decision.next_actions[0].action}")
+        lines.append(f"Next action: {sanitize_text(decision.next_actions[0].action)}")
     if report_path:
-        lines.append(f"Report: {report_path}")
+        lines.append(f"Report: {sanitize_artifact_path(report_path)}")
     if decision_path:
-        lines.append(f"Decision JSON: {decision_path}")
+        lines.append(f"Decision JSON: {sanitize_artifact_path(decision_path)}")
     return "\n".join(lines)
+
+
+def _safe_reason_summaries(decision: GateDecision) -> list[str]:
+    categories = [
+        sanitize_text(item.failure_category)
+        for item in decision.next_actions
+        if str(item.failure_category).strip()
+    ]
+    if categories:
+        return categories
+    return [sanitize_text(reason) for reason in decision.reasons[:3]]
+
+
+def _safe_next_actions(decision: GateDecision) -> list[dict[str, object]]:
+    safe_items: list[dict[str, object]] = []
+    for item in decision.next_actions:
+        safe_items.append(
+            {
+                "failure_category": sanitize_text(item.failure_category),
+                "count": item.count,
+                "action": sanitize_text(item.action),
+                "owner": sanitize_text(item.owner),
+                "due": sanitize_text(item.due),
+                "affected_case_ids": [sanitize_text(case_id) for case_id in item.affected_case_ids],
+            }
+        )
+    return safe_items
 
 
 def _resolve_url(item: dict[str, object]) -> str | None:
