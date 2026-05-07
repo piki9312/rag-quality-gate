@@ -60,7 +60,7 @@ _SECRET_QUERY_KEYS = {
 _TOKEN_PATTERNS = [
     re.compile(r"(?i)\bAuthorization\s*:\s*Bearer\s+[A-Za-z0-9._~+/=-]{16,}"),
     re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]{16,}"),
-    re.compile(r"\bsk-[A-Za-z0-9][A-Za-z0-9_-]{15,}\b"),
+    re.compile(r"\bsk-[A-Za-z0-9_-]{16,}\b"),
     re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{16,}"),
     re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{16,}"),
     re.compile(r"(?i)\b(api_key|access_token|token|signature|secret)=([^&\s]{12,})"),
