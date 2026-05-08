@@ -358,6 +358,97 @@ class TestValidation:
 
         assert any(e.field == "notes" and e.level == "error" for e in errors)
 
+    def test_s1_active_without_pattern_reference_warns(self):
+        row = {
+            "case_id": "FP001",
+            "question": "What is the refund policy?",
+            "status": "active",
+            "severity": "S1",
+            "expected_answer": "Refunds are limited by policy.",
+        }
+
+        errors = validate_case_row(row)
+
+        assert any(
+            e.field == "notes"
+            and e.level == "warn"
+            and "S1 active case は notes に failure pattern 参照を残してください" in e.message
+            for e in errors
+        )
+
+    def test_s2_active_without_pattern_reference_does_not_warn(self):
+        row = {
+            "case_id": "FP002",
+            "question": "What is the campaign policy?",
+            "status": "active",
+            "severity": "S2",
+            "expected_answer": "Campaign handling follows policy.",
+        }
+
+        errors = validate_case_row(row)
+
+        assert not any("failure pattern" in e.message for e in errors)
+
+    def test_s1_draft_without_pattern_reference_does_not_warn(self):
+        row = {
+            "case_id": "FP003",
+            "question": "What is the cancellation policy?",
+            "status": "draft",
+            "severity": "S1",
+            "expected_answer": "Cancellation handling follows policy.",
+        }
+
+        errors = validate_case_row(row)
+
+        assert not any("failure pattern" in e.message for e in errors)
+
+    def test_s1_active_with_valid_pattern_reference_does_not_warn(self):
+        row = {
+            "case_id": "FP004",
+            "question": "What is the refund deadline?",
+            "status": "active",
+            "severity": "S1",
+            "expected_answer": "Refund deadlines follow policy.",
+            "notes": "pattern:FP-REFUND-001",
+        }
+
+        errors = validate_case_row(row)
+
+        assert not any("failure pattern" in e.message for e in errors)
+
+    def test_invalid_pattern_reference_warns(self):
+        row = {
+            "case_id": "FP005",
+            "question": "What is the refund deadline?",
+            "status": "active",
+            "severity": "S1",
+            "expected_answer": "Refund deadlines follow policy.",
+            "notes": "pattern:refund-001",
+        }
+
+        errors = validate_case_row(row)
+
+        assert any(
+            e.field == "notes"
+            and e.level == "warn"
+            and "notes の failure pattern 参照が不正です: pattern:refund-001" in e.message
+            for e in errors
+        )
+
+    def test_valid_pattern_reference_can_be_mixed_with_other_notes(self):
+        row = {
+            "case_id": "FP006",
+            "question": "What is the cancellation deadline?",
+            "status": "active",
+            "severity": "S1",
+            "expected_answer": "Cancellation deadlines follow policy.",
+            "notes": "manual_reviewed; pattern:FP-CANCEL-001; owner_confirmed",
+        }
+
+        errors = validate_case_row(row)
+
+        assert not any("failure pattern" in e.message for e in errors)
+
 
 class TestExpectedAnswerValidationByStatus:
     """expected_answer 空のバリデーションは status 依存。"""

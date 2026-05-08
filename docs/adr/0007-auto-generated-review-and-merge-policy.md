@@ -152,6 +152,25 @@ generated review が snapshot section ID を持ち、 curated active case が st
 
 評価契約が壊れ、 review 補助と正本の境界が失われる。
 
+## 追記: Failure Patternとの追跡性
+
+生成されたreview出力は、引き続き候補artifactです。`cases.csv` に昇格する前に、failure patternと照らしてレビューします。
+
+failure patternは、そのcaseがなぜ存在するのか、AI/RAGが起こしてはいけない業務事故は何かを説明します。運用上の正本は `cases.csv` のままですが、採用された行では `notes` に軽い参照を残します。
+
+```text
+pattern:FP-REFUND-001
+```
+
+この参照は、新しいformal columnを増やさず、意図的に `notes` に保存します。既存の16列schemaを維持しながら、PoCレビューと月額運用で追跡できるようにするためです。
+
+validatorは、次の場合にerrorではなくwarningを出します。
+
+- activeな `S1` caseに `pattern:` 参照がない
+- `pattern:` 参照が `pattern:FP-[A-Z0-9-]+` に一致しない
+
+validatorは `failure_patterns.md` をパースせず、pattern IDの存在確認もしません。存在確認は、failure pattern台帳の形式が安定した後に検討します。
+
 ## Open Questions
 
 - curated field lock を file schema 上に持つか
