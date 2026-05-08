@@ -181,6 +181,23 @@ review 補助と governed asset の境界が壊れ、 curated case が守れな�
 
 S1/S2 の境界は技術推定だけで固定すべきではない。
 
+## 追記: 設計資産としてのFailure Pattern
+
+failure patternは、生成されたreview出力の前段にある管理対象の設計資産です。候補ケースがなぜ必要なのか、どの業務リスクを検査するのかを説明するために使います。
+
+Gate実行における正本は引き続き `cases.csv` です。failure pattern自体がactiveになることはなく、生成候補をそのままactive caseに昇格してはいけません。
+
+formal 16-column schemaを変えずに対応関係を追跡できるよう、採用されたケースでは `notes` にpattern参照を残します。
+
+```text
+pattern:FP-CANCEL-001
+```
+
+月額運用では、対応関係の両側を更新します。
+
+- active caseが変わったら、failure pattern台帳の `linked_case_ids` を更新する
+- 現行ポリシーに照らしてcaseをレビューしたら、`cases.csv` の `last_reviewed_at` を更新する
+
 ## Open Questions
 
 - case lineage をより明示的に管理する field を追加するか

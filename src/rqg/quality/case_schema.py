@@ -60,6 +60,8 @@ _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")
 _QUESTION_WHITESPACE_RE = re.compile(r"\s+")
 _ORDINAL_PREFIX_RE = re.compile(r"^\d+\s*[.)．、）]\s*")
 _NOTE_PARTS_RE = re.compile(r"\s*;\s*")
+_FAILURE_PATTERN_TOKEN_RE = re.compile(r"(?<!\w)pattern:([^\s;]+)")
+_FAILURE_PATTERN_ID_RE = re.compile(r"^FP-[A-Z0-9-]+$")
 
 _QUESTION_TYPE_PATTERNS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
@@ -190,6 +192,10 @@ def has_note_marker(notes: object, marker: str) -> bool:
 
 def has_note_marker_prefix(notes: object, prefix: str) -> bool:
     return any(part.startswith(prefix) for part in _note_parts(notes))
+
+
+def failure_pattern_refs(notes: object) -> list[str]:
+    return _FAILURE_PATTERN_TOKEN_RE.findall(_clean(notes))
 
 
 def is_auto_expected_answer_draft(notes: object) -> bool:
@@ -664,6 +670,33 @@ def validate_case_row(
                 cid,
                 "notes",
                 "auto-generated expected_answer draft must be manually reviewed before active",
+            )
+        )
+
+    pattern_refs = failure_pattern_refs(notes)
+    invalid_pattern_refs = [ref for ref in pattern_refs if not _FAILURE_PATTERN_ID_RE.match(ref)]
+    for ref in invalid_pattern_refs:
+        errors.append(
+            ValidationError(
+                cid,
+                "notes",
+                (
+                    f"notes の failure pattern 参照が不正です: pattern:{ref}; "
+                    "期待形式: pattern:FP-[A-Z0-9-]+"
+                ),
+                "warn",
+            )
+        )
+    if status == "active" and severity == "S1" and not pattern_refs:
+        errors.append(
+            ValidationError(
+                cid,
+                "notes",
+                (
+                    "S1 active case は notes に failure pattern 参照を残してください。"
+                    "例: pattern:FP-REFUND-001"
+                ),
+                "warn",
             )
         )
 
