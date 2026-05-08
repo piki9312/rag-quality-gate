@@ -204,13 +204,23 @@ jobs:
       - name: Preflight configuration
         shell: bash
         run: |
-          if [ "${{ inputs.mock }}" != "true" ] && [ -z "${{ inputs.docs_dir }}" ] && [ -z "$RQG_RAG_API_ENDPOINT" ]; then
-            echo "Provide docs_dir for local gate runs, or rag_api_endpoint secret for external runs." >&2
+          if [ "${{ inputs.mock }}" != "true" ]; then
+            echo "GitHub-hosted reusable gate runs are limited to sample/mock/dummy data only. customer/full/external runs must execute locally, on a private runner, or in a customer-controlled environment." >&2
             exit 1
           fi
 
-          if [ "${{ inputs.run_connection_validation }}" = "true" ] && [ -z "$RQG_RAG_API_ENDPOINT" ]; then
-            echo "run_connection_validation=true requires rag_api_endpoint secret." >&2
+          if [ -n "$RQG_RAG_API_ENDPOINT" ] || [ -n "$RQG_RAG_API_KEY" ]; then
+            echo "GitHub-hosted reusable gate runs must not use external/customer RAG endpoints or credentials. Use a local/private runner or customer-controlled environment instead." >&2
+            exit 1
+          fi
+
+          if [ "${{ inputs.run_connection_validation }}" = "true" ] || [ "${{ inputs.pack_validation_preset }}" = "external" ] || [ "${{ inputs.pack_validation_preset }}" = "external_notify" ]; then
+            echo "GitHub-hosted reusable gate runs must not enable external/customer validation modes. Use sample/mock/dummy data only, or move the run to a local/private runner or customer-controlled environment." >&2
+            exit 1
+          fi
+
+          if [ -z "${{ inputs.docs_dir }}" ]; then
+            echo "Provide docs_dir for sample/mock/dummy local document runs in GitHub Actions." >&2
             exit 1
           fi
 
@@ -613,7 +623,6 @@ jobs:
           path: |
             ${{ inputs.log_dir }}/gate-decision.json
             ${{ inputs.log_dir }}/gate-history-summary.json
-            ${{ inputs.log_dir }}/pack-validation.json
 
       - name: Fail when connection validation failed
         if: ${{ always() && inputs.run_connection_validation && steps.validate_connection.outcome == 'failure' }}

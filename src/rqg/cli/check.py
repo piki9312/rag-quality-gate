@@ -3,10 +3,26 @@
 from __future__ import annotations
 
 import argparse
-import os
+import sys
 from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
+from .helpers import github_actions_enabled, github_actions_fail_fast_message
+
+
+def _exit_code_for_gate_result(*, policy_status: str, gate_status: str, warn_exit_code: int) -> int:
+    normalized_policy = str(policy_status or "").strip().lower()
+    normalized_gate = str(gate_status or "").strip().lower()
+
+    if normalized_policy == "block":
+        return 1
+    if normalized_policy in {"warn", "needs_human_review"}:
+        return warn_exit_code
+    if normalized_gate == "fail":
+        return 1
+    if normalized_gate == "warn":
+        return warn_exit_code
+    return 0
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -34,16 +50,16 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
 
     try:
-        github_actions = os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+        github_actions = github_actions_enabled()
         requested_report_mode = getattr(args, "report_mode", None)
         report_mode = normalize_report_mode(
             "ci" if github_actions and requested_report_mode is None else requested_report_mode
         )
         if github_actions and requested_report_mode == "full":
-            import sys
-
             print(
-                "[ERROR] --report-mode full is not allowed when GITHUB_ACTIONS=true",
+                github_actions_fail_fast_message(
+                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+                ),
                 file=sys.stderr,
             )
             return 1
@@ -62,8 +78,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         if args.aggregation_policy is not None:
             config.aggregation_policy = normalize_aggregation_policy(args.aggregation_policy)
     except ValueError as exc:
-        import sys
-
         print(f"[ERROR] Failed to load gate config: {exc}", file=sys.stderr)
         return 1
 
@@ -210,11 +224,13 @@ def cmd_check(args: argparse.Namespace) -> int:
             print(f"[WARN] {warning}")
 
     status = result.gate_status.upper()
+    policy_status = decision.policy_status.upper()
     print(f"Gate: {status}")
+    print(f"Policy: {policy_status}")
 
     warn_exit_code = getattr(args, "warn_exit_code", 0)
-    if result.gate_status == "fail":
-        return 1
-    if result.gate_status == "warn":
-        return warn_exit_code
-    return 0
+    return _exit_code_for_gate_result(
+        policy_status=decision.policy_status,
+        gate_status=result.gate_status,
+        warn_exit_code=warn_exit_code,
+    )

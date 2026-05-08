@@ -642,11 +642,13 @@ class TestRunnerExternalRAGErrorHandling:
 class TestCmdEvalExternalRAGE2E:
     """End-to-end test: cmd_eval --rag-endpoint uses HTTPRAGAdapter → runner → results."""
 
-    def test_cmd_eval_external_rag_e2e(self, tmp_path):
+    def test_cmd_eval_external_rag_e2e(self, tmp_path, monkeypatch):
         import argparse
         import csv
 
         from rqg.cli.eval import cmd_eval
+
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
         # Create a minimal test cases CSV
         cases_file = tmp_path / "cases.csv"
@@ -715,11 +717,13 @@ class TestCmdEvalExternalRAGE2E:
         assert exit_code in (0, 1)  # 0=all pass, 1=some fail — both are valid non-crash
         assert mock_post.called
 
-    def test_cmd_eval_external_rag_adapter_config_mapping(self, tmp_path):
+    def test_cmd_eval_external_rag_adapter_config_mapping(self, tmp_path, monkeypatch):
         import argparse
         import csv
 
         from rqg.cli.eval import cmd_eval
+
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
 
         cases_file = tmp_path / "cases.csv"
         with open(cases_file, "w", encoding="utf-8", newline="") as f:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import uuid
 from datetime import datetime, timezone
@@ -54,6 +55,21 @@ def write_text_output(path: str | Path, content: str) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content, encoding="utf-8")
     return output_path
+
+
+def github_actions_enabled() -> bool:
+    return os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+
+
+def github_actions_data_boundary_guidance() -> str:
+    return (
+        "GitHub Actions may handle sample/mock/dummy data only; customer/full/external runs "
+        "must be executed in a local/private runner or customer-controlled environment."
+    )
+
+
+def github_actions_fail_fast_message(reason: str) -> str:
+    return f"[ERROR] {reason} {github_actions_data_boundary_guidance()}"
 
 
 # ---------------------------------------------------------------------------

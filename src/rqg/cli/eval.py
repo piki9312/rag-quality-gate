@@ -8,7 +8,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .helpers import reset_eval_log_dir, validate_index_dir, write_json_output
+from .helpers import (
+    github_actions_enabled,
+    github_actions_fail_fast_message,
+    reset_eval_log_dir,
+    validate_index_dir,
+    write_json_output,
+)
 
 
 def _load_rag_config() -> dict[str, Any]:
@@ -80,17 +86,23 @@ def cmd_eval(args: argparse.Namespace) -> int:
     rag_api_key_env = getattr(args, "rag_api_key_env", None)
     adapter_config_path = getattr(args, "adapter_config", None)
     adapter_config = None
-    github_actions = os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
     requested_report_mode = getattr(args, "report_mode", None)
-    if github_actions and requested_report_mode == "full":
+    requested_report_mode = (
+        str(requested_report_mode).strip().lower() if requested_report_mode is not None else None
+    )
+
+    if github_actions_enabled() and requested_report_mode == "full":
         print(
-            "[ERROR] --report-mode full is not allowed when GITHUB_ACTIONS=true. "
-            "Full reports are local/private runner/customer-controlled environment only.",
+            github_actions_fail_fast_message(
+                "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+            ),
             file=sys.stderr,
         )
         return 1
     report_mode = normalize_report_mode(
-        "ci" if github_actions and requested_report_mode is None else requested_report_mode
+        "ci"
+        if github_actions_enabled() and requested_report_mode is None
+        else requested_report_mode
     )
 
     if adapter_config_path:
@@ -110,6 +122,15 @@ def cmd_eval(args: argparse.Namespace) -> int:
         if cfg.get("type") == "http" and cfg.get("endpoint"):
             rag_endpoint = cfg["endpoint"]
             rag_api_key_env = rag_api_key_env or cfg.get("api_key_env")
+
+    if github_actions_enabled() and rag_endpoint:
+        print(
+            github_actions_fail_fast_message(
+                "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
+            ),
+            file=sys.stderr,
+        )
+        return 1
 
     if rag_endpoint:
         # External RAG mode — retrieval stays external even when --mock is used for the LLM.
