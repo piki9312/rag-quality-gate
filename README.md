@@ -4,6 +4,13 @@
 
 ## Choose Your Path
 
+Start with this root README for the repository-wide overview. Other `README.md`
+files in `docs/`, `packs/`, `templates/`, and `examples/` are local guides for
+those specific folders.
+
+Unless noted otherwise, every `bash` / `powershell` block below is a terminal
+command example to run from your shell.
+
 Install the lightweight package first when you only need pack validation, existing
 report inspection, or external-RAG setup checks:
 
@@ -51,6 +58,11 @@ For customer-owned or vendor-owned RAG APIs that already exist, use the
 [external RAG walkthrough](docs/demo/external-rag-walkthrough.md).
 
 ## 日本語 / Japanese
+
+まずはこのルートの README を入口として読んでください。`docs/`、`packs/`、
+`templates/`、`examples/` 配下の `README.md` は、それぞれのフォルダ専用の補足ガイドです。
+
+以下の `bash` / `powershell` ブロックは、特記がない限りターミナルで実行する CLI コマンド例です。
 
 Proof Gate は、RAG/Agent の品質を毎回同じやり方で検証し、高リスク更新の事故をリリース前に検知・遮断するための実運用向け品質ゲート基盤です。
 
@@ -241,7 +253,9 @@ rqg gate --pack packs/my_pack \
 
 ## ドキュメント案内
 
-README は製品概要と導入に絞っています。技術仕様・運用設計の詳細は docs を参照してください。
+最初に読むのはこの README です。ここでは製品概要と最短導入に絞り、技術仕様・運用設計の詳細は `docs/README.md` から辿ります。
+
+`packs/*/README.md` や `templates/*/README.md` は、その pack / template を使う段階で読むローカル手順書です。
 
 - docs ポータル（日英）: docs/README.md
 
@@ -519,7 +533,9 @@ If Markdown output looks garbled on Windows PowerShell, run the UTF-8 setup comm
 
 ## Documentation
 
-This README focuses on product overview and onboarding. See docs for detailed technical and operational guidance.
+Start with this README first. It covers product overview and quick onboarding, while `docs/README.md` is the next stop for detailed technical and operational guidance.
+
+`packs/*/README.md` and `templates/*/README.md` are local follow-up guides for the specific pack or template you are using.
 
 - docs portal (JP/EN): docs/README.md
 

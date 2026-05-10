@@ -2,7 +2,11 @@
 
 このディレクトリは、RAG Quality Gate の技術仕様と運用設計の詳細をまとめたドキュメント入口です。
 
-製品概要と最短導入は [README.md](../README.md) を参照してください。
+初回はまずリポジトリ直下の [README.md](../README.md) を読んでください。ここはその次に読む詳細ドキュメントの入口です。
+
+この配下や `packs/` 配下にある各 `README.md` は、個別フォルダのローカル手順書です。
+
+`bash` / `powershell` コードブロックは、特記がない限りターミナルで実行する CLI コマンド例として読んでください。
 
 ## 目的別に読む
 
@@ -71,7 +75,11 @@
 
 This directory is the documentation entry point for detailed technical and operational guidance in RAG Quality Gate.
 
-For product overview and quick onboarding, see [README.md](../README.md).
+Read the repository root [README.md](../README.md) first for the product overview and quickest onboarding path. This docs portal is the detailed follow-up layer.
+
+Other `README.md` files under this directory or under `packs/` are local guides for those specific folders.
+
+Unless noted otherwise, `bash` / `powershell` code blocks are terminal CLI command examples.
 
 ### Browse By Goal
 
