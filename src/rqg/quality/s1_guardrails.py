@@ -16,9 +16,12 @@ from dataclasses import dataclass
 # The `|` characters in the pattern below are regex alternation syntax, not literal units.
 _NUMBER_TOKEN_UNIT_PATTERN = r"%|％|円|日|営業日|日前|か月|ヶ月|月|年|時間|h"
 _NUMBER_TOKEN_RE = re.compile(
-    rf"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>{_NUMBER_TOKEN_UNIT_PATTERN})?"
+    rf"(?P<value>\d{{1,3}}(?:[,\uFF0C]\d{{3}})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?P<unit>{_NUMBER_TOKEN_UNIT_PATTERN})?"
 )
 _DEADLINE_OR_PERIOD_UNIT_RE = re.compile(r"(?:日|営業日|日前|か月|ヶ月|月|年)")
+_CITATION_REFERENCE_RE = re.compile(
+    r"\[(?=[^\]]*(?:#|@|/|\\|chunk\d+|(?:md|pdf|docx?|txt)(?:$|[^\w])))[^\]]+\]"
+)
 _NEGATION_TERMS = ("できない", "不可", "対象外", "ありません", "しない", "禁止", "not", "cannot")
 _AFFIRMATIVE_TERMS = ("できます", "可能", "対象です", "あります", "ok", "allowed")
 _EXCEPTION_TERMS = ("ただし", "例外", "除く", "except", "unless", "個別審査")
@@ -35,8 +38,9 @@ class S1GuardrailFailure:
 
 def _normalized_numbers(text: str) -> set[str]:
     found: set[str] = set()
-    for match in _NUMBER_TOKEN_RE.finditer(text):
-        value = match.group("value")
+    sanitized = _CITATION_REFERENCE_RE.sub(" ", text)
+    for match in _NUMBER_TOKEN_RE.finditer(sanitized):
+        value = match.group("value").replace(",", "").replace("，", "")
         unit = (match.group("unit") or "").strip()
         if not value:
             continue
