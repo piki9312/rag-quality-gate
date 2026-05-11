@@ -107,10 +107,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     if getattr(args, "strict_s1_governance", False) and args.cases_file:
         try:
             rows = [normalize_legacy_row(row) for row in load_csv_rows(args.cases_file)]
-        except (FileNotFoundError, ValueError) as exc:
-            print(
-                f"[ERROR] Failed to validate cases for strict S1 governance: {exc}", file=sys.stderr
-            )
+        except FileNotFoundError as exc:
+            print(f"[ERROR] strict S1 governance cases file not found: {exc}", file=sys.stderr)
+            return 1
+        except ValueError as exc:
+            print(f"[ERROR] strict S1 governance cases file is invalid: {exc}", file=sys.stderr)
             return 1
         issues = validate_case_rows(rows, strict_s1_governance=True)
         blocking = [issue for issue in issues if issue.level == "error"]

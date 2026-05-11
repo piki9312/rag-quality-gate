@@ -701,7 +701,8 @@ def validate_case_row(
             )
         )
 
-    if strict_s1_governance and status == "active" and severity == "S1":
+    strict_active_s1 = strict_s1_governance and status == "active" and severity == "S1"
+    if strict_active_s1:
         if not row.get("owner", "").strip():
             errors.append(
                 ValidationError(

@@ -118,18 +118,14 @@ def cmd_eval(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    report_mode = normalize_report_mode(
-        (
-            "ci"
-            if github_actions_enabled() and requested_report_mode is None
-            else (
-                "redacted"
-                if requested_report_mode is None
-                and (execution_mode == "external_real" or getattr(args, "customer_facing", False))
-                else requested_report_mode
-            )
-        )
-    )
+    default_report_mode = requested_report_mode
+    if github_actions_enabled() and requested_report_mode is None:
+        default_report_mode = "ci"
+    elif requested_report_mode is None and (
+        execution_mode == "external_real" or getattr(args, "customer_facing", False)
+    ):
+        default_report_mode = "redacted"
+    report_mode = normalize_report_mode(default_report_mode)
 
     if adapter_config_path:
         from ..serving.external_adapter import ExternalRAGError, load_http_rag_adapter_config

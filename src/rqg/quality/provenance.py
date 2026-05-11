@@ -232,10 +232,12 @@ def load_run_provenance(log_dir: str | Path, run_id: str | None) -> dict[str, An
 def append_simulation_warning(lines: list[str], execution_mode: str) -> None:
     if not is_simulation_execution_mode(execution_mode):
         return
+    if SIMULATION_WARNING_EN in lines or SIMULATION_WARNING_JA in lines:
+        return
+    if "## Simulation Warning" not in lines:
+        lines.extend(["## Simulation Warning", ""])
     lines.extend(
         [
-            "## Simulation Warning",
-            "",
             SIMULATION_WARNING_EN,
             "",
             SIMULATION_WARNING_JA,

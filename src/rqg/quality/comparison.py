@@ -123,17 +123,17 @@ def render_before_after_summary_markdown(summary: dict[str, Any]) -> str:
     else:
         lines.append("- No tracked provenance diffs detected.")
     lines.append("")
-    lines.append(
-        f"- newly_failing_cases: {', '.join(summary.get('newly_failing_cases', [])) or '-'}"
-    )
-    lines.append(f"- recovered_cases: {', '.join(summary.get('recovered_cases', [])) or '-'}")
-    lines.append(f"- unchanged_failures: {', '.join(summary.get('unchanged_failures', [])) or '-'}")
-    lines.append(
-        f"- newly_failing_s1_cases: {', '.join(summary.get('newly_failing_s1_cases', [])) or '-'}"
-    )
-    lines.append(f"- recovered_s1_cases: {', '.join(summary.get('recovered_s1_cases', [])) or '-'}")
-    lines.append(
-        f"- unchanged_s1_failures: {', '.join(summary.get('unchanged_s1_failures', [])) or '-'}"
-    )
+    lines.append(f"- newly_failing_cases: {_joined(summary.get('newly_failing_cases', []))}")
+    lines.append(f"- recovered_cases: {_joined(summary.get('recovered_cases', []))}")
+    lines.append(f"- unchanged_failures: {_joined(summary.get('unchanged_failures', []))}")
+    lines.append(f"- newly_failing_s1_cases: {_joined(summary.get('newly_failing_s1_cases', []))}")
+    lines.append(f"- recovered_s1_cases: {_joined(summary.get('recovered_s1_cases', []))}")
+    lines.append(f"- unchanged_s1_failures: {_joined(summary.get('unchanged_s1_failures', []))}")
     lines.append(f"- decision_recommendation: {summary.get('decision_recommendation') or '-'}")
     return "\n".join(lines) + "\n"
+
+
+def _joined(values: object) -> str:
+    if not isinstance(values, list):
+        return "-"
+    return ", ".join(str(value) for value in values if str(value).strip()) or "-"
