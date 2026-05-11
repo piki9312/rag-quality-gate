@@ -11,6 +11,11 @@ S1重大誤回答を本番前に止める Release Gate であることを
 人間が承認した S1 active case が `cases.csv` に入り、
 `rqg gate --mock` で BLOCK を確認できることです。
 
+> SIMULATION ONLY:
+> この runbook の `rqg gate --mock` は内部デモ専用です。
+> 顧客品質証跡ではありません。
+> customer-facing / 有償PoC の正式証跡には real / external_real run が必要です。
+
 ## S1 / S2 の違い
 
 - `S1`: 業務事故を止めるために、人間が設計・承認する Safety Gate ケース
