@@ -72,6 +72,10 @@ The adapter maps each result item to RQG's internal context shape:
 or mismapped answer fields early. Existing gate decision semantics do not change:
 RQG still evaluates using its existing runner and report contracts.
 
+All downstream artifacts should carry execution provenance such as
+`execution_mode`, prompt/config hashes, and change-event metadata so customer
+teams can distinguish `external_real` evidence from demo or mock-only runs.
+
 ## Diagnostics
 
 The adapter raises schema diagnostics without logging raw secrets or full
@@ -91,6 +95,11 @@ Common diagnostics include:
 Schema mismatch messages include available field names and a response mapping
 hint. They intentionally avoid printing bearer tokens, endpoint secrets, or raw
 answer/context text.
+
+Customer-facing summaries must also avoid raw customer payloads, raw retrieved
+context text, and private source URLs. Use redacted/customer-safe artifacts for
+shared evidence, and keep full evidence only in local, private-runner, or
+customer-controlled storage.
 
 ## Template
 

@@ -581,6 +581,7 @@ def validate_case_row(
     row: dict[str, str],
     *,
     require_active_owner: bool = False,
+    strict_s1_governance: bool = False,
 ) -> list[ValidationError]:
     """Validate a formal case row dict. Returns empty list if valid."""
     errors: list[ValidationError] = []
@@ -696,9 +697,59 @@ def validate_case_row(
                     "S1 active case は notes に failure pattern 参照を残してください。"
                     "例: pattern:FP-REFUND-001"
                 ),
-                "warn",
+                "error" if strict_s1_governance else "warn",
             )
         )
+
+    if strict_s1_governance and status == "active" and severity == "S1":
+        if not row.get("owner", "").strip():
+            errors.append(
+                ValidationError(
+                    cid,
+                    "owner",
+                    "S1 active case owner is required for customer-safe governance",
+                )
+            )
+        if not row.get("last_reviewed_at", "").strip():
+            errors.append(
+                ValidationError(
+                    cid,
+                    "last_reviewed_at",
+                    "S1 active case must record last_reviewed_at before release-gate use",
+                )
+            )
+        if not row.get("expected_answer", "").strip():
+            errors.append(
+                ValidationError(
+                    cid,
+                    "expected_answer",
+                    "S1 active case must include reviewer-approved expected_answer for high-risk validation",
+                )
+            )
+        if not row.get("expected_evidence", "").strip():
+            errors.append(
+                ValidationError(
+                    cid,
+                    "expected_evidence",
+                    "S1 active case must include expected_evidence for grounding review",
+                )
+            )
+        if not row.get("min_case_score", "").strip():
+            errors.append(
+                ValidationError(
+                    cid,
+                    "min_case_score",
+                    "S1 active case must include min_case_score",
+                )
+            )
+        if not has_note_marker(notes, "manual_review_required"):
+            errors.append(
+                ValidationError(
+                    cid,
+                    "notes",
+                    "S1 active case must declare notes marker manual_review_required",
+                )
+            )
 
     # expected_evidence format
     ev = row.get("expected_evidence", "").strip()
@@ -768,13 +819,20 @@ def validate_case_rows(
     rows: list[dict[str, str]],
     *,
     require_active_owner: bool = False,
+    strict_s1_governance: bool = False,
 ) -> list[ValidationError]:
     """Validate a list of formal case rows including duplicates check."""
     errors: list[ValidationError] = []
     seen_ids: set[str] = set()
 
     for row in rows:
-        errors.extend(validate_case_row(row, require_active_owner=require_active_owner))
+        errors.extend(
+            validate_case_row(
+                row,
+                require_active_owner=require_active_owner,
+                strict_s1_governance=strict_s1_governance,
+            )
+        )
         cid = row.get("case_id", "").strip()
         if cid:
             if cid in seen_ids:

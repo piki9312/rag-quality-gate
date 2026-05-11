@@ -213,6 +213,14 @@ python -m json.tool logs\customer-poc\gate-report.json
 Use the Markdown report for human review, and use `gate-report.json` for CI
 artifacts, future UI, weekly review automation, and customer evidence archives.
 
+For customer decision meetings, start with `customer-summary.md` and a manual
+review trail, not with the mixed internal report. `gate-report.md` remains the
+internal operations/debug artifact.
+
+Do not present `mock` or `ci_mock` output as production quality evidence. When
+customer-facing output is required, use a real or `external_real` run plus
+reviewed S1 cases and manual approval where needed.
+
 ## Related References
 
 - [External RAG Adapter Contract](../engineering/external-rag-adapter-contract.md)

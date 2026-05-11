@@ -88,6 +88,17 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0, max_delay:
 # ---------------------------------------------------------------------------
 
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+ANSWER_PROMPT_VERSION = "answer-v1"
+
+
+def answer_prompt_hash() -> str:
+    system_prompt = (
+        "あなたは社内文書QAです。必ずCONTEXTの内容だけで回答してください。"
+        "CONTEXTに根拠がない場合は『文書内に根拠が見つかりません』とだけ答えてください。"
+        "根拠に使った箇所は [REF1] のようにCONTEXTの先頭にある角括弧内のIDを"
+        "そのままコピーして引用してください。IDは絶対に改変しないでください。"
+    )
+    return json.dumps({"version": ANSWER_PROMPT_VERSION, "system": system_prompt}, ensure_ascii=False)
 
 
 @retry_with_backoff()

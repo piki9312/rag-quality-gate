@@ -28,7 +28,21 @@ def classify_failure_category(
         return "tool_failure"
     if failure_type_normalized == "retrieval_miss":
         return "retrieval_miss"
+    if failure_type_normalized in {"missing_evidence", "insufficient_context"}:
+        return "retrieval_miss"
     if failure_type_normalized == "bad_reference":
+        return "synthesis"
+    if failure_type_normalized in {
+        "numeric_mismatch",
+        "negation_error",
+        "exception_omission",
+        "deadline_or_period_mismatch",
+        "condition_mismatch",
+        "over_assertive_answer",
+        "unsupported_claim",
+        "judge_fallback",
+        "source_mismatch",
+    }:
         return "synthesis"
     if failure_type_normalized == "keyword_miss":
         if retrieval_hit is False or not retrieved_ids:

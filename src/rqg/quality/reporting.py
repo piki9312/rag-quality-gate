@@ -23,6 +23,8 @@ class GateReportArtifacts:
     history_summary_path: Path
     history_path: Path
     bundle_path: Path
+    customer_summary_markdown: str = ""
+    customer_summary_path: Path | None = None
     check_result: Any | None = None
     report_mode: str = "full"
 
@@ -85,8 +87,14 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         "decision": decision_payload,
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,
+        "customer_summary_markdown": artifacts.customer_summary_markdown,
         "artifact_paths": {
             "report_path": safe_relative_artifact_path(artifacts.report_path, artifact_base_dir),
+            "customer_summary_path": (
+                safe_relative_artifact_path(artifacts.customer_summary_path, artifact_base_dir)
+                if artifacts.customer_summary_path is not None
+                else ""
+            ),
             "decision_path": safe_relative_artifact_path(
                 artifacts.decision_path, artifact_base_dir
             ),
@@ -136,6 +144,9 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "summary": summary,
             "overall_decision": overall_decision,
             "cases": cases,
+            "execution_mode": decision_payload.get("execution_mode"),
+            "provenance": decision_payload.get("provenance", {}),
+            "manual_review_summary": decision_payload.get("manual_review_summary", {}),
         }
     )
     return payload

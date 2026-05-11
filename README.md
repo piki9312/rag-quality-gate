@@ -20,6 +20,9 @@ Proof Gate は、RAG / 顧客対応AI / FAQ AI の重大誤回答リスクを、
 - [PoC後の選択肢: Build / Improve / Monitor](docs/sales/post_poc_options_onepager.md)
 - [簡易RAG構築と本格RAG構築の違い](docs/sales/rag_build_scope.md)
 - [2分営業デモ台本](demos/customer_support_faq_change/sales_demo_script.md)
+- [PoC / Monitor runbook](docs/user-guide/poc-monitor-runbook.md)
+- [売ってよい範囲 / 約束してはいけない範囲](docs/sales/positioning-boundaries.md)
+- [有償PoC readiness checklist](docs/sales/poc-readiness-checklist.md)
 
 ## 提供メニュー
 
@@ -92,12 +95,23 @@ FAQ が v1 から v2 に変わった後も、AI が古い条件で答える変�
 .\.venv\Scripts\python -m rqg.cli gate --pack packs\customer_support_pack --mock --log-dir runs\customer_support_pack --reset-log-dir
 ```
 
+## Evidence boundary
+
+- Proof Gate is a **diagnostic / visibility / release-decision support layer** for high-risk RAG or chatbot answers.
+- A `PASS` result means the configured checks passed for the **specified cases, documents, model, and settings** in that run.
+- A `PASS` result does **not** guarantee overall production safety, legal compliance, or correctness for all user questions.
+- `mock` / `ci_mock` results are **simulation only** and must not be used as evidence of production RAG quality.
+- Customer-facing PoC evidence should use customer-safe artifacts such as `customer-summary.md`, not raw JSONL or mixed internal debug output.
+- S1 results still require reviewed cases, grounded evidence, and manual review when the run is uncertain, simulated, or fallback-driven.
+
 出力:
 
 - `runs/customer_support_pack/gate-report.md`
+- `runs/customer_support_pack/customer-summary.md`
 - `runs/customer_support_pack/gate-decision.json`
 - `runs/customer_support_pack/gate-report.json`
 - `runs/customer_support_pack/gate-decisions.jsonl`
+- `runs/customer_support_pack/run-provenance-<run_id>.json`
 
 ## PoC資料
 

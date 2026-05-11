@@ -92,10 +92,14 @@ def reset_eval_log_dir(log_dir: str | Path) -> list[Path]:
 
     for filename in (
         "gate-report.md",
+        "customer-summary.md",
         "gate-report.json",
         "gate-decision.json",
         "gate-decisions.jsonl",
         "gate-history-summary.json",
+        "before-after-summary.json",
+        "before-after-summary.md",
+        "run-provenance-latest.json",
     ):
         artifact_path = path / filename
         if artifact_path.exists() and artifact_path.is_file():
