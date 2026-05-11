@@ -49,8 +49,9 @@ def is_external_execution_mode(value: object) -> bool:
     return str(value or "").strip().lower() == "external_real"
 
 
-def hash_text(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+def hash_text(value: str | None) -> str:
+    normalized = value or ""
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def hash_file(path: str | Path | None) -> str | None:

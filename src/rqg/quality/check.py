@@ -479,7 +479,9 @@ def run_check(
         for record in current
         if str(record.execution_mode or "").strip()
     }
-    execution_mode = sorted(execution_modes)[0] if len(execution_modes) == 1 else "needs_review"
+    execution_mode = (
+        sorted(execution_modes)[0] if len(execution_modes) == 1 else "mixed_execution_modes"
+    )
     run_provenance = load_run_provenance(log_dir, latest_record.run_id)
 
     s1 = [r for r in current if r.severity == "S1"]
@@ -1168,7 +1170,7 @@ def _policy_status_for_result(result: CheckResult) -> str:
     s1_fail_count = max(0, result.s1_total - result.s1_passed)
     if s1_fail_count > 0 or not result.gate_passed:
         return "block"
-    if result.execution_mode == "needs_review":
+    if result.execution_mode == "mixed_execution_modes":
         return "needs_human_review"
     if is_simulation_execution_mode(result.execution_mode):
         return "needs_human_review"

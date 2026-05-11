@@ -1,4 +1,8 @@
-"""High-risk S1 answer guardrails beyond keyword matching."""
+"""High-risk S1 answer guardrails beyond keyword matching.
+
+This module currently focuses on Japanese-heavy customer support wording with a
+small bilingual fallback set for common English policy terms.
+"""
 
 from __future__ import annotations
 
