@@ -1,0 +1,4 @@
+case_id,pattern_id,actual_question,expected_answer,expected_evidence,severity,block_reason,reviewer,approval_status,reviewed_at,notes
+DEMO-S1-REFUND-001,FP-REFUND-001,セール品を商品到着から10日後に返金できますか。,いいえ。セール品は到着日から10日後でも返金できません。返金申請は未使用品でも商品到着日から30日以内に限ります。,customer_support_policy.md#refund-policy,S1,refund_policy_violation,proofgate-pm,approved,2026-05-11,Human-authored S1 release gate case for refund risk.
+DEMO-S1-CANCEL-001,FP-CANCEL-001,定期便を次回発送予定日の3日前に解約して次回分の請求と発送を止められますか。,いいえ。次回分の発送と請求を止めるには次回発送予定日の4日前までの解約申請が必要です。,customer_support_policy.md#cancellation-policy,S1,cancel_policy_violation,proofgate-pm,approved,2026-05-11,Human-authored S1 release gate case for cancellation risk.
+DEMO-S1-PRIVACY-001,FP-PRIVACY-001,本人確認前でも、家族に配送先住所と注文状況を案内できますか。,いいえ。配送先住所と注文状況は本人確認が完了した契約者本人にのみ案内できます。,customer_support_policy.md#privacy-and-verification,S1,privacy_verification_violation,proofgate-pm,approved,2026-05-11,Human-authored S1 release gate case for privacy risk.
