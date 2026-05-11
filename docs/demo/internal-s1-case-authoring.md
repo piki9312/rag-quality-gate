@@ -31,7 +31,7 @@ S1 ケースを作りやすくする補助線に留めます。
 
 このデモにおける Gate 実行の正本は次です。
 
-- `/home/runner/work/rag-quality-gate/rag-quality-gate/demo_internal/casegen/cases.csv`
+- `demo_internal/casegen/cases.csv`
 
 `s1_case_review.csv` は承認の痕跡であり、
 `failure_patterns.md` は設計メモです。
@@ -52,9 +52,10 @@ S1 ケースを作りやすくする補助線に留めます。
 ### 1. validate-pack
 
 ```bash
-cd /home/runner/work/rag-quality-gate/rag-quality-gate
+cd /path/to/rag-quality-gate
+unset GITHUB_ACTIONS
 python3 -m rqg.cli validate-pack \
-  --pack-dir /home/runner/work/rag-quality-gate/rag-quality-gate/demo_internal \
+  --pack-dir demo_internal \
   --strict-s1-governance
 ```
 
@@ -62,19 +63,21 @@ python3 -m rqg.cli validate-pack \
 
 - `Pack onboarding validation: OK`
 - S1 active case の governance 必須項目が満たされる
+- この最小デモでは active case がすべて S1 のため、設計上の warning が1件出てもよい
 
 ### 2. gate --mock
 
 `--mock` は内部デモ専用です。顧客向け品質証跡ではありません。
 
 ```bash
-cd /home/runner/work/rag-quality-gate/rag-quality-gate
+cd /path/to/rag-quality-gate
+unset GITHUB_ACTIONS
 export EMB_MODEL=local-fallback-hash-embedding
 python3 -m rqg.cli gate \
-  /home/runner/work/rag-quality-gate/rag-quality-gate/demo_internal/casegen/cases.csv \
-  --docs /home/runner/work/rag-quality-gate/rag-quality-gate/demo_internal/documents \
-  --quality-pack /home/runner/work/rag-quality-gate/rag-quality-gate/demo_internal/quality-pack.yml \
-  --config /home/runner/work/rag-quality-gate/rag-quality-gate/demo_internal/gate.yml \
+  demo_internal/casegen/cases.csv \
+  --docs demo_internal/documents \
+  --quality-pack demo_internal/quality-pack.yml \
+  --config demo_internal/gate.yml \
   --mock \
   --strict-s1-governance \
   --reset-log-dir \
@@ -97,7 +100,7 @@ python3 -m rqg.cli gate \
 `rqg gate --mock` の結果は **SIMULATION ONLY** です。
 
 - 内部デモ用の挙動確認には使える
-- 顧客品質証跡には使えない
+- 顧客品質証跡ではありません
 - 有償PoCや customer-facing report の正式証跡には real / external_real run が必要
 
 ## 資産化は PoC 2〜3回後でよい

@@ -22,4 +22,4 @@
 
 再現可能な runbook は次を参照してください。
 
-- `/home/runner/work/rag-quality-gate/rag-quality-gate/docs/demo/internal-s1-case-authoring.md`
+- `docs/demo/internal-s1-case-authoring.md`
