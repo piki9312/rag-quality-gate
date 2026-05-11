@@ -115,7 +115,7 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         from rqg.quality.check import (
             build_case_report_rows,
             build_customer_report_summary,
-            collect_target_docs_for_report_mode,
+            collect_target_docs_if_report_mode_allows,
             map_overall_decision,
             normalize_report_mode,
         )
@@ -125,7 +125,7 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             artifacts.check_result,
             report_mode=normalized_report_mode,
         )
-        target_docs = collect_target_docs_for_report_mode(
+        target_docs = collect_target_docs_if_report_mode_allows(
             artifacts.check_result,
             normalized_report_mode,
         )

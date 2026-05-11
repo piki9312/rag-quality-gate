@@ -824,7 +824,9 @@ def collect_target_docs(result: CheckResult) -> list[str]:
     return docs
 
 
-def collect_target_docs_for_report_mode(result: CheckResult, report_mode: object) -> list[str]:
+def collect_target_docs_if_report_mode_allows(
+    result: CheckResult, report_mode: object
+) -> list[str]:
     # Only full reports may include target_docs so redacted/ci/customer-facing artifacts
     # do not leak customer document names or private source paths.
     return collect_target_docs(result) if report_mode_exposes_sensitive_fields(report_mode) else []
@@ -1550,7 +1552,7 @@ def _render_customer_report_markdown_clean(
     overall_decision = map_overall_decision(result)
     summary = build_customer_report_summary(result)
     case_rows = build_case_report_rows(result, failure_actions, report_mode=report_mode)
-    target_docs = collect_target_docs_for_report_mode(result, report_mode)
+    target_docs = collect_target_docs_if_report_mode_allows(result, report_mode)
     pack_metadata = pack_metadata or {}
     client_name = str(pack_metadata.get("client_name") or "未設定").strip() or "未設定"
     app_name = str(pack_metadata.get("app_name") or "未設定").strip() or "未設定"

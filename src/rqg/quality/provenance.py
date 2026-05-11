@@ -37,7 +37,11 @@ def _safe_path_hint(path: Path) -> str:
 
 
 def _log_parse_failure(path: Path, exc: Exception) -> None:
-    """Log parse failures with sanitized metadata only, never raw config content."""
+    """Log parse failures with sanitized metadata only, never raw config content.
+
+    The error text passes through sanitize_error_message so token-like strings and
+    path-like secrets are redacted before the warning is emitted.
+    """
     logger.warning(
         "Failed to parse config file path=%s error_type=%s error=%s",
         _safe_path_hint(path),
