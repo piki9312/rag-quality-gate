@@ -13,6 +13,7 @@ from dataclasses import dataclass
 # - percentage/currency: %, ％, 円
 # - deadline/period: 日, 営業日, 日前, か月, ヶ月, 月, 年
 # - time: 時間, h
+# The `|` characters below are regex alternation operators, not literal unit text.
 _NUMBER_TOKEN_UNIT_PATTERN = r"%|％|円|日|営業日|日前|か月|ヶ月|月|年|時間|h"
 _NUMBER_TOKEN_RE = re.compile(
     rf"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>{_NUMBER_TOKEN_UNIT_PATTERN})?"
