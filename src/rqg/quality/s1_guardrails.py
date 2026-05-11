@@ -48,6 +48,13 @@ def _normalized_numbers(text: str) -> set[str]:
     return found
 
 
+def _numeric_token_unit(token: str) -> str:
+    match = _NUMBER_TOKEN_RE.fullmatch(token.strip())
+    if not match:
+        return ""
+    return (match.group("unit") or "").strip()
+
+
 def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
     lowered = text.lower()
     return any(needle.lower() in lowered for needle in needles)
@@ -68,7 +75,15 @@ def evaluate_s1_guardrails(expected_answer: str, answer: str) -> S1GuardrailFail
     expected_numbers = _normalized_numbers(expected)
     if expected_numbers:
         actual_numbers = _normalized_numbers(actual)
-        if expected_numbers != actual_numbers:
+        missing_numbers = expected_numbers - actual_numbers
+        expected_units = {_numeric_token_unit(token) for token in expected_numbers}
+        expected_units.discard("")
+        conflicting_numbers = {
+            token
+            for token in actual_numbers - expected_numbers
+            if _numeric_token_unit(token) in expected_units
+        }
+        if missing_numbers or conflicting_numbers:
             failure_type = (
                 "deadline_or_period_mismatch"
                 if any(_DEADLINE_OR_PERIOD_UNIT_RE.search(token) for token in expected_numbers)
