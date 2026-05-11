@@ -98,7 +98,9 @@ def answer_prompt_hash() -> str:
         "根拠に使った箇所は [REF1] のようにCONTEXTの先頭にある角括弧内のIDを"
         "そのままコピーして引用してください。IDは絶対に改変しないでください。"
     )
-    return json.dumps({"version": ANSWER_PROMPT_VERSION, "system": system_prompt}, ensure_ascii=False)
+    return json.dumps(
+        {"version": ANSWER_PROMPT_VERSION, "system": system_prompt}, ensure_ascii=False
+    )
 
 
 @retry_with_backoff()
