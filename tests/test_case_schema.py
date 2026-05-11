@@ -376,6 +376,24 @@ class TestValidation:
             for e in errors
         )
 
+    def test_strict_s1_active_without_pattern_reference_errors(self):
+        row = {
+            "case_id": "FP001E",
+            "question": "What is the refund policy?",
+            "status": "active",
+            "severity": "S1",
+            "expected_answer": "Refunds are limited by policy.",
+        }
+
+        errors = validate_case_row(row, strict_s1_governance=True)
+
+        assert any(
+            e.field == "notes"
+            and e.level == "error"
+            and "S1 active case は notes に failure pattern 参照を残してください" in e.message
+            for e in errors
+        )
+
     def test_s2_active_without_pattern_reference_does_not_warn(self):
         row = {
             "case_id": "FP002",

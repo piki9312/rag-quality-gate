@@ -9,9 +9,15 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+# Numeric units recognized by the guardrail:
+# - percentage/currency: %, ％, 円
+# - deadline/period: 日, 営業日, 日前, か月, ヶ月, 月, 年
+# - time: 時間, h
+_NUMBER_TOKEN_UNIT_PATTERN = r"%|％|円|日|営業日|日前|か月|ヶ月|月|年|時間|h"
 _NUMBER_TOKEN_RE = re.compile(
-    r"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>%|％|円|日|営業日|日前|か月|ヶ月|月|年|時間|h)?"
+    rf"(?P<value>\d+(?:\.\d+)?)\s*(?P<unit>{_NUMBER_TOKEN_UNIT_PATTERN})?"
 )
+_DEADLINE_OR_PERIOD_UNIT_RE = re.compile(r"(?:日|営業日|日前|か月|ヶ月|月|年)")
 _NEGATION_TERMS = ("できない", "不可", "対象外", "ありません", "しない", "禁止", "not", "cannot")
 _AFFIRMATIVE_TERMS = ("できます", "可能", "対象です", "あります", "ok", "allowed")
 _EXCEPTION_TERMS = ("ただし", "例外", "除く", "except", "unless", "個別審査")
@@ -58,10 +64,9 @@ def evaluate_s1_guardrails(expected_answer: str, answer: str) -> S1GuardrailFail
     if expected_numbers:
         actual_numbers = _normalized_numbers(actual)
         if expected_numbers != actual_numbers:
-            deadline_units = ("日", "営業日", "日前", "か月", "ヶ月", "月", "年")
             failure_type = (
                 "deadline_or_period_mismatch"
-                if any(any(unit in token for unit in deadline_units) for token in expected_numbers)
+                if any(_DEADLINE_OR_PERIOD_UNIT_RE.search(token) for token in expected_numbers)
                 else "numeric_mismatch"
             )
             return S1GuardrailFailure(

@@ -56,3 +56,13 @@ def test_reviews_templates_do_not_include_live_secrets_or_endpoints() -> None:
 
     for pattern in forbidden_patterns:
         assert re.search(pattern, combined, flags=re.IGNORECASE) is None
+
+
+def test_customer_template_quality_pack_keeps_readable_s1_definition_list() -> None:
+    quality_pack = (TEMPLATE_ROOT / "quality-pack.yml").read_text(encoding="utf-8")
+
+    assert "- active S1 rows should include a reviewed expected_answer" in quality_pack
+    assert "- active S1 rows should include reviewed expected_evidence" in quality_pack
+    assert "- active S1 rows should include owner and last_reviewed_at" in quality_pack
+    assert "- active S1 rows should include the manual_review_required note marker" in quality_pack
+    assert "- active S1 rows should include a failure pattern reference" in quality_pack

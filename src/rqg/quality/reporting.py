@@ -115,10 +115,9 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         from rqg.quality.check import (
             build_case_report_rows,
             build_customer_report_summary,
-            collect_target_docs,
+            collect_target_docs_for_report_mode,
             map_overall_decision,
             normalize_report_mode,
-            report_mode_exposes_sensitive_fields,
         )
 
         normalized_report_mode = normalize_report_mode(report_mode)
@@ -126,10 +125,10 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             artifacts.check_result,
             report_mode=normalized_report_mode,
         )
-        if report_mode_exposes_sensitive_fields(normalized_report_mode):
-            target_docs = collect_target_docs(artifacts.check_result)
-        else:
-            target_docs = []
+        target_docs = collect_target_docs_for_report_mode(
+            artifacts.check_result,
+            normalized_report_mode,
+        )
         summary = build_customer_report_summary(artifacts.check_result)
         overall_decision = map_overall_decision(artifacts.check_result)
 

@@ -28,6 +28,8 @@ def _exit_code_for_gate_result(*, policy_status: str, gate_status: str, warn_exi
 
 def cmd_check(args: argparse.Namespace) -> int:
     """Run the quality gate check and emit stable ASCII output."""
+    from ..quality.case_merge import load_csv_rows
+    from ..quality.case_schema import normalize_legacy_row, validate_case_rows
     from ..quality.check import (
         GateConfig,
         build_gate_decision,
@@ -62,8 +64,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         MarkdownFileReportAdapter,
         safe_relative_artifact_path,
     )
-    from ..quality.case_merge import load_csv_rows
-    from ..quality.case_schema import normalize_legacy_row, validate_case_rows
 
     try:
         github_actions = github_actions_enabled()
@@ -105,6 +105,8 @@ def cmd_check(args: argparse.Namespace) -> int:
         config.max_s1_drop_pct = args.max_s1_drop_pct
 
     if getattr(args, "strict_s1_governance", False) and args.cases_file:
+        # Re-run strict S1 governance validation here so a direct `rqg check` invocation
+        # cannot bypass the S1 safety checks even if earlier validation steps were skipped.
         try:
             rows = [normalize_legacy_row(row) for row in load_csv_rows(args.cases_file)]
         except FileNotFoundError as exc:

@@ -198,6 +198,10 @@ def failure_pattern_refs(notes: object) -> list[str]:
     return _FAILURE_PATTERN_TOKEN_RE.findall(_clean(notes))
 
 
+def s1_governance_issue_level(strict_s1_governance: bool) -> str:
+    return "error" if strict_s1_governance else "warn"
+
+
 def is_auto_expected_answer_draft(notes: object) -> bool:
     return has_note_marker(notes, "auto_expected_answer_status:draft")
 
@@ -697,7 +701,7 @@ def validate_case_row(
                     "S1 active case は notes に failure pattern 参照を残してください。"
                     "例: pattern:FP-REFUND-001"
                 ),
-                "error" if strict_s1_governance else "warn",
+                s1_governance_issue_level(strict_s1_governance),
             )
         )
 

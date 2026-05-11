@@ -80,6 +80,7 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 def cmd_eval(args: argparse.Namespace) -> int:
     """テストケースを実行して品質評価する。"""
     from ..quality.check import normalize_report_mode
+    from ..quality.evaluators.llm_judge import JUDGE_PROMPT_VERSION, judge_prompt_hash
     from ..quality.loader import filter_cases_by_status, load_cases
     from ..quality.provenance import (
         build_run_provenance,
@@ -93,7 +94,6 @@ def cmd_eval(args: argparse.Namespace) -> int:
         write_run_provenance,
     )
     from ..quality.runner import RAGQualityRunner
-    from ..quality.evaluators.llm_judge import JUDGE_PROMPT_VERSION, judge_prompt_hash
     from ..serving.llm_client import ANSWER_PROMPT_VERSION, OPENAI_MODEL, answer_prompt_hash
 
     rag_endpoint = getattr(args, "rag_endpoint", None)
@@ -237,7 +237,17 @@ def cmd_eval(args: argparse.Namespace) -> int:
             execution_mode=execution_mode,
         )
         print(f"\nSaved -> {jsonl_file}")
-        prompt_hash = hash_text(answer_prompt_hash() + "|" + judge_prompt_hash())
+        # Use sorted JSON so prompt provenance stays stable even if field order changes later.
+        prompt_hash = hash_text(
+            json.dumps(
+                {
+                    "answer_prompt": answer_prompt_hash(),
+                    "judge_prompt": judge_prompt_hash(),
+                },
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+        )
         provenance = build_run_provenance(
             run_id=run.run_id,
             execution_mode=execution_mode,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from typing import Any
 import yaml
 
 from rqg.cli.helpers import github_actions_enabled
+from rqg.security import sanitize_error_message
 
 SIMULATION_WARNING_EN = (
     "SIMULATION ONLY\n"
@@ -20,6 +22,27 @@ SIMULATION_WARNING_EN = (
 SIMULATION_WARNING_JA = (
     "本結果はmock / simulation実行によるものであり、" "実システム品質を証明するものではありません。"
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_path_hint(path: Path) -> str:
+    if not path.parts:
+        return path.name or "<unknown>"
+    return (
+        "/".join(path.parts[-2:])
+        if path.is_absolute() and len(path.parts) >= 2
+        else path.as_posix()
+    )
+
+
+def _log_parse_failure(path: Path, exc: Exception) -> None:
+    logger.warning(
+        "Failed to parse config file path=%s error_type=%s error=%s",
+        _safe_path_hint(path),
+        type(exc).__name__,
+        sanitize_error_message(exc),
+    )
 
 
 def determine_execution_mode(
@@ -76,7 +99,8 @@ def load_yaml_or_json(path: str | Path | None) -> dict[str, Any]:
             payload = json.loads(text)
         else:
             payload = yaml.safe_load(text)
-    except (OSError, ValueError, yaml.YAMLError):
+    except (OSError, ValueError, yaml.YAMLError) as exc:
+        _log_parse_failure(file_path, exc)
         return {}
     return payload if isinstance(payload, dict) else {}
 
