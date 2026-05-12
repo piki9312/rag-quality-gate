@@ -70,7 +70,7 @@ PoC 開始前に、最低限次を揃えます。
 adapter:
   type: http
   # Replace this placeholder before running against a customer or vendor endpoint.
-  endpoint: https://replace-me.customer-example.invalid/rag/search
+  endpoint: https://REPLACE-WITH-YOUR-ENDPOINT.invalid/rag/search
   method: POST
   timeout_seconds: 30
   auth:
@@ -169,7 +169,7 @@ Bash:
 
 ```bash
 python -m rqg.cli validate-connection \
-  --endpoint https://replace-me.customer-example.invalid/rag/search \
+  --endpoint https://REPLACE-WITH-YOUR-ENDPOINT.invalid/rag/search \
   --query "password reset" \
   --top-k 3 \
   --api-key-env CUSTOMER_RAG_API_TOKEN \
@@ -180,7 +180,7 @@ PowerShell:
 
 ```powershell
 python -m rqg.cli validate-connection `
-  --endpoint https://replace-me.customer-example.invalid/rag/search `
+  --endpoint https://REPLACE-WITH-YOUR-ENDPOINT.invalid/rag/search `
   --query "password reset" `
   --top-k 3 `
   --api-key-env CUSTOMER_RAG_API_TOKEN `
@@ -206,6 +206,7 @@ python -m rqg.cli validate-connection `
 ### D. `gate --adapter-config` を `--mock` なしで実行
 
 **`--mock` を使わないこと。**
+Do not use `--mock`.
 
 Bash:
 
@@ -251,7 +252,7 @@ python -m rqg.cli gate --pack . \
 この段階で確認すること:
 
 - 実行記録が `mock` / `simulation` ではない
-- `execution_mode` が `external_real` または同等の real 外部実行として記録される
+- `execution_mode=external_real` として記録される
 - customer-facing 成果物に simulation warning を持ち込んでいない
 
 ### E. report 確認
