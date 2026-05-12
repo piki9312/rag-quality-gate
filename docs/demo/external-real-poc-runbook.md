@@ -69,7 +69,8 @@ PoC 開始前に、最低限次を揃えます。
 ```yaml
 adapter:
   type: http
-  endpoint: https://rag.customer-example.invalid/rag/search
+  # Replace this placeholder before running against a customer or vendor endpoint.
+  endpoint: https://replace-me.customer-example.invalid/rag/search
   method: POST
   timeout_seconds: 30
   auth:
@@ -168,7 +169,7 @@ Bash:
 
 ```bash
 python -m rqg.cli validate-connection \
-  --endpoint https://rag.customer-example.invalid/rag/search \
+  --endpoint https://replace-me.customer-example.invalid/rag/search \
   --query "password reset" \
   --top-k 3 \
   --api-key-env CUSTOMER_RAG_API_TOKEN \
@@ -179,7 +180,7 @@ PowerShell:
 
 ```powershell
 python -m rqg.cli validate-connection `
-  --endpoint https://rag.customer-example.invalid/rag/search `
+  --endpoint https://replace-me.customer-example.invalid/rag/search `
   --query "password reset" `
   --top-k 3 `
   --api-key-env CUSTOMER_RAG_API_TOKEN `
