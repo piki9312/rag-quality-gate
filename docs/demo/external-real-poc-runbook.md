@@ -13,6 +13,11 @@ Proof Gate を **外付け** で実行する `external_real` PoC の標準手順
 - [Customer RQG Template](../../templates/customer-rqg-template/README.md)
 - [Internal S1 Case Authoring Demo](./internal-s1-case-authoring.md)
 
+> Security warning:
+> `adapter_config.yml` に secret を書きません。
+> token は環境変数または CI secrets のみで管理します。
+> `.invalid` endpoint は placeholder なので、実運用前に顧客またはベンダーの安全な endpoint に置き換えます。
+
 ## 1. 目的
 
 - `external_real` PoC runbook は、既存 RAG API に Proof Gate を外付けして評価するための手順です。
@@ -82,6 +87,9 @@ response_mapping:
   score_path: score
 ```
 
+上記の `.invalid` endpoint は説明用 placeholder です。live endpoint を docs に貼らず、
+実際の接続先は顧客またはベンダー管理の安全な設定で差し替えます。
+
 確認ポイント:
 
 - `adapter.endpoint`: customer / vendor 管理の endpoint を設定する
@@ -103,7 +111,6 @@ response_mapping:
 - `mapping_warnings` は必ずレビューしてください
 - `source_path` が取れないと customer-facing な説明力が落ちます
 - `answer_path` が空または欠落する場合は PoC を進めません
-- `adapter_config.yml` に secret を書きません
 
 ## 5. 実行手順
 
@@ -126,7 +133,7 @@ $env:CUSTOMER_RAG_API_TOKEN="replace-with-session-token"
 チェック:
 
 - token は shell session または CI secret のみで管理する
-- `.env`、`adapter_config.yml`、docs、report に token を残さない
+- `.env`、docs、report に token を残さない
 
 ### B. `validate-pack`
 
@@ -177,6 +184,8 @@ python -m rqg.cli validate-connection `
   --api-key-env CUSTOMER_RAG_API_TOKEN `
   --output reports/connection-check.json
 ```
+
+ここでも `.invalid` endpoint は placeholder です。
 
 目的:
 
