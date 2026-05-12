@@ -250,13 +250,18 @@ GitHub Issues are not required for early PoC. They are an option for continued o
 ## Report Modes And Safe Artifacts
 
 - Use `ci` mode for GitHub-hosted automation. It keeps stdout and artifacts to
-  safe summaries.
+  safe summaries. CI outputs use explicit names such as `gate-report-ci.md`
+  and `gate-report-ci.json` so they are not confused with local/private full
+  evidence reports.
 - Use `redacted` mode when sharing structure and results without raw question,
   answer, expected answer, retrieved evidence, or chunk text.
 - Use `full` mode only in local, private runner, or customer-controlled
   environments.
 - Do not upload raw JSONL, full report bundles, vector indexes, or raw external
   RAG responses from GitHub-hosted Actions.
+- Do not use GitHub-hosted Actions for real customer endpoints. Use
+  dummy/sample endpoints in GitHub-hosted CI, or run `external_real` checks in
+  local, private runner, or customer-controlled environments.
 - For external RAG validation, prefer staging, test, or read-only endpoints and
   keep API keys in secrets.
 

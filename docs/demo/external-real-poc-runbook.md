@@ -26,6 +26,7 @@ Proof Gate を **外付け** で実行する `external_real` PoC の標準手順
 - 初回接続先は production write-capable endpoint ではなく、**staging / test / read-only endpoint** を推奨します。
 - Proof Gate は品質保証そのものではありません。高リスク誤回答の診断・可視化・リリース判断支援のための gate です。
 - PASS means the configured checks passed for the specified cases, documents, model, and settings in this run.
+- GitHub-hosted Actions は safe-metadata-only です。`external_real`、full evidence、実 customer endpoint の接続確認は local / private runner / customer-controlled environment で実行します。
 - PASS does not guarantee overall production safety, legal compliance, or correctness for all questions.
 
 ## 2. 前提条件
@@ -188,6 +189,10 @@ python -m rqg.cli validate-connection `
 ```
 
 ここでも `.invalid` endpoint は placeholder です。
+
+GitHub-hosted CI では real customer endpoint を使いません。CI で `connection-validation.json`
+を扱う場合は dummy/sample endpoint または完全に redacted された診断だけにします。
+sanitizer は defense-in-depth であり、実顧客データを GitHub-hosted runner に置いてよい理由にはなりません。
 
 目的:
 

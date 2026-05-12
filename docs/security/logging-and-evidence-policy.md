@@ -4,7 +4,7 @@
 
 Proof Gate / RAG Quality Gate reports are often reviewed outside the developer's local machine. Logs, reports, and workflow artifacts must not expose customer data, API keys, local paths, CI workspace paths, or internal directory structure.
 
-This policy defines what data can be handled in GitHub Actions and what each report mode means.
+This policy defines what data can be handled in GitHub Actions and what each report mode means. Sanitizers are defense-in-depth; they are not a reason to place real customer data on GitHub-hosted runners.
 
 ## GitHub Actions Data Boundary
 
@@ -99,11 +99,12 @@ GitHub Actions should upload only artifacts that are safe by construction.
 
 Default allowlist:
 
-- schema validation summaries
-- test result summaries
-- coverage summaries without source snippets containing customer data
-- redacted gate summaries
-- aggregate `gate-report.json` variants that contain only relative artifact paths and aggregate metadata
+- `gate-report-ci.md`
+- `gate-report-ci.json`
+- CI-safe `gate-decision.json`
+- CI-safe `gate-history-summary.json`
+- schema validation summaries generated from sample/mock/dummy data
+- test result summaries and coverage summaries without customer source snippets
 - sample/mock/demo reports generated from committed sample data
 
 Default denylist:
@@ -111,8 +112,12 @@ Default denylist:
 - raw evaluation logs from real customer runs
 - full `gate-report.md` or `gate-report.json` generated from customer data
 - raw `QARunRecord` JSONL from customer runs
+- `gate-decisions.jsonl`
+- `index/meta.json`
+- `faiss.index`
 - retrieved document chunks
 - adapter request/response dumps
+- raw connection validation payloads or real customer endpoint URLs
 - files under temporary internal directories such as `.tmp`
 - files containing absolute local or CI workspace paths
 
@@ -135,6 +140,16 @@ CI-safe outputs should avoid:
 - full source documents
 - raw adapter payloads
 - raw model prompts containing embedded evidence
+
+## Connection Validation
+
+GitHub-hosted CI must not validate real customer RAG endpoints. Connection validation in GitHub Actions is limited to dummy/sample endpoints or fully sanitized diagnostics. Customer PoC `external_real` runs should execute locally, on a private runner, or in a customer-controlled environment.
+
+`connection-validation.json` must not contain raw endpoint URLs, query text, token values, raw response bodies, retrieved evidence, source paths, or tenant/customer identifiers.
+
+## Notifications And Issue Comments
+
+GitHub issue comments, Slack messages, Teams messages, and webhook payloads from CI must use safe summaries only. They may include gate status, policy status, aggregate pass rates, S1 failure counts, reason codes, run IDs, and safe artifact filenames. They must not include customer/app/tenant names, endpoints, source documents, raw questions, answers, expected answers, evidence text, owner/steward names, internal paths, or token-like strings.
 
 ## Review Checklist
 

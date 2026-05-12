@@ -92,11 +92,14 @@ def reset_eval_log_dir(log_dir: str | Path) -> list[Path]:
 
     for filename in (
         "gate-report.md",
+        "gate-report-ci.md",
         "customer-summary.md",
         "gate-report.json",
+        "gate-report-ci.json",
         "gate-decision.json",
         "gate-decisions.jsonl",
         "gate-history-summary.json",
+        "connection-validation.json",
         "before-after-summary.json",
         "before-after-summary.md",
         "run-provenance-latest.json",

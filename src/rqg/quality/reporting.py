@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from rqg.domain import GateDecision
+from rqg.security import sanitize_payload, sanitize_text
 
 GATE_REPORT_SCHEMA_VERSION = "1.0"
 
@@ -46,6 +47,11 @@ class DecisionJsonReportAdapter:
         self.path = Path(path)
 
     def emit(self, artifacts: GateReportArtifacts) -> Path:
+        if artifacts.report_mode == "ci":
+            return _write_json_data_output(
+                self.path,
+                build_ci_safe_gate_decision_payload(artifacts.decision),
+            )
         return _write_json_model_output(self.path, artifacts.decision)
 
 
@@ -54,6 +60,11 @@ class HistorySummaryJsonReportAdapter:
         self.path = Path(path)
 
     def emit(self, artifacts: GateReportArtifacts) -> Path:
+        if artifacts.report_mode == "ci":
+            return _write_json_data_output(
+                self.path,
+                build_ci_safe_history_summary_payload(artifacts.history_summary),
+            )
         return _write_json_data_output(self.path, artifacts.history_summary)
 
 
@@ -78,16 +89,27 @@ class BundleJsonReportAdapter:
 
 def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str, object]:
     """Build a consolidated machine-readable gate report bundle."""
-    decision_payload = artifacts.decision.model_dump(mode="json")
-    artifact_base_dir = artifacts.bundle_path.parent
     report_mode = str(getattr(artifacts, "report_mode", "full") or "full")
+    decision_payload = (
+        build_ci_safe_gate_decision_payload(artifacts.decision)
+        if report_mode == "ci"
+        else artifacts.decision.model_dump(mode="json")
+    )
+    history_summary = (
+        build_ci_safe_history_summary_payload(artifacts.history_summary)
+        if report_mode == "ci"
+        else artifacts.history_summary
+    )
+    artifact_base_dir = artifacts.bundle_path.parent
     payload = {
         "schema_version": GATE_REPORT_SCHEMA_VERSION,
         "report_mode": report_mode,
         "decision": decision_payload,
-        "history_summary": artifacts.history_summary,
+        "history_summary": history_summary,
         "report_markdown": artifacts.markdown,
-        "customer_summary_markdown": artifacts.customer_summary_markdown,
+        "customer_summary_markdown": (
+            "" if report_mode == "ci" else artifacts.customer_summary_markdown
+        ),
         "artifact_paths": {
             "report_path": safe_relative_artifact_path(artifacts.report_path, artifact_base_dir),
             "customer_summary_path": (
@@ -101,7 +123,11 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "history_summary_path": safe_relative_artifact_path(
                 artifacts.history_summary_path, artifact_base_dir
             ),
-            "history_path": safe_relative_artifact_path(artifacts.history_path, artifact_base_dir),
+            "history_path": (
+                ""
+                if report_mode == "ci"
+                else safe_relative_artifact_path(artifacts.history_path, artifact_base_dir)
+            ),
             "bundle_path": safe_relative_artifact_path(artifacts.bundle_path, artifact_base_dir),
         },
     }
@@ -136,10 +162,14 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         {
             "report_version": GATE_REPORT_SCHEMA_VERSION,
             "executed_at": decision_payload["created_at"],
-            "client_name": _resolve_client_name(artifacts.decision),
-            "app_name": _resolve_app_name(artifacts.decision),
+            "client_name": (
+                None if report_mode == "ci" else _resolve_client_name(artifacts.decision)
+            ),
+            "app_name": None if report_mode == "ci" else _resolve_app_name(artifacts.decision),
             "target_docs": target_docs,
-            "change_event": _extract_change_event(artifacts.decision),
+            "change_event": (
+                None if report_mode == "ci" else _extract_change_event(artifacts.decision)
+            ),
             "summary": summary,
             "overall_decision": overall_decision,
             "cases": cases,
@@ -149,6 +179,139 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         }
     )
     return payload
+
+
+def build_ci_safe_gate_decision_payload(decision: GateDecision) -> dict[str, object]:
+    """Return a GateDecision-shaped CI artifact without customer/free-form fields."""
+    payload = decision.model_dump(mode="json")
+    safe_metrics = {
+        str(key): value
+        for key, value in payload.get("metrics", {}).items()
+        if isinstance(value, int | float)
+    }
+    payload["metrics"] = safe_metrics
+    payload["reasons"] = [sanitize_text(str(item)) for item in payload.get("reasons", [])[:5]]
+    payload["reason_codes"] = [
+        sanitize_text(str(item)) for item in payload.get("reason_codes", [])[:10]
+    ]
+    payload["provenance"] = _ci_safe_provenance(payload.get("provenance"))
+    payload["next_actions"] = [
+        {
+            "failure_category": sanitize_text(str(item.get("failure_category", ""))),
+            "count": int(item.get("count", 0) or 0),
+            "action": sanitize_text(str(item.get("failure_category", ""))),
+            "owner": "T.B.D.",
+            "due": "T.B.D.",
+            "affected_case_ids": [],
+        }
+        for item in payload.get("next_actions", [])
+        if isinstance(item, dict)
+    ]
+    payload["fallback_summary"] = sanitize_payload(payload.get("fallback_summary", {}))
+    payload["manual_review_summary"] = _ci_safe_manual_review_summary(
+        payload.get("manual_review_summary")
+    )
+    payload["pack"] = None
+    payload["embedding_fallback_reason"] = sanitize_text(payload.get("embedding_fallback_reason"))
+    return payload
+
+
+def build_ci_safe_history_summary_payload(payload: dict[str, object]) -> dict[str, object]:
+    """Return aggregate-only history summary for GitHub-hosted CI artifacts."""
+    stale = payload.get("stale_case_review")
+    stale_summary: dict[str, object] | None = None
+    if isinstance(stale, dict):
+        stale_summary = {
+            "stale_after_days": stale.get("stale_after_days"),
+            "fresh_case_review_rate": stale.get("fresh_case_review_rate"),
+            "fresh_case_count": stale.get("fresh_case_count"),
+            "total_cases": stale.get("total_cases"),
+            "stale_cases_count": stale.get("stale_cases_count", 0),
+        }
+
+    comparison = payload.get("comparison")
+    safe_comparison = None
+    if isinstance(comparison, dict):
+        safe_comparison = {
+            "current_run_id": sanitize_text(str(comparison.get("current_run_id", ""))),
+            "previous_run_id": sanitize_text(str(comparison.get("previous_run_id", ""))),
+            "current_status": sanitize_text(str(comparison.get("current_status", ""))),
+            "previous_status": sanitize_text(str(comparison.get("previous_status", ""))),
+            "metric_deltas": sanitize_payload(comparison.get("metric_deltas", [])),
+            "action_deltas": sanitize_payload(comparison.get("action_deltas", [])),
+        }
+
+    reliability = payload.get("reliability")
+    safe_reliability = None
+    if isinstance(reliability, dict):
+        safe_reliability = {
+            key: sanitize_payload(value)
+            for key, value in reliability.items()
+            if key != "fallback_summary"
+        }
+
+    status_mix = payload.get("status_mix", {})
+    entries = payload.get("entries", 0)
+    summary_lines = [
+        f"- Entries: {entries}",
+        f"- Status mix: {status_mix}",
+    ]
+    if payload.get("execution_mode"):
+        summary_lines.append(
+            f"- Execution mode: {sanitize_text(str(payload.get('execution_mode')))}"
+        )
+
+    return {
+        "entries": entries,
+        "status_mix": status_mix,
+        "execution_mode": sanitize_text(str(payload.get("execution_mode") or "")) or None,
+        "week_start": payload.get("week_start"),
+        "compare_offset": payload.get("compare_offset"),
+        "trend_window": payload.get("trend_window"),
+        "summary_lines": summary_lines,
+        "trend": sanitize_payload(payload.get("trend")),
+        "comparison": safe_comparison,
+        "failure_action_coverage": _ci_safe_failure_action_coverage(
+            payload.get("failure_action_coverage")
+        ),
+        "uncovered_categories": [],
+        "stale_case_review": stale_summary,
+        "reliability": safe_reliability,
+        "review_steward": None,
+    }
+
+
+def _ci_safe_provenance(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    allowed_suffixes = ("_hash", "_version")
+    allowed_keys = {"execution_mode", "quality_pack_version", "case_set_version", "index_version"}
+    return {
+        str(key): sanitize_payload(item)
+        for key, item in value.items()
+        if str(key) in allowed_keys or str(key).endswith(allowed_suffixes)
+    }
+
+
+def _ci_safe_manual_review_summary(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        key: value.get(key, 0)
+        for key in ("total_reviews", "approved", "rejected", "needs_followup", "waived_with_risk")
+        if key in value
+    }
+
+
+def _ci_safe_failure_action_coverage(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    return {
+        "total_categories": value.get("total_categories"),
+        "covered_categories": value.get("covered_categories"),
+        "coverage_rate": value.get("coverage_rate"),
+        "window_size": value.get("window_size"),
+    }
 
 
 def _overall_decision_from_gate_decision(decision: GateDecision) -> str:

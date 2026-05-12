@@ -147,10 +147,10 @@ on:
         description: Path to gate-decision.json inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_decision_path }}
       gate_report_path:
-        description: Path to gate-report.md inside the caller workspace
+        description: Path to gate-report-ci.md inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_report_path }}
       gate_report_json_path:
-        description: Path to gate-report.json inside the caller workspace
+        description: Path to gate-report-ci.json inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_report_json_path }}
       pack_validation_ok:
         description: true, false, or skipped
@@ -444,6 +444,8 @@ jobs:
             --context-k "${{ inputs.context_k }}"
             --warn-exit-code "${{ inputs.warn_exit_code }}"
             --report-mode ci
+            --output-file "${{ inputs.log_dir }}/gate-report-ci.md"
+            --bundle-file "${{ inputs.log_dir }}/gate-report-ci.json"
           )
 
           if [ "${{ inputs.reset_log_dir }}" = "true" ]; then
@@ -494,8 +496,8 @@ jobs:
 
           log_dir = Path(os.environ["LOG_DIR"])
           gate_path = log_dir / "gate-decision.json"
-          report_path = log_dir / "gate-report.md"
-          report_bundle_path = log_dir / "gate-report.json"
+          report_path = log_dir / "gate-report-ci.md"
+          report_bundle_path = log_dir / "gate-report-ci.json"
           pack_validation_path = log_dir / "pack-validation.json"
           connection_path = log_dir / "connection-validation.json"
           history_summary_path = log_dir / "gate-history-summary.json"
@@ -516,11 +518,7 @@ jobs:
                   f"{int(finding_counts.get('error', 0) or 0)} error(s), "
                   f"{int(finding_counts.get('warn', 0) or 0)} warning(s)"
               )
-              pack_validation_findings = [
-                  f"{str(item.get('area', 'pack'))}: {str(item.get('message', '')).strip()}".strip()
-                  for item in pack_validation_payload.get("findings", [])[:3]
-                  if str(item.get("message", "")).strip()
-              ]
+              pack_validation_findings = []
           elif os.environ.get("VALIDATE_PACK_STEP_OUTCOME"):
               pack_validation_ok = (
                   "false"
@@ -596,11 +594,6 @@ jobs:
                   lines.append(f"- Decision path: {gate_path.as_posix()}")
               if history_summary_path.exists():
                   lines.append(f"- History summary path: {history_summary_path.as_posix()}")
-              if pack_validation_findings:
-                  lines.append("")
-                  lines.append("### Pack Validation Findings")
-                  for finding in pack_validation_findings:
-                      lines.append(f"- {finding}")
               if history_summary_lines:
                   lines.append("")
                   lines.append("### Recent History Summary")
@@ -618,9 +611,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          retention-days: 14
+          retention-days: 7
           if-no-files-found: ignore
           path: |
+            ${{ inputs.log_dir }}/gate-report-ci.md
+            ${{ inputs.log_dir }}/gate-report-ci.json
             ${{ inputs.log_dir }}/gate-decision.json
             ${{ inputs.log_dir }}/gate-history-summary.json
 
