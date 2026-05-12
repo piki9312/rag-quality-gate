@@ -13,7 +13,7 @@ Proof Gate を **外付け** で実行する `external_real` PoC の標準手順
 - [Customer RQG Template](../../templates/customer-rqg-template/README.md)
 - [Internal S1 Case Authoring Demo](./internal-s1-case-authoring.md)
 
-> Security warning:
+> セキュリティ警告:
 > `adapter_config.yml` に secret を書きません。
 > token は環境変数または CI secrets のみで管理します。
 > `.invalid` endpoint は placeholder なので、実運用前に顧客またはベンダーの安全な endpoint に置き換えます。
@@ -398,7 +398,7 @@ python -m rqg.cli gate --pack . \
 - failure pattern parser
 - `gen-cases` から S1 active 生成
 
-## 推奨運用メモ
+## 13. 推奨運用メモ
 
 - mock / simulation の E2E 通過は onboarding の前提条件として扱い、customer evidence には使わない
 - 初回 PoC は少数の human-reviewed S1 と reviewable な S2 に絞る
