@@ -31,6 +31,12 @@ reason codes, and safe report references. They should not include raw JSONL,
 full `gate-report.json`, full `gate-report.md`, vector indexes, raw retrieved
 evidence, raw endpoint values, or customer documents.
 
+GitHub-hosted CI writes CI-safe report names such as `gate-report-ci.md` and
+`gate-report-ci.json` so operators do not confuse aggregate CI summaries with
+local/private full evidence reports. CI-safe `gate-decision.json` and
+`gate-history-summary.json` are aggregate-only/redacted variants; full evidence
+and raw case-level diagnostics remain local/private/customer-controlled only.
+
 ## Recommended Commands
 
 Run `rqg doctor` before customer onboarding or CI setup:

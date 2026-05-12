@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import parse_qsl, quote_plus, urlsplit, urlunsplit
 
@@ -21,6 +21,10 @@ _SENSITIVE_KEYS = {
     "chunk_text",
     "text",
     "source_path",
+    "source_doc",
+    "source_docs",
+    "source_refs",
+    "target_docs",
     "endpoint",
     "url",
     "token",
@@ -28,6 +32,14 @@ _SENSITIVE_KEYS = {
     "authorization",
     "password",
     "secret",
+    "client_name",
+    "customer_name",
+    "tenant_name",
+    "app_name",
+    "owner",
+    "steward",
+    "review_steward",
+    "change_event",
 }
 
 _SAFE_KEYS = {
@@ -162,10 +174,16 @@ def sanitize_artifact_path(value: str | Path | None) -> str | None:
     if _URL_PATTERN.search(text):
         return REDACTED
 
+    normalized = text.replace("\\", "/")
     path = Path(text)
-    if path.is_absolute() or _WINDOWS_ABSOLUTE_PATH_PATTERN.fullmatch(text):
-        return path.name or REDACTED
-    return text.replace("\\", "/")
+    if (
+        path.is_absolute()
+        or _WINDOWS_ABSOLUTE_PATH_PATTERN.fullmatch(text)
+        or normalized.startswith("/")
+        or _POSIX_INTERNAL_PATH_PATTERN.search(normalized)
+    ):
+        return PurePosixPath(normalized).name or REDACTED
+    return normalized
 
 
 def sanitize_payload(value: Any) -> Any:

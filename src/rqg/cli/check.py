@@ -224,8 +224,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     else:
         print(md)
 
+    default_report_name = "gate-report-ci.md" if report_mode == "ci" else "gate-report.md"
+    default_bundle_name = "gate-report-ci.json" if report_mode == "ci" else "gate-report.json"
     report_path = (
-        Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
+        Path(args.output_file) if args.output_file else Path(args.log_dir) / default_report_name
     )
     customer_summary_path = Path(args.log_dir) / "customer-summary.md"
     history_summary_path = Path(args.log_dir) / "gate-history-summary.json"
@@ -237,7 +239,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     bundle_path = (
         Path(args.bundle_file)
         if getattr(args, "bundle_file", None)
-        else Path(args.log_dir) / "gate-report.json"
+        else Path(args.log_dir) / default_bundle_name
     )
     artifacts = GateReportArtifacts(
         markdown=md,
@@ -300,8 +302,6 @@ def cmd_check(args: argparse.Namespace) -> int:
             safe_relative_artifact_path(decision_path, artifact_base_dir),
             safe_relative_artifact_path(bundle_path, artifact_base_dir),
         ]
-        if appended_history is not None:
-            artifact_refs.append(safe_relative_artifact_path(appended_history, artifact_base_dir))
         print(f"Artifact refs: {', '.join(artifact_refs)}")
     elif appended_history is not None:
         print(f"Appended gate decision JSONL to {appended_history}")
@@ -336,6 +336,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             config_path=args.config,
             report_path=report_path,
             decision_path=decision_path,
+            report_mode=report_mode,
         )
     else:
         if report_mode != "ci":

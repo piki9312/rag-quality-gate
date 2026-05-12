@@ -9,6 +9,13 @@ import pytest
 
 from rqg.quality.models import EvalResult, QATestCase
 
+
+@pytest.fixture(autouse=True)
+def _clear_github_actions_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep CLI default-mode tests stable when pytest itself runs in Actions."""
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+
 # ------------------------------------------------------------------
 # テストケース fixtures
 # ------------------------------------------------------------------

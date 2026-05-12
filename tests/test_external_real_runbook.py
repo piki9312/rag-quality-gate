@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 RUNBOOK_PATH = Path("docs/demo/external-real-poc-runbook.md")
 
 

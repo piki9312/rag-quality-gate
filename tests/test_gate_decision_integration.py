@@ -10,7 +10,11 @@ from unittest.mock import patch
 from rqg.cli import main
 from rqg.quality.check import CheckResult, ThresholdResult, build_gate_decision
 from rqg.quality.models import QARunRecord, QATestCase
-from rqg.quality.reporting import GateReportArtifacts, build_gate_report_bundle_payload
+from rqg.quality.reporting import (
+    GateReportArtifacts,
+    build_ci_safe_history_summary_payload,
+    build_gate_report_bundle_payload,
+)
 from rqg.quality.staleness import CaseStalenessItem
 
 
@@ -585,6 +589,21 @@ def test_gate_report_bundle_ci_mode_omits_sensitive_case_content() -> None:
 
 def test_check_command_ci_mode_stdout_and_bundle_omit_sensitive_content(capsys) -> None:
     log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-check-ci-report-mode"
+    quality_pack = log_dir.parent / f"{uuid.uuid4()}-quality-pack.yml"
+    quality_pack.write_text(
+        "\n".join(
+            [
+                "pack:",
+                "  client_name: ACME Customer",
+                "  app_name: Customer FAQ Bot",
+                "  tenant_name: tenant-secret-name",
+                "  review_steward: qa-owner@example.test",
+                "  change_event: pricing endpoint https://rag.example.test/search",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     fake_result = CheckResult(
         run_id="run-ci-stdout",
         current_runs=1,
@@ -624,14 +643,40 @@ def test_check_command_ci_mode_stdout_and_bundle_omit_sensitive_content(capsys) 
                 source_doc="/home/runner/work/customer/source.md",
             )
         ],
+        run_provenance={
+            "model": "gpt-customer-model",
+            "prompt_hash": "hash-safe",
+            "endpoint": "https://rag.example.test/search?token=SECRET_TOKEN_ABC",
+            "source_path": r"C:\customer\internal\policy.md",
+            "doc_snapshot_ids": ["tenant-secret-name"],
+        },
     )
 
     with patch("rqg.quality.check.run_check", return_value=fake_result):
-        exit_code = main(["check", "--log-dir", str(log_dir), "--report-mode", "ci"])
+        exit_code = main(
+            [
+                "check",
+                "--log-dir",
+                str(log_dir),
+                "--report-mode",
+                "ci",
+                "--quality-pack",
+                str(quality_pack),
+            ]
+        )
 
     captured = capsys.readouterr()
-    bundle_payload = json.loads((log_dir / "gate-report.json").read_text(encoding="utf-8"))
-    combined = captured.out + json.dumps(bundle_payload, ensure_ascii=False)
+    bundle_payload = json.loads((log_dir / "gate-report-ci.json").read_text(encoding="utf-8"))
+    decision_payload = json.loads((log_dir / "gate-decision.json").read_text(encoding="utf-8"))
+    history_payload = json.loads(
+        (log_dir / "gate-history-summary.json").read_text(encoding="utf-8")
+    )
+    combined = (
+        captured.out
+        + json.dumps(bundle_payload, ensure_ascii=False)
+        + json.dumps(decision_payload, ensure_ascii=False)
+        + json.dumps(history_payload, ensure_ascii=False)
+    )
 
     assert exit_code == 1
     assert "# Proof Gate Safe Summary" in captured.out
@@ -642,10 +687,25 @@ def test_check_command_ci_mode_stdout_and_bundle_omit_sensitive_content(capsys) 
     assert "stdout-retrieved-secret" not in combined
     assert "stdout raw reason with customer secret answer" not in combined
     assert "/home/runner/work/customer" not in combined
+    assert "ACME Customer" not in combined
+    assert "Customer FAQ Bot" not in combined
+    assert "tenant-secret-name" not in combined
+    assert "qa-owner@example.test" not in combined
+    assert "https://rag.example.test/search" not in combined
+    assert "SECRET_TOKEN_ABC" not in combined
+    assert r"C:\customer\internal" not in combined
+    assert "gpt-customer-model" not in combined
+    assert "hash-safe" in combined
     assert bundle_payload["report_mode"] == "ci"
+    assert bundle_payload["artifact_paths"]["report_path"] == "gate-report-ci.md"
+    assert bundle_payload["artifact_paths"]["bundle_path"] == "gate-report-ci.json"
+    assert bundle_payload["artifact_paths"]["history_path"] == ""
+    assert "gate-decisions.jsonl" not in captured.out
     assert "question" not in bundle_payload["cases"][0]
     assert "ai_answer" not in bundle_payload["cases"][0]
     assert "expected_answer" not in bundle_payload["cases"][0]
+    assert decision_payload["pack"] is None
+    assert history_payload["review_steward"] is None
 
 
 def test_check_command_rejects_full_report_mode_in_github_actions(monkeypatch, capsys) -> None:
@@ -753,11 +813,88 @@ def test_check_command_defaults_to_ci_report_mode_in_github_actions(monkeypatch,
         exit_code = main(["check", "--log-dir", str(log_dir)])
 
     captured = capsys.readouterr()
-    bundle_payload = json.loads((log_dir / "gate-report.json").read_text(encoding="utf-8"))
+    bundle_payload = json.loads((log_dir / "gate-report-ci.json").read_text(encoding="utf-8"))
 
     assert exit_code == 0
     assert "# Proof Gate Safe Summary" in captured.out
     assert bundle_payload["report_mode"] == "ci"
+    assert (log_dir / "gate-report-ci.md").exists()
+    assert not (log_dir / "gate-report.md").exists()
+
+
+def test_ci_history_summary_omits_stale_owner_source_and_notes() -> None:
+    payload = {
+        "entries": 2,
+        "status_mix": {"pass": 1, "warn": 0, "fail": 1},
+        "execution_mode": "mock",
+        "week_start": "2026-05-11",
+        "compare_offset": 1,
+        "trend_window": 5,
+        "summary_lines": ["secret owner qa-owner source /home/runner/work/customer/policy.md"],
+        "comparison": {
+            "current_run_id": "run-current",
+            "previous_run_id": "run-previous",
+            "current_status": "FAIL",
+            "previous_status": "PASS",
+            "new_reasons": ["answer=secret answer"],
+            "resolved_reasons": ["question=secret question"],
+            "metric_deltas": [],
+            "action_deltas": [],
+        },
+        "failure_action_coverage": {
+            "total_categories": 1,
+            "covered_categories": 0,
+            "coverage_rate": 0.0,
+            "uncovered_categories": [
+                {
+                    "failure_category": "retrieval_miss",
+                    "affected_case_ids": ["ACME-SECRET-CASE"],
+                }
+            ],
+            "window_size": 5,
+        },
+        "uncovered_categories": [{"affected_case_ids": ["ACME-SECRET-CASE"]}],
+        "stale_case_review": {
+            "stale_after_days": 30,
+            "fresh_case_review_rate": 0.0,
+            "fresh_case_count": 0,
+            "total_cases": 1,
+            "stale_cases_count": 1,
+            "owners": [{"owner": "qa-owner@example.test"}],
+            "stale_cases": [
+                {
+                    "case_id": "ACME-SECRET-CASE",
+                    "name": "customer case",
+                    "owner": "qa-owner@example.test",
+                    "reference_value": "/home/runner/work/customer/policy.md",
+                    "issue": "notes contain SECRET_TOKEN_ABC",
+                }
+            ],
+        },
+        "reliability": {
+            "policy_status": "block",
+            "fallback_summary": {"chunk_text": "secret evidence"},
+        },
+        "review_steward": "qa-owner@example.test",
+    }
+
+    safe_payload = build_ci_safe_history_summary_payload(payload)
+    serialized = json.dumps(safe_payload, ensure_ascii=False)
+
+    for forbidden in [
+        "qa-owner",
+        "ACME-SECRET-CASE",
+        "/home/runner/work/customer",
+        "SECRET_TOKEN_ABC",
+        "secret evidence",
+        "secret answer",
+        "secret question",
+        "customer case",
+    ]:
+        assert forbidden not in serialized
+
+    assert safe_payload["stale_case_review"]["stale_cases_count"] == 1
+    assert safe_payload["review_steward"] is None
 
 
 def test_check_command_writes_execution_mode_and_customer_summary(tmp_path) -> None:

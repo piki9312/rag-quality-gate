@@ -85,6 +85,7 @@ def send_gate_notifications(
     config_path: str | None = None,
     report_path: str | Path | None = None,
     decision_path: str | Path | None = None,
+    report_mode: str = "full",
 ) -> list[str]:
     """Send notifications for a gate decision; return delivery warnings."""
     warnings: list[str] = []
@@ -101,6 +102,7 @@ def send_gate_notifications(
                 decision=decision,
                 report_path=report_path,
                 decision_path=decision_path,
+                report_mode=report_mode,
             )
         except RuntimeError as exc:
             warnings.append(str(exc))
@@ -113,12 +115,14 @@ def _send_notification(
     decision: GateDecision,
     report_path: str | Path | None = None,
     decision_path: str | Path | None = None,
+    report_mode: str = "full",
 ) -> None:
     body = _build_payload(
         kind=target.kind,
         decision=decision,
         report_path=report_path,
         decision_path=decision_path,
+        report_mode=report_mode,
     )
     request = urllib.request.Request(
         target.url,
@@ -142,7 +146,16 @@ def _build_payload(
     decision: GateDecision,
     report_path: str | Path | None,
     decision_path: str | Path | None,
+    report_mode: str = "full",
 ) -> dict[str, object]:
+    if str(report_mode).strip().lower() == "ci":
+        return _build_ci_payload(
+            kind=kind,
+            decision=decision,
+            report_path=report_path,
+            decision_path=decision_path,
+        )
+
     summary = _build_summary_text(
         decision=decision,
         report_path=report_path,
@@ -166,6 +179,60 @@ def _build_payload(
         "decision_path": sanitize_artifact_path(decision_path),
         "summary": summary,
     }
+
+
+def _build_ci_payload(
+    *,
+    kind: NotificationKind,
+    decision: GateDecision,
+    report_path: str | Path | None,
+    decision_path: str | Path | None,
+) -> dict[str, object]:
+    summary = _build_ci_summary_text(
+        decision=decision,
+        report_path=report_path,
+        decision_path=decision_path,
+    )
+    if kind in {"slack", "teams"}:
+        return {"text": summary}
+    return {
+        "event": "rqg.gate_decision",
+        "status": decision.status,
+        "policy_status": decision.policy_status,
+        "run_id": decision.run_id,
+        "created_at": decision.created_at.isoformat(),
+        "reason_codes": [sanitize_text(item) for item in decision.reason_codes[:10]],
+        "metrics": decision.metrics,
+        "needs_human_review": decision.needs_human_review,
+        "report_path": sanitize_artifact_path(report_path),
+        "decision_path": sanitize_artifact_path(decision_path),
+        "summary": summary,
+    }
+
+
+def _build_ci_summary_text(
+    *,
+    decision: GateDecision,
+    report_path: str | Path | None,
+    decision_path: str | Path | None,
+) -> str:
+    s1_fail_count = int(decision.metrics.get("s1_fail_count", 0.0) or 0.0)
+    lines = [
+        f"Proof Gate {decision.policy_status.upper()}",
+        f"Run: {decision.run_id}",
+        f"Gate status: {decision.status.upper()}",
+        f"Policy status: {decision.policy_status.upper()}",
+        f"S1 failures: {s1_fail_count}",
+        f"Needs human review: {'yes' if decision.needs_human_review else 'no'}",
+    ]
+    if decision.reason_codes:
+        safe_codes = [sanitize_text(code) for code in decision.reason_codes[:5]]
+        lines.append(f"Reason codes: {', '.join(safe_codes)}")
+    if report_path:
+        lines.append(f"Report: {sanitize_artifact_path(report_path)}")
+    if decision_path:
+        lines.append(f"Decision JSON: {sanitize_artifact_path(decision_path)}")
+    return "\n".join(lines)
 
 
 def _build_summary_text(

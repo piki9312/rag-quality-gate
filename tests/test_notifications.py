@@ -56,7 +56,7 @@ def test_check_sends_notifications_from_rqg_config() -> None:
     payload = json.loads(request.data.decode("utf-8"))
     assert payload["event"] == "rqg.gate_decision"
     assert payload["status"] == "fail"
-    assert payload["decision_path"] == str(decision_path)
+    assert payload["decision_path"] == decision_path.as_posix()
 
 
 def test_check_warns_when_notification_delivery_fails(capsys, monkeypatch) -> None:
@@ -159,3 +159,60 @@ def test_notifications_do_not_include_sensitive_text() -> None:
     assert "retrieval_miss" in slack_text
     assert '"policy_status": "block"' in webhook_text
     assert '"report_path": "gate-report.md"' in webhook_text
+
+
+def test_ci_notification_payloads_are_safe_summary_only() -> None:
+    decision = GateDecision(
+        run_id="run-ci-notify",
+        status="fail",
+        policy_status="block",
+        reasons=["question=secret question answer=secret answer endpoint=https://rag.example.test"],
+        reason_codes=["retrieval_miss"],
+        metrics={"overall_pass_rate": 10.0, "s1_fail_count": 1.0},
+        next_actions=[
+            GateNextAction(
+                failure_category="retrieval_miss",
+                count=1,
+                action="Review tenant ACME endpoint https://rag.example.test",
+                owner="customer-owner@example.test",
+                affected_case_ids=["ACME-CASE-1"],
+            )
+        ],
+        fallback_summary={"chunk_text": "secret evidence"},
+        needs_human_review=True,
+        pack=GatePackMetadata(pack_name="tenant-secret-pack"),
+        created_at=datetime.now(timezone.utc),
+    )
+
+    slack_payload = _build_payload(
+        kind="slack",
+        decision=decision,
+        report_path="/home/runner/work/customer/gate-report-ci.md",
+        decision_path="/home/runner/work/customer/gate-decision.json",
+        report_mode="ci",
+    )
+    webhook_payload = _build_payload(
+        kind="webhook",
+        decision=decision,
+        report_path="/home/runner/work/customer/gate-report-ci.md",
+        decision_path="/home/runner/work/customer/gate-decision.json",
+        report_mode="ci",
+    )
+
+    combined = json.dumps([slack_payload, webhook_payload], ensure_ascii=False)
+
+    for forbidden in [
+        "secret question",
+        "secret answer",
+        "secret evidence",
+        "https://rag.example.test",
+        "ACME",
+        "customer-owner@example.test",
+        "tenant-secret-pack",
+        "/home/runner/work/customer",
+    ]:
+        assert forbidden not in combined
+
+    assert "retrieval_miss" in combined
+    assert '"policy_status": "block"' in combined
+    assert "gate-report-ci.md" in combined
