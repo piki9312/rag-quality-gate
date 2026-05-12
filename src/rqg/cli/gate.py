@@ -18,6 +18,20 @@ from .helpers import (
 def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
     requested_report_mode = str(getattr(args, "report_mode", "") or "").strip().lower()
+    if getattr(args, "customer_facing", False) and getattr(args, "mock", False):
+        if not getattr(args, "allow_simulation_output", False):
+            print(
+                "[ERROR] --customer-facing cannot be used with --mock unless "
+                "--allow-simulation-output is set. "
+                "Mock output is simulation only and must not be treated as customer quality evidence.",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            "[WARN] customer-facing simulation output enabled; the resulting artifact will be marked "
+            "SIMULATION ONLY and must not be used as production quality evidence.",
+            file=sys.stderr,
+        )
     if github_actions_enabled():
         if requested_report_mode == "full":
             print(
@@ -67,6 +81,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             adapter_config=getattr(args, "adapter_config", None),
             report_mode=getattr(args, "report_mode", None),
             verbose=args.verbose,
+            customer_facing=getattr(args, "customer_facing", False),
         )
     )
 
@@ -92,6 +107,12 @@ def cmd_gate(args: argparse.Namespace) -> int:
             decision_file=args.decision_file,
             bundle_file=getattr(args, "bundle_file", None),
             report_mode=getattr(args, "report_mode", None),
+            customer_facing=getattr(args, "customer_facing", False),
+            allow_simulation_output=getattr(args, "allow_simulation_output", False),
+            strict_s1_governance=getattr(args, "strict_s1_governance", False),
+            change_event_file=getattr(args, "change_event_file", None),
+            manual_review_file=getattr(args, "manual_review_file", None),
+            baseline_bundle=getattr(args, "baseline_bundle", None),
             warn_exit_code=args.warn_exit_code,
             append_history=check_append_history,
             notifications_enabled=notifications_enabled,

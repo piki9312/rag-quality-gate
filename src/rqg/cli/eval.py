@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -79,8 +80,21 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 def cmd_eval(args: argparse.Namespace) -> int:
     """テストケースを実行して品質評価する。"""
     from ..quality.check import normalize_report_mode
+    from ..quality.evaluators.llm_judge import JUDGE_PROMPT_VERSION, judge_prompt_hash
     from ..quality.loader import filter_cases_by_status, load_cases
+    from ..quality.provenance import (
+        build_run_provenance,
+        case_set_version,
+        determine_execution_mode,
+        hash_text,
+        infer_doc_snapshot_ids,
+        infer_index_version,
+        load_change_event,
+        quality_pack_version,
+        write_run_provenance,
+    )
     from ..quality.runner import RAGQualityRunner
+    from ..serving.llm_client import ANSWER_PROMPT_VERSION, OPENAI_MODEL, answer_prompt_hash
 
     rag_endpoint = getattr(args, "rag_endpoint", None)
     rag_api_key_env = getattr(args, "rag_api_key_env", None)
@@ -89,6 +103,11 @@ def cmd_eval(args: argparse.Namespace) -> int:
     requested_report_mode = getattr(args, "report_mode", None)
     requested_report_mode = (
         str(requested_report_mode).strip().lower() if requested_report_mode is not None else None
+    )
+    execution_mode = determine_execution_mode(
+        mock=bool(getattr(args, "mock", False)),
+        rag_endpoint=rag_endpoint,
+        adapter_config_path=adapter_config_path,
     )
 
     if github_actions_enabled() and requested_report_mode == "full":
@@ -99,11 +118,14 @@ def cmd_eval(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    report_mode = normalize_report_mode(
-        "ci"
-        if github_actions_enabled() and requested_report_mode is None
-        else requested_report_mode
-    )
+    default_report_mode = requested_report_mode
+    if github_actions_enabled() and requested_report_mode is None:
+        default_report_mode = "ci"
+    elif requested_report_mode is None and (
+        execution_mode == "external_real" or getattr(args, "customer_facing", False)
+    ):
+        default_report_mode = "redacted"
+    report_mode = normalize_report_mode(default_report_mode)
 
     if adapter_config_path:
         from ..serving.external_adapter import ExternalRAGError, load_http_rag_adapter_config
@@ -212,7 +234,49 @@ def cmd_eval(args: argparse.Namespace) -> int:
             cases,
             args.log_dir,
             report_mode=report_mode,
+            execution_mode=execution_mode,
         )
         print(f"\nSaved -> {jsonl_file}")
+        # Use sorted JSON so prompt provenance stays stable even if field order changes later.
+        prompt_hash = hash_text(
+            json.dumps(
+                {
+                    "answer_prompt": answer_prompt_hash(),
+                    "judge_prompt": judge_prompt_hash(),
+                },
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+        )
+        provenance = build_run_provenance(
+            run_id=run.run_id,
+            execution_mode=execution_mode,
+            report_mode=report_mode,
+            model_name="mock" if args.mock else OPENAI_MODEL,
+            prompt_hash=prompt_hash,
+            prompt_version=f"{ANSWER_PROMPT_VERSION}+{JUDGE_PROMPT_VERSION}",
+            retrieval_config_hash=hash_text(
+                json.dumps(
+                    {
+                        "context_k": args.context_k,
+                        "index_dir": getattr(args, "index_dir", None),
+                        "docs": getattr(args, "docs", None),
+                        "rag_endpoint": bool(rag_endpoint),
+                    },
+                    sort_keys=True,
+                    ensure_ascii=False,
+                )
+            ),
+            adapter_config_hash=case_set_version(adapter_config_path),
+            doc_snapshot_ids=infer_doc_snapshot_ids(getattr(args, "index_dir", None)),
+            index_version=infer_index_version(getattr(args, "index_dir", None)),
+            quality_pack_version_value=quality_pack_version(
+                Path(args.cases).with_name("quality-pack.yml")
+            ),
+            case_set_version_value=case_set_version(args.cases),
+            change_event=load_change_event(getattr(args, "change_event_file", None)),
+        )
+        provenance_path = write_run_provenance(args.log_dir, run.run_id, provenance)
+        print(f"Saved provenance -> {provenance_path}")
 
     return 0 if run.failed == 0 else 1

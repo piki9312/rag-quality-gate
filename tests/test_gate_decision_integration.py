@@ -760,6 +760,134 @@ def test_check_command_defaults_to_ci_report_mode_in_github_actions(monkeypatch,
     assert bundle_payload["report_mode"] == "ci"
 
 
+def test_check_command_writes_execution_mode_and_customer_summary(tmp_path) -> None:
+    log_dir = tmp_path / "logs"
+    fake_result = CheckResult(
+        run_id="run-execution-mode",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=100.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1")],
+        execution_mode="external_real",
+        run_provenance={"prompt_hash": "abc", "model": "gpt-4o-mini"},
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        exit_code = main(["check", "--log-dir", str(log_dir), "--customer-facing"])
+
+    bundle_payload = json.loads((log_dir / "gate-report.json").read_text(encoding="utf-8"))
+    customer_summary = (log_dir / "customer-summary.md").read_text(encoding="utf-8")
+
+    assert exit_code == 0
+    assert bundle_payload["execution_mode"] == "external_real"
+    assert bundle_payload["decision"]["execution_mode"] == "external_real"
+    assert bundle_payload["provenance"]["prompt_hash"] == "abc"
+    assert "execution_mode: external_real" in customer_summary
+
+
+def test_check_command_writes_manual_review_and_before_after_artifacts(tmp_path) -> None:
+    log_dir = tmp_path / "logs"
+    baseline_path = tmp_path / "before.json"
+    manual_review_path = tmp_path / "manual-review.json"
+    baseline_path.write_text(
+        json.dumps(
+            {
+                "decision": {
+                    "run_id": "before-run",
+                    "policy_status": "pass",
+                    "provenance": {"model": "gpt-4o-mini"},
+                },
+                "overall_decision": "ok",
+                "provenance": {"model": "gpt-4o-mini", "execution_mode": "real"},
+                "cases": [{"case_id": "CASE-1", "pass_fail": "pass", "severity": "S1"}],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    manual_review_path.write_text(
+        json.dumps(
+            {
+                "reviews": [
+                    {
+                        "review_id": "REV-1",
+                        "case_id": "CASE-1",
+                        "run_id": "after-run",
+                        "reviewer": "qa-owner",
+                        "review_status": "approved",
+                        "review_comment": "checked",
+                        "reviewed_at": "2026-05-11T00:00:00Z",
+                        "evidence_checked": True,
+                        "approval_scope": "case",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    fake_result = CheckResult(
+        run_id="after-run",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=0.0,
+        s1_rate=0.0,
+        s1_passed=0,
+        s1_total=1,
+        thresholds=[ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1")],
+        current_records=[
+            QARunRecord(
+                timestamp=datetime.now(timezone.utc),
+                run_id="after-run",
+                case_id="CASE-1",
+                severity="S1",
+                passed=False,
+                failure_type="numeric_mismatch",
+                failure_category="synthesis",
+            )
+        ],
+        active_cases=[
+            QATestCase(
+                case_id="CASE-1",
+                name="Case 1",
+                question="Q",
+                severity="S1",
+                expected_answer="7日以内",
+                expected_evidence=["policy.md#sec-1"],
+            )
+        ],
+        execution_mode="real",
+        run_provenance={"model": "gpt-4.1", "execution_mode": "real"},
+    )
+
+    with patch("rqg.quality.check.run_check", return_value=fake_result):
+        exit_code = main(
+            [
+                "check",
+                "--log-dir",
+                str(log_dir),
+                "--manual-review-file",
+                str(manual_review_path),
+                "--baseline-bundle",
+                str(baseline_path),
+            ]
+        )
+
+    decision_payload = json.loads((log_dir / "gate-decision.json").read_text(encoding="utf-8"))
+    comparison_payload = json.loads(
+        (log_dir / "before-after-summary.json").read_text(encoding="utf-8")
+    )
+
+    assert exit_code == 1
+    assert decision_payload["manual_review_summary"]["approved"] == 1
+    assert comparison_payload["before_run_id"] == "before-run"
+    assert comparison_payload["after_run_id"] == "after-run"
+    assert "CASE-1" in comparison_payload["newly_failing_cases"]
+
+
 def test_build_gate_report_bundle_payload_maps_overall_decision_variants() -> None:
     cases = [
         (

@@ -227,6 +227,125 @@ class TestRunCase:
         assert "接待費" not in result.answer
         assert result.passed is True
 
+    def test_s1_numeric_mismatch_is_not_passed(self):
+        case = QATestCase(
+            case_id="QA-s1-numeric",
+            name="numeric mismatch",
+            question="返金期限は？",
+            severity="S1",
+            eval_mode="evidence_keyword",
+            expected_answer="返金申請は7日以内です。",
+            expected_evidence=["policy.md#refund"],
+            expected_keywords=["返金申請"],
+        )
+
+        class PolicyStore:
+            def search(self, q, top_k=20):
+                return [{"chunk_id": "policy.md#refund", "text": "返金申請は7日以内です。"}]
+
+        runner = RAGQualityRunner(store=PolicyStore(), mock_llm=False)
+        with patch(
+            "rqg.quality.runner.generate_answer", return_value=("返金申請は30日以内です。", {})
+        ):
+            with patch(
+                "rqg.quality.runner.llm_judge",
+                return_value=JudgeResult(faithfulness=0.9, relevance=0.9),
+            ):
+                result = runner.run_case(case)
+
+        assert result.passed is False
+        assert result.failure_type == "deadline_or_period_mismatch"
+
+    def test_s1_negation_error_is_not_passed(self):
+        case = QATestCase(
+            case_id="QA-s1-negation",
+            name="negation mismatch",
+            question="返金できますか？",
+            severity="S1",
+            eval_mode="evidence_keyword",
+            expected_answer="返金不可です。",
+            expected_evidence=["policy.md#refund"],
+            expected_keywords=["返金"],
+        )
+
+        class PolicyStore:
+            def search(self, q, top_k=20):
+                return [{"chunk_id": "policy.md#refund", "text": "返金不可です。"}]
+
+        runner = RAGQualityRunner(store=PolicyStore(), mock_llm=False)
+        with patch("rqg.quality.runner.generate_answer", return_value=("返金可能です。", {})):
+            with patch(
+                "rqg.quality.runner.llm_judge",
+                return_value=JudgeResult(faithfulness=0.9, relevance=0.9),
+            ):
+                result = runner.run_case(case)
+
+        assert result.passed is False
+        assert result.failure_type == "negation_error"
+
+    def test_s1_condition_omission_is_detected(self):
+        case = QATestCase(
+            case_id="QA-s1-condition",
+            name="condition omission",
+            question="返金できますか？",
+            severity="S1",
+            eval_mode="evidence_keyword",
+            expected_answer="未使用の場合に限り返金できます。",
+            expected_evidence=["policy.md#refund"],
+            expected_keywords=["返金できます"],
+        )
+
+        class PolicyStore:
+            def search(self, q, top_k=20):
+                return [
+                    {"chunk_id": "policy.md#refund", "text": "未使用の場合に限り返金できます。"}
+                ]
+
+        runner = RAGQualityRunner(store=PolicyStore(), mock_llm=False)
+        with patch("rqg.quality.runner.generate_answer", return_value=("返金できます。", {})):
+            with patch(
+                "rqg.quality.runner.llm_judge",
+                return_value=JudgeResult(faithfulness=0.9, relevance=0.9),
+            ):
+                result = runner.run_case(case)
+
+        assert result.passed is False
+        assert result.failure_type == "condition_mismatch"
+
+    def test_s1_judge_fallback_does_not_auto_pass(self):
+        case = QATestCase(
+            case_id="QA-s1-fallback",
+            name="judge fallback",
+            question="返金期限は？",
+            severity="S1",
+            eval_mode="evidence_keyword",
+            expected_answer="返金申請は7日以内です。",
+            expected_evidence=["policy.md#refund"],
+            expected_keywords=["返金申請", "7日以内"],
+        )
+
+        class PolicyStore:
+            def search(self, q, top_k=20):
+                return [{"chunk_id": "policy.md#refund", "text": "返金申請は7日以内です。"}]
+
+        runner = RAGQualityRunner(store=PolicyStore(), mock_llm=False)
+        with patch(
+            "rqg.quality.runner.generate_answer", return_value=("返金申請は7日以内です。", {})
+        ):
+            with patch(
+                "rqg.quality.runner.llm_judge",
+                return_value=JudgeResult(
+                    faithfulness=0.9,
+                    relevance=0.9,
+                    fallback_used=True,
+                    fallback_reason="parse_error",
+                ),
+            ):
+                result = runner.run_case(case)
+
+        assert result.passed is False
+        assert result.failure_type == "judge_fallback"
+
 
 class TestRunAll:
     def test_run_all_returns_eval_run(self, s1_case, s2_case):

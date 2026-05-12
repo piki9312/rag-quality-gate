@@ -29,6 +29,7 @@ from .evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
 from .failure_reason import classify_failure_category
 from .models import EvalResult, EvalRun, QARunRecord, QATestCase
 from .reason_taxonomy import classify_judge_failure_type
+from .s1_guardrails import evaluate_s1_guardrails
 from .text_utils import (
     normalize_text,
     overlap_f1,
@@ -492,6 +493,19 @@ class RAGQualityRunner:
                 if not passed:
                     failure_type = "keyword_miss"
                     failure_reason = "Expected answer did not match"
+                elif case.severity == "S1":
+                    if judge_fallback_used:
+                        passed = False
+                        failure_type = "judge_fallback"
+                        failure_reason = (
+                            f"Judge fallback used for S1 case: {judge_fallback_reason or 'unknown'}"
+                        )
+                    else:
+                        guardrail_failure = evaluate_s1_guardrails(case.expected_answer, answer)
+                        if guardrail_failure is not None:
+                            passed = False
+                            failure_type = guardrail_failure.failure_type
+                            failure_reason = guardrail_failure.failure_reason
 
             elif eval_mode == "evidence_keyword":
                 kw_rate = keyword_match_rate(answer, case.expected_keywords)
@@ -506,6 +520,19 @@ class RAGQualityRunner:
                 elif not answer_match:
                     failure_type = "keyword_miss"
                     failure_reason = f"Keyword match {kw_rate:.0%} < {threshold:.0%}"
+                elif case.severity == "S1":
+                    if judge_fallback_used:
+                        passed = False
+                        failure_type = "judge_fallback"
+                        failure_reason = (
+                            f"Judge fallback used for S1 case: {judge_fallback_reason or 'unknown'}"
+                        )
+                    else:
+                        guardrail_failure = evaluate_s1_guardrails(case.expected_answer, answer)
+                        if guardrail_failure is not None:
+                            passed = False
+                            failure_type = guardrail_failure.failure_type
+                            failure_reason = guardrail_failure.failure_reason
 
             elif eval_mode == "grounded_judge":
                 grounded_threshold = GROUNDED_JUDGE_THRESHOLD
@@ -541,6 +568,19 @@ class RAGQualityRunner:
                     failure_reason = (
                         f"Judge relevance {judge_relevance or 0.0:.0%} < {grounded_threshold:.0%}"
                     )
+                elif case.severity == "S1":
+                    if judge_fallback_used:
+                        passed = False
+                        failure_type = "judge_fallback"
+                        failure_reason = (
+                            f"Judge fallback used for S1 case: {judge_fallback_reason or 'unknown'}"
+                        )
+                    else:
+                        guardrail_failure = evaluate_s1_guardrails(case.expected_answer, answer)
+                        if guardrail_failure is not None:
+                            passed = False
+                            failure_type = guardrail_failure.failure_type
+                            failure_reason = guardrail_failure.failure_reason
 
             else:
                 scores: list[float] = []
@@ -576,6 +616,19 @@ class RAGQualityRunner:
                     scores.append(faithfulness)
 
                 score = sum(scores) / len(scores) if scores else 1.0
+                if passed and case.severity == "S1":
+                    if judge_fallback_used:
+                        passed = False
+                        failure_type = "judge_fallback"
+                        failure_reason = (
+                            f"Judge fallback used for S1 case: {judge_fallback_reason or 'unknown'}"
+                        )
+                    else:
+                        guardrail_failure = evaluate_s1_guardrails(case.expected_answer, answer)
+                        if guardrail_failure is not None:
+                            passed = False
+                            failure_type = guardrail_failure.failure_type
+                            failure_reason = guardrail_failure.failure_reason
 
         if not passed:
             failure_category = classify_failure_category(
@@ -642,6 +695,7 @@ class RAGQualityRunner:
         log_dir: str,
         *,
         report_mode: str = "full",
+        execution_mode: str | None = None,
     ) -> Path:
         """EvalRun を JSONL ファイルに永続化する。"""
         log_path = Path(log_dir)
@@ -658,6 +712,7 @@ class RAGQualityRunner:
                     run.run_id,
                     case,
                     report_mode=report_mode,
+                    execution_mode=execution_mode,
                 )
                 f.write(record.model_dump_json() + "\n")
 

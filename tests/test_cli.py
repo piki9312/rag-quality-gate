@@ -265,6 +265,17 @@ class TestCLIParserContract:
             assert args.command == command
             assert args.aggregation_policy == "window"
 
+    def test_gate_option_contract_includes_customer_safety_flags(self):
+        options = _subparser_option_strings("gate")
+        assert {
+            "--customer-facing",
+            "--allow-simulation-output",
+            "--strict-s1-governance",
+            "--change-event-file",
+            "--manual-review-file",
+            "--baseline-bundle",
+        }.issubset(options)
+
 
 class TestCLIParsing:
     """CLI のパースロジックだけをテスト (実行はモック)。"""
@@ -340,6 +351,12 @@ class TestCLIParsing:
         args = parser.parse_args(["eval", "cases.csv", "--reset-log-dir"])
         assert args.command == "eval"
         assert args.reset_log_dir is True
+
+    def test_gate_blocks_customer_facing_mock_without_override(self, capsys):
+        exit_code = main(["gate", "packs/hr/cases.csv", "--mock", "--customer-facing"])
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "--allow-simulation-output" in captured.err
 
     def test_check_defaults(self):
         from rqg.cli import build_parser

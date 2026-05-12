@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -811,3 +812,95 @@ response_mapping:
         assert payload["question"] == "How do employees reset passwords?"
         assert "query" not in payload
         assert isinstance(payload["top_k"], int)
+
+    def test_cmd_eval_provenance_prompt_hash_uses_structured_payload(self, tmp_path, monkeypatch):
+        import argparse
+        import csv
+
+        from rqg.cli.eval import cmd_eval
+
+        monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+
+        cases_file = tmp_path / "cases.csv"
+        with open(cases_file, "w", encoding="utf-8", newline="") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "case_id",
+                    "name",
+                    "question",
+                    "severity",
+                    "expected_keywords",
+                    "expected_evidence",
+                    "expected_answer",
+                    "category",
+                ],
+            )
+            writer.writeheader()
+            writer.writerow(
+                {
+                    "case_id": "QA-PROMPT-HASH",
+                    "name": "Prompt hash provenance",
+                    "question": "How do employees reset passwords?",
+                    "severity": "S1",
+                    "expected_keywords": "IT;reset",
+                    "expected_evidence": "doc-1",
+                    "expected_answer": "Employees reset passwords through IT.",
+                    "category": "it",
+                }
+            )
+
+        log_dir = tmp_path / "logs"
+        log_dir.mkdir()
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "results": [
+                {
+                    "chunk_id": "doc-1",
+                    "source": "it-policy.md",
+                    "text": "Employees reset passwords through IT.",
+                    "score": 0.95,
+                }
+            ]
+        }
+
+        args = argparse.Namespace(
+            cases=str(cases_file),
+            docs=None,
+            index_dir=str(tmp_path / "index"),
+            log_dir=str(log_dir),
+            reset_log_dir=False,
+            context_k=3,
+            mock=True,
+            rag_endpoint="https://rag.example.com/search",
+            rag_api_key_env=None,
+            adapter_config=None,
+            change_event_file=None,
+            verbose=False,
+            report_mode=None,
+            customer_facing=False,
+        )
+
+        with (
+            patch("rqg.serving.external_adapter.httpx.post", return_value=mock_resp),
+            patch("rqg.serving.llm_client.answer_prompt_hash", return_value="answer-v1"),
+            patch("rqg.quality.evaluators.llm_judge.judge_prompt_hash", return_value="judge-v2"),
+        ):
+            exit_code = cmd_eval(args)
+
+        assert exit_code in (0, 1)
+        provenance_files = sorted(log_dir.glob("run-provenance-*.json"))
+        assert provenance_files
+        provenance = json.loads(provenance_files[0].read_text(encoding="utf-8"))
+        expected_payload = json.dumps(
+            {
+                "answer_prompt": "answer-v1",
+                "judge_prompt": "judge-v2",
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        expected_hash = hashlib.sha256(expected_payload.encode("utf-8")).hexdigest()
+        assert provenance["prompt_hash"] == expected_hash

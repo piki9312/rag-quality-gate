@@ -17,6 +17,7 @@ from rqg.quality.check import (
     build_gate_decision,
     load_failure_actions_from_quality_pack,
     load_records,
+    render_customer_summary_markdown,
     render_gate_markdown,
     run_check,
 )
@@ -875,6 +876,25 @@ class TestRenderMarkdown:
         assert "## 8. 月額Monitorで継続確認すべき項目" in md
         assert "FAQ・規約・料金表の更新後にS1ケースを再実行する" in md
         assert md.index("QA-S1") < md.index("QA-S2")
+
+    def test_customer_summary_includes_simulation_warning_and_execution_mode(self):
+        result = CheckResult(
+            run_id="run-sim",
+            current_runs=1,
+            baseline_runs=0,
+            overall_rate=100.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[ThresholdResult("Overall", 80.0, 100.0, True, "1/1")],
+            execution_mode="mock",
+        )
+
+        md = render_customer_summary_markdown(result, report_mode="redacted")
+
+        assert "SIMULATION ONLY" in md
+        assert "execution_mode: mock" in md
+        assert "実システム品質を証明するものではありません" in md
 
     def test_rendering_includes_observed_metrics(self):
         result = CheckResult(

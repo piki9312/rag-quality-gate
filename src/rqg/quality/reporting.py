@@ -23,6 +23,8 @@ class GateReportArtifacts:
     history_summary_path: Path
     history_path: Path
     bundle_path: Path
+    customer_summary_markdown: str = ""
+    customer_summary_path: Path | None = None
     check_result: Any | None = None
     report_mode: str = "full"
 
@@ -85,8 +87,14 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         "decision": decision_payload,
         "history_summary": artifacts.history_summary,
         "report_markdown": artifacts.markdown,
+        "customer_summary_markdown": artifacts.customer_summary_markdown,
         "artifact_paths": {
             "report_path": safe_relative_artifact_path(artifacts.report_path, artifact_base_dir),
+            "customer_summary_path": (
+                safe_relative_artifact_path(artifacts.customer_summary_path, artifact_base_dir)
+                if artifacts.customer_summary_path is not None
+                else ""
+            ),
             "decision_path": safe_relative_artifact_path(
                 artifacts.decision_path, artifact_base_dir
             ),
@@ -107,10 +115,9 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         from rqg.quality.check import (
             build_case_report_rows,
             build_customer_report_summary,
-            collect_target_docs,
+            collect_target_docs_if_report_mode_allows,
             map_overall_decision,
             normalize_report_mode,
-            report_mode_exposes_sensitive_fields,
         )
 
         normalized_report_mode = normalize_report_mode(report_mode)
@@ -118,10 +125,10 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             artifacts.check_result,
             report_mode=normalized_report_mode,
         )
-        if report_mode_exposes_sensitive_fields(normalized_report_mode):
-            target_docs = collect_target_docs(artifacts.check_result)
-        else:
-            target_docs = []
+        target_docs = collect_target_docs_if_report_mode_allows(
+            artifacts.check_result,
+            normalized_report_mode,
+        )
         summary = build_customer_report_summary(artifacts.check_result)
         overall_decision = map_overall_decision(artifacts.check_result)
 
@@ -136,6 +143,9 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "summary": summary,
             "overall_decision": overall_decision,
             "cases": cases,
+            "execution_mode": decision_payload.get("execution_mode"),
+            "provenance": decision_payload.get("provenance", {}),
+            "manual_review_summary": decision_payload.get("manual_review_summary", {}),
         }
     )
     return payload

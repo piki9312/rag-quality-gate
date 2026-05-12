@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -27,6 +28,8 @@ def _exit_code_for_gate_result(*, policy_status: str, gate_status: str, warn_exi
 
 def cmd_check(args: argparse.Namespace) -> int:
     """Run the quality gate check and emit stable ASCII output."""
+    from ..quality.case_merge import load_csv_rows
+    from ..quality.case_schema import normalize_legacy_row, validate_case_rows
     from ..quality.check import (
         GateConfig,
         build_gate_decision,
@@ -35,10 +38,23 @@ def cmd_check(args: argparse.Namespace) -> int:
         load_review_steward_from_quality_pack,
         normalize_aggregation_policy,
         normalize_report_mode,
+        render_customer_summary_markdown,
         render_gate_markdown,
         run_check,
     )
+    from ..quality.comparison import (
+        build_before_after_summary,
+        load_gate_bundle,
+        render_before_after_summary_markdown,
+    )
     from ..quality.history import build_gate_history_summary_payload, load_gate_decision_history
+    from ..quality.provenance import (
+        SIMULATION_WARNING_EN,
+        SIMULATION_WARNING_JA,
+        is_simulation_execution_mode,
+        load_change_event,
+        load_manual_review_records,
+    )
     from ..quality.reporting import (
         BundleJsonReportAdapter,
         DecisionHistoryJsonlReportAdapter,
@@ -63,6 +79,8 @@ def cmd_check(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 1
+        if getattr(args, "customer_facing", False) and requested_report_mode is None:
+            report_mode = normalize_report_mode("redacted")
 
         if args.config and Path(args.config).exists():
             config = GateConfig.from_yaml(args.config)
@@ -86,6 +104,27 @@ def cmd_check(args: argparse.Namespace) -> int:
     if args.max_s1_drop_pct is not None:
         config.max_s1_drop_pct = args.max_s1_drop_pct
 
+    if getattr(args, "strict_s1_governance", False) and args.cases_file:
+        # This intentionally duplicates strict validation done in validate-pack as
+        # defense in depth, so a direct `rqg check` invocation cannot bypass S1 safety
+        # checks even if earlier validation steps were skipped.
+        try:
+            rows = [normalize_legacy_row(row) for row in load_csv_rows(args.cases_file)]
+        except FileNotFoundError as exc:
+            print(f"[ERROR] strict S1 governance cases file not found: {exc}", file=sys.stderr)
+            return 1
+        except ValueError as exc:
+            print(f"[ERROR] strict S1 governance cases file is invalid: {exc}", file=sys.stderr)
+            return 1
+        issues = validate_case_rows(rows, strict_s1_governance=True)
+        blocking = [issue for issue in issues if issue.level == "error"]
+        if blocking:
+            for issue in blocking:
+                print(
+                    f"[ERROR] strict S1 governance: {issue.case_id} {issue.field}: {issue.message}"
+                )
+            return 1
+
     result = run_check(
         log_dir=args.log_dir,
         config=config,
@@ -94,6 +133,41 @@ def cmd_check(args: argparse.Namespace) -> int:
         baseline_days=args.baseline_days,
         cases_file=args.cases_file,
     )
+    change_event = load_change_event(getattr(args, "change_event_file", None))
+    if change_event and not result.run_provenance.get("change_event_id"):
+        result.run_provenance = {
+            **result.run_provenance,
+            "change_event": change_event,
+            **change_event,
+        }
+    if getattr(args, "customer_facing", False) and is_simulation_execution_mode(
+        result.execution_mode
+    ):
+        if not getattr(args, "allow_simulation_output", False):
+            print(
+                "[ERROR] customer-facing output is blocked for mock/simulation runs unless "
+                "--allow-simulation-output is set. "
+                f"{SIMULATION_WARNING_EN} {SIMULATION_WARNING_JA}",
+                file=sys.stderr,
+            )
+            return 1
+    manual_review_records = load_manual_review_records(getattr(args, "manual_review_file", None))
+    manual_review_summary = {
+        "total_reviews": len(manual_review_records),
+        "approved": sum(
+            1 for item in manual_review_records if item.get("review_status") == "approved"
+        ),
+        "rejected": sum(
+            1 for item in manual_review_records if item.get("review_status") == "rejected"
+        ),
+        "needs_followup": sum(
+            1 for item in manual_review_records if item.get("review_status") == "needs_followup"
+        ),
+        "waived_with_risk": sum(
+            1 for item in manual_review_records if item.get("review_status") == "waived_with_risk"
+        ),
+        "records": manual_review_records,
+    }
 
     quality_pack_path = args.quality_pack
     if not quality_pack_path and args.config:
@@ -119,6 +193,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         result,
         failure_actions=failure_actions,
         pack_metadata=pack_metadata,
+        manual_review_summary=manual_review_summary,
     )
     history_decisions = [*load_gate_decision_history(decision_history_path), decision]
     history_summary_payload = build_gate_history_summary_payload(
@@ -138,6 +213,12 @@ def cmd_check(args: argparse.Namespace) -> int:
         history_decisions=history_decisions,
         report_mode=report_mode,
     )
+    customer_summary_md = render_customer_summary_markdown(
+        result,
+        failure_actions=failure_actions,
+        pack_metadata=pack_metadata,
+        report_mode=report_mode,
+    )
     if report_mode == "ci":
         print(md.rstrip())
     else:
@@ -146,6 +227,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     report_path = (
         Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
     )
+    customer_summary_path = Path(args.log_dir) / "customer-summary.md"
     history_summary_path = Path(args.log_dir) / "gate-history-summary.json"
     decision_path = (
         Path(args.decision_file)
@@ -159,9 +241,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
     artifacts = GateReportArtifacts(
         markdown=md,
+        customer_summary_markdown=customer_summary_md,
         decision=decision,
         history_summary=history_summary_payload,
         report_path=report_path,
+        customer_summary_path=customer_summary_path,
         decision_path=decision_path,
         history_summary_path=history_summary_path,
         history_path=decision_history_path,
@@ -173,6 +257,24 @@ def cmd_check(args: argparse.Namespace) -> int:
     report_path = MarkdownFileReportAdapter(report_path).emit(artifacts)
     if report_mode != "ci":
         print(f"Saved report to {report_path}")
+    customer_summary_path = MarkdownFileReportAdapter(customer_summary_path).emit(
+        GateReportArtifacts(
+            markdown=customer_summary_md,
+            customer_summary_markdown=customer_summary_md,
+            decision=decision,
+            history_summary=history_summary_payload,
+            report_path=customer_summary_path,
+            customer_summary_path=customer_summary_path,
+            decision_path=decision_path,
+            history_summary_path=history_summary_path,
+            history_path=decision_history_path,
+            bundle_path=bundle_path,
+            check_result=result,
+            report_mode=report_mode,
+        )
+    )
+    if report_mode != "ci":
+        print(f"Saved customer summary to {customer_summary_path}")
 
     history_summary_path = HistorySummaryJsonReportAdapter(history_summary_path).emit(artifacts)
     if report_mode != "ci":
@@ -205,6 +307,27 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"Appended gate decision JSONL to {appended_history}")
     else:
         print("Skipped gate decision JSONL append")
+
+    baseline_bundle = load_gate_bundle(getattr(args, "baseline_bundle", None))
+    if baseline_bundle:
+        current_bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+        comparison_summary = build_before_after_summary(
+            before_bundle=baseline_bundle,
+            after_bundle=current_bundle,
+        )
+        comparison_json_path = Path(args.log_dir) / "before-after-summary.json"
+        comparison_md_path = Path(args.log_dir) / "before-after-summary.md"
+        comparison_json_path.write_text(
+            json.dumps(comparison_summary, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        comparison_md_path.write_text(
+            render_before_after_summary_markdown(comparison_summary),
+            encoding="utf-8",
+        )
+        if report_mode != "ci":
+            print(f"Saved before/after summary JSON to {comparison_json_path}")
+            print(f"Saved before/after summary Markdown to {comparison_md_path}")
 
     warnings = []
     if notifications_enabled:

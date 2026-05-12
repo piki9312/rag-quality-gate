@@ -17,6 +17,17 @@ REASON_JUDGE_FALLBACK_USED: Final = "judge_fallback_used"
 REASON_JUDGE_UNRELIABLE: Final = "judge_unreliable"
 REASON_EMBEDDING_FALLBACK_USED: Final = "embedding_fallback_used"
 REASON_NEEDS_HUMAN_REVIEW: Final = "needs_human_review"
+REASON_MISSING_EVIDENCE: Final = "missing_evidence"
+REASON_UNSUPPORTED_CLAIM: Final = "unsupported_claim"
+REASON_NUMERIC_MISMATCH: Final = "numeric_mismatch"
+REASON_NEGATION_ERROR: Final = "negation_error"
+REASON_EXCEPTION_OMISSION: Final = "exception_omission"
+REASON_DEADLINE_OR_PERIOD_MISMATCH: Final = "deadline_or_period_mismatch"
+REASON_CONDITION_MISMATCH: Final = "condition_mismatch"
+REASON_OVER_ASSERTIVE_ANSWER: Final = "over_assertive_answer"
+REASON_INSUFFICIENT_CONTEXT: Final = "insufficient_context"
+REASON_JUDGE_FALLBACK: Final = "judge_fallback"
+REASON_SOURCE_MISMATCH: Final = "source_mismatch"
 
 FAILURE_NONE: Final = "none"
 FAILURE_PARSE_ERROR: Final = "parse_error"
@@ -40,6 +51,17 @@ REASON_ALIASES: Final[dict[str, str]] = {
     "judge_reliability": REASON_JUDGE_UNRELIABLE,
     "embedding_reliability": REASON_EMBEDDING_FALLBACK_USED,
     "human_review": REASON_NEEDS_HUMAN_REVIEW,
+    "numeric_mismatch": REASON_NUMERIC_MISMATCH,
+    "negation_error": REASON_NEGATION_ERROR,
+    "exception_omission": REASON_EXCEPTION_OMISSION,
+    "deadline_or_period_mismatch": REASON_DEADLINE_OR_PERIOD_MISMATCH,
+    "condition_mismatch": REASON_CONDITION_MISMATCH,
+    "over_assertive_answer": REASON_OVER_ASSERTIVE_ANSWER,
+    "insufficient_context": REASON_INSUFFICIENT_CONTEXT,
+    "judge_fallback": REASON_JUDGE_FALLBACK,
+    "missing_evidence": REASON_MISSING_EVIDENCE,
+    "unsupported_claim": REASON_UNSUPPORTED_CLAIM,
+    "source_mismatch": REASON_SOURCE_MISMATCH,
 }
 
 

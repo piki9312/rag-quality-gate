@@ -294,6 +294,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="Report exposure mode: ci and redacted omit sensitive case content; full preserves existing detail",
     )
     p_gate.add_argument(
+        "--customer-facing",
+        action="store_true",
+        help="Emit a separate customer-safe summary artifact and enforce safer defaults",
+    )
+    p_gate.add_argument(
+        "--allow-simulation-output",
+        action="store_true",
+        help="Allow customer-facing simulation output when --mock is used (adds strong warnings)",
+    )
+    p_gate.add_argument(
+        "--strict-s1-governance",
+        action="store_true",
+        help="Treat missing S1 active-case governance fields as blocking validation errors",
+    )
+    p_gate.add_argument(
+        "--change-event-file",
+        default=None,
+        help="Optional JSON/YAML file describing the docs/model/prompt/config change event for this run",
+    )
+    p_gate.add_argument(
+        "--manual-review-file",
+        default=None,
+        help="Optional JSON/YAML file containing manual review / approval trail records",
+    )
+    p_gate.add_argument(
+        "--baseline-bundle",
+        default=None,
+        help="Optional previous gate-report.json bundle used to emit before/after comparison artifacts",
+    )
+    p_gate.add_argument(
         "--dry-run",
         action="store_true",
         help="Run the gate in an isolated dry-run log_dir without notifications or history append",
@@ -363,6 +393,36 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["ci", "redacted", "full"],
         default=None,
         help="Report exposure mode: ci and redacted omit sensitive case content; full preserves existing detail",
+    )
+    p_check.add_argument(
+        "--customer-facing",
+        action="store_true",
+        help="Emit a separate customer-safe summary artifact and enforce safer defaults",
+    )
+    p_check.add_argument(
+        "--allow-simulation-output",
+        action="store_true",
+        help="Allow customer-facing simulation output for mock/simulation runs",
+    )
+    p_check.add_argument(
+        "--strict-s1-governance",
+        action="store_true",
+        help="Treat missing S1 active-case governance fields as blocking validation errors",
+    )
+    p_check.add_argument(
+        "--change-event-file",
+        default=None,
+        help="Optional JSON/YAML file describing the docs/model/prompt/config change event for this run",
+    )
+    p_check.add_argument(
+        "--manual-review-file",
+        default=None,
+        help="Optional JSON/YAML file containing manual review / approval trail records",
+    )
+    p_check.add_argument(
+        "--baseline-bundle",
+        default=None,
+        help="Optional previous gate-report.json bundle used to emit before/after comparison artifacts",
     )
     p_check.add_argument(
         "--warn-exit-code",
@@ -794,6 +854,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         default=None,
         help="Optional output path (.json for structured output, otherwise text summary)",
+    )
+    p_validate_pack.add_argument(
+        "--strict-s1-governance",
+        action="store_true",
+        help="Treat missing S1 active-case governance fields as blocking errors",
     )
 
     # --- init-snapshot ---

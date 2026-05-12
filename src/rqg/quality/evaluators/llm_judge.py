@@ -16,6 +16,7 @@ from ..text_utils import (
 )
 
 logger = logging.getLogger(__name__)
+JUDGE_PROMPT_VERSION = "judge-v1"
 
 # ---------------------------------------------------------------------------
 # Result model
@@ -68,6 +69,17 @@ _JUDGE_SYSTEM = (
 )
 
 _JUDGE_USER_TEMPLATE = "CONTEXT:\n{context}\n\n" "QUESTION:\n{question}\n\n" "ANSWER:\n{answer}"
+
+
+def judge_prompt_hash() -> str:
+    return json.dumps(
+        {
+            "version": JUDGE_PROMPT_VERSION,
+            "system": _JUDGE_SYSTEM,
+            "user_template": _JUDGE_USER_TEMPLATE,
+        },
+        ensure_ascii=False,
+    )
 
 
 # ---------------------------------------------------------------------------
