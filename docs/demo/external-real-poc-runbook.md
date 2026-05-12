@@ -22,6 +22,7 @@ Proof Gate を **外付け** で実行する `external_real` PoC の標準手順
 
 - `external_real` PoC runbook は、既存 RAG API に Proof Gate を外付けして評価するための手順です。
 - 対象は `mock` / simulation ではなく、customer-controlled endpoint または vendor-controlled endpoint です。
+- real evidence を出す run では `--mock` を使いません。
 - 初回接続先は production write-capable endpoint ではなく、**staging / test / read-only endpoint** を推奨します。
 - Proof Gate は品質保証そのものではありません。高リスク誤回答の診断・可視化・リリース判断支援のための gate です。
 - PASS means the configured checks passed for the specified cases, documents, model, and settings in this run.

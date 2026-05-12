@@ -6,7 +6,7 @@ from pathlib import Path
 RUNBOOK_PATH = Path("docs/demo/external-real-poc-runbook.md")
 
 
-def test_external_real_runbook_has_required_sections_and_safety_language() -> None:
+def test_external_real_runbook_content() -> None:
     text = RUNBOOK_PATH.read_text(encoding="utf-8")
 
     assert "# External Real PoC Runbook" in text
