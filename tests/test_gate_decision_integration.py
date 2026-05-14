@@ -8,10 +8,12 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from rqg.cli import main
+from rqg.domain import GateDecision, GateNextAction
 from rqg.quality.check import CheckResult, ThresholdResult, build_gate_decision
 from rqg.quality.models import QARunRecord, QATestCase
 from rqg.quality.reporting import (
     GateReportArtifacts,
+    build_ci_safe_gate_decision_payload,
     build_ci_safe_history_summary_payload,
     build_gate_report_bundle_payload,
 )
@@ -260,7 +262,7 @@ def test_check_command_writes_gate_decision_json() -> None:
                 ]
             )
 
-    assert exit_code == 1
+    assert exit_code == 0
     assert output.exists()
     assert (log_dir / "gate-report.md").exists()
     assert (log_dir / "gate-report.json").exists()
@@ -355,6 +357,7 @@ def test_gate_report_json_bundle_schema_contract() -> None:
     assert payload["decision"]["status"] == "fail"
     assert payload["decision"]["metrics"]["avg_judge_relevance"] == 70.0
     assert payload["decision"]["metrics"]["avg_evidence_recall"] == 80.0
+    assert payload["decision"]["metrics"]["avg_expected_evidence_recall"] == 80.0
     assert payload["decision"]["next_actions"][0]["failure_category"] == "retrieval_miss"
     assert payload["decision"]["next_actions"][0]["affected_case_ids"] == ["QA-1", "QA-2"]
     assert payload["history_summary"]["entries"] == 1
@@ -534,7 +537,7 @@ def test_gate_report_bundle_ci_mode_omits_sensitive_case_content() -> None:
                 required_action="block",
                 passed=False,
                 failure_type="keyword_miss",
-                failure_category="answer_mismatch",
+                failure_category="ACME special category",
                 reasons=["raw reason with customer secret answer"],
                 answer="AI answer with customer secret",
                 retrieved_ids=["retrieved-secret-text"],
@@ -574,17 +577,130 @@ def test_gate_report_bundle_ci_mode_omits_sensitive_case_content() -> None:
     assert_gate_report_bundle_contract(payload)
     assert payload["report_mode"] == "ci"
     assert payload["target_docs"] == []
-    assert "question" not in payload["cases"][0]
-    assert "ai_answer" not in payload["cases"][0]
-    assert "expected_answer" not in payload["cases"][0]
-    assert "expected_evidence" not in payload["cases"][0]
-    assert "retrieved_evidence" not in payload["cases"][0]
+    case_row = payload["cases"][0]
+    assert "case_id_hash" in case_row
+    assert "case_id" not in case_row
+    assert "name" not in case_row
+    assert "category" not in case_row
+    assert "risk_domain" not in case_row
+    assert "question" not in case_row
+    assert "ai_answer" not in case_row
+    assert "expected_answer" not in case_row
+    assert "expected_evidence" not in case_row
+    assert "retrieved_evidence" not in case_row
+    assert "fail_reason" not in case_row
+    assert case_row["severity"] == "S1"
+    assert case_row["failure_type_code"] == "unknown"
+    assert case_row["pass_fail"] == "fail"
     assert "Question with customer secret" not in serialized
     assert "AI answer with customer secret" not in serialized
     assert "Expected answer with customer secret" not in serialized
     assert "retrieved-secret-text" not in serialized
     assert "raw reason with customer secret answer" not in serialized
     assert "C:/internal/customer" not in serialized
+    assert "QA-secret" not in serialized
+    assert "Sensitive refund case" not in serialized
+    assert "ACME special category" not in serialized
+
+
+def test_ci_gate_decision_reason_codes_round_unsafe_failure_categories_to_unknown() -> None:
+    result = CheckResult(
+        run_id="run-unsafe-category",
+        current_runs=1,
+        baseline_runs=0,
+        overall_rate=0.0,
+        s1_rate=100.0,
+        s1_passed=1,
+        s1_total=1,
+        thresholds=[
+            ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1"),
+            ThresholdResult("Overall pass rate", 80.0, 0.0, False, "0/1"),
+        ],
+        failure_categories={"ACME special refund": 1},
+        failure_case_ids={"ACME special refund": ["VIP-REFUND-001"]},
+    )
+
+    payload = build_ci_safe_gate_decision_payload(build_gate_decision(result))
+    serialized = json.dumps(payload, ensure_ascii=False).lower()
+
+    assert "unknown_failure" in payload["reason_codes"]
+    assert "overall_threshold_not_met" in payload["reason_codes"]
+    assert payload["reasons"] == payload["reason_codes"]
+    assert payload["next_actions"][0]["failure_category"] == "unknown_failure"
+    assert payload["next_actions"][0]["action"] == "unknown_failure"
+    assert "acme" not in serialized
+    assert "special" not in serialized
+    assert "refund" not in serialized
+    assert "acme_special_refund" not in serialized
+    assert "vip-refund" not in serialized
+
+
+def test_ci_gate_decision_reason_codes_round_unsafe_existing_codes_to_unknown() -> None:
+    decision = GateDecision(
+        run_id="run-unsafe-reason-code",
+        status="fail",
+        policy_status="needs_human_review",
+        reasons=[],
+        reason_codes=["ACME special refund", "vip_contract_exception"],
+        metrics={"overall_pass_rate": 0.0},
+        next_actions=[
+            GateNextAction(
+                failure_category="customer-specific category",
+                count=1,
+                action="Review ACME special refund plan",
+                affected_case_ids=["VIP-1"],
+            )
+        ],
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = build_ci_safe_gate_decision_payload(decision)
+    serialized = json.dumps(payload, ensure_ascii=False).lower()
+
+    assert payload["reason_codes"] == ["unknown_failure", "threshold_not_met"]
+    assert payload["reasons"] == payload["reason_codes"]
+    assert payload["next_actions"][0]["failure_category"] == "unknown_failure"
+    assert "acme" not in serialized
+    assert "vip" not in serialized
+    assert "contract" not in serialized
+    assert "refund" not in serialized
+    assert "customer-specific" not in serialized
+
+
+def test_ci_gate_decision_preserves_known_reason_codes() -> None:
+    decision = GateDecision(
+        run_id="run-known-reason-code",
+        status="fail",
+        policy_status="block",
+        reasons=[],
+        reason_codes=["s1_case_failed", "overall_threshold_not_met"],
+        metrics={"overall_pass_rate": 0.0},
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = build_ci_safe_gate_decision_payload(decision)
+
+    assert payload["reason_codes"] == ["s1_case_failed", "overall_threshold_not_met"]
+    assert payload["reasons"] == payload["reason_codes"]
+
+
+def test_full_gate_decision_payload_preserves_detailed_reasons() -> None:
+    decision = GateDecision(
+        run_id="run-full-reason",
+        status="fail",
+        policy_status="block",
+        reasons=["case:VIP_REFUND failed because ACME special refund condition was missing"],
+        reason_codes=["ACME special refund"],
+        metrics={"overall_pass_rate": 0.0},
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = decision.model_dump(mode="json")
+
+    assert payload["reasons"] == [
+        "case:VIP_REFUND failed because ACME special refund condition was missing"
+    ]
+    assert payload["reason_codes"] == ["ACME special refund"]
 
 
 def test_check_command_ci_mode_stdout_and_bundle_omit_sensitive_content(capsys) -> None:
@@ -701,10 +817,19 @@ def test_check_command_ci_mode_stdout_and_bundle_omit_sensitive_content(capsys) 
     assert bundle_payload["artifact_paths"]["bundle_path"] == "gate-report-ci.json"
     assert bundle_payload["artifact_paths"]["history_path"] == ""
     assert "gate-decisions.jsonl" not in captured.out
-    assert "question" not in bundle_payload["cases"][0]
-    assert "ai_answer" not in bundle_payload["cases"][0]
-    assert "expected_answer" not in bundle_payload["cases"][0]
+    case_row = bundle_payload["cases"][0]
+    assert "case_id_hash" in case_row
+    assert "case_id" not in case_row
+    assert "name" not in case_row
+    assert "category" not in case_row
+    assert "risk_domain" not in case_row
+    assert "question" not in case_row
+    assert "ai_answer" not in case_row
+    assert "expected_answer" not in case_row
+    assert "fail_reason" not in case_row
     assert decision_payload["pack"] is None
+    assert decision_payload["reasons"] == decision_payload["reason_codes"]
+    assert all(" " not in item for item in decision_payload["reasons"])
     assert history_payload["review_steward"] is None
 
 
@@ -1076,6 +1201,22 @@ def test_build_gate_report_bundle_payload_maps_overall_decision_variants() -> No
                 thresholds=[ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1")],
             ),
         ),
+        (
+            "needs_confirmation",
+            CheckResult(
+                run_id="run-overall-review",
+                current_runs=3,
+                baseline_runs=0,
+                overall_rate=66.7,
+                s1_rate=100.0,
+                s1_passed=1,
+                s1_total=1,
+                thresholds=[
+                    ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1"),
+                    ThresholdResult("Overall pass rate", 80.0, 66.7, False, "2/3"),
+                ],
+            ),
+        ),
     ]
 
     for expected, result in cases:
@@ -1252,7 +1393,7 @@ common_failure_patterns:
             ["check", "--log-dir", str(log_dir), "--quality-pack", str(quality_pack)]
         )
 
-    assert first_exit == 1
+    assert first_exit == 0
     assert second_exit == 1
     report = (log_dir / "gate-report.md").read_text(encoding="utf-8")
     summary_payload = json.loads(

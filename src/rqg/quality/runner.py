@@ -25,7 +25,7 @@ from .case_schema import normalize_eval_mode
 from .evaluators.keyword import keyword_match_rate
 from .evaluators.llm_judge import judge as llm_judge
 from .evaluators.reference import extract_references, reference_accuracy
-from .evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
+from .evaluators.retrieval import expected_evidence_recall_at_k, retrieval_hit
 from .failure_reason import classify_failure_category
 from .models import EvalResult, EvalRun, QARunRecord, QATestCase
 from .reason_taxonomy import classify_judge_failure_type
@@ -424,7 +424,7 @@ class RAGQualityRunner:
             # 2) Retrieval 評価
             if case.expected_chunks:
                 ret_hit = retrieval_hit(retrieved_ids, case.expected_chunks)
-                evidence_recall = retrieval_precision_at_k(retrieved_ids, case.expected_chunks)
+                evidence_recall = expected_evidence_recall_at_k(retrieved_ids, case.expected_chunks)
                 evidence_match = ret_hit
 
             # 3) 回答生成
