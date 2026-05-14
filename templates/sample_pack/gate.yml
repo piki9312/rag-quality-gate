@@ -1,7 +1,7 @@
 thresholds:
   s1_pass_rate: 100.0
   overall_pass_rate: 85.0
-  retrieval_precision: 0.0
+  expected_evidence_hit_rate: 0.0
 
   # Warn thresholds — gate emits "warn" (not "fail") when above fail
   # threshold but below warn threshold.  Set to 0 to disable.

@@ -17,7 +17,7 @@ _TRACKED_HISTORY_METRICS: tuple[tuple[str, str, str], ...] = (
     ("fresh_case_review_rate", "Fresh case review rate", "pct"),
     ("avg_faithfulness", "Avg faithfulness", "pct"),
     ("avg_judge_relevance", "Avg judge relevance", "pct"),
-    ("avg_evidence_recall", "Avg evidence recall", "pct"),
+    ("avg_evidence_recall", "Avg expected evidence recall", "pct"),
     ("stale_case_count", "Stale case count", "count"),
     ("current_runs", "Current runs", "count"),
     ("baseline_runs", "Baseline runs", "count"),

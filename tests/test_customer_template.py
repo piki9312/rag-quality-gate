@@ -5,6 +5,7 @@ from pathlib import Path
 
 TEMPLATE_ROOT = Path("templates/customer-rqg-template")
 REVIEWS_ROOT = TEMPLATE_ROOT / "reviews"
+MONTHLY_GATE_WORKFLOW = TEMPLATE_ROOT / ".github" / "workflows" / "monthly-gate.yml"
 
 
 def test_customer_template_reviews_files_exist() -> None:
@@ -66,3 +67,56 @@ def test_customer_template_quality_pack_keeps_readable_s1_definition_list() -> N
     assert "- active S1 rows should include owner and last_reviewed_at" in quality_pack
     assert "- active S1 rows should include the manual_review_required note marker" in quality_pack
     assert "- active S1 rows should include a failure pattern reference" in quality_pack
+
+
+def test_customer_template_monthly_gate_uploads_safe_artifact_allowlist() -> None:
+    workflow = MONTHLY_GATE_WORKFLOW.read_text(encoding="utf-8")
+
+    assert "--report-mode ci" in workflow
+    assert "gate-report-ci.md" in workflow
+    assert "gate-report-ci.json" in workflow
+    assert "retention-days: 7" in workflow
+    assert "logs/customer-poc/gate-report-ci.md" in workflow
+    assert "logs/customer-poc/gate-report-ci.json" in workflow
+    assert "logs/customer-poc/gate-decision.json" in workflow
+    assert "logs/customer-poc/gate-history-summary.json" in workflow
+
+    upload_section = workflow.split("path: |", 1)[1].split("retention-days:", 1)[0]
+    upload_lines = [line.strip() for line in upload_section.splitlines() if line.strip()]
+    assert "logs/customer-poc/" not in upload_lines
+    assert "logs/customer-poc/*" not in upload_lines
+
+    forbidden_uploads = [
+        "cases.csv",
+        "gate.yml",
+        "quality-pack.yml",
+        "gate-report.md",
+        "gate-report.json",
+        ".jsonl",
+        "faiss.index",
+        "index/meta.json",
+    ]
+    for forbidden in forbidden_uploads:
+        assert forbidden not in upload_section
+
+
+def test_customer_template_readme_warns_against_customer_data_artifacts() -> None:
+    readme = (TEMPLATE_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "allowlisted safe metadata" in readme
+    assert "Do not upload `logs/customer-poc/`" in readme
+    assert "`cases.csv`" in readme
+    assert "raw `gate.yml`" in readme
+    assert "raw `quality-pack.yml`" in readme
+    assert "customer documents" in readme
+    assert "raw answers" in readme
+
+
+def test_customer_template_uses_expected_evidence_metric_name() -> None:
+    combined = "\n".join(
+        path.read_text(encoding="utf-8") for path in TEMPLATE_ROOT.rglob("*") if path.is_file()
+    )
+
+    assert "expected_evidence_hit_rate" in combined
+    assert "retrieval_precision" not in combined
+    assert "Retrieval precision" not in combined

@@ -12,6 +12,57 @@ from rqg.domain import GateDecision
 from rqg.security import sanitize_payload, sanitize_text
 
 GATE_REPORT_SCHEMA_VERSION = "1.0"
+CI_UNKNOWN_REASON_CODE = "unknown_failure"
+CI_SAFE_REASON_CODES = {
+    "answer_quality_below_threshold",
+    "answer_quality_fail",
+    "bad_json",
+    "configuration_error",
+    "embedding_fallback_used",
+    "evaluation_error",
+    "evidence_mismatch",
+    "expected_evidence_recall_below_threshold",
+    "judge_fallback_used",
+    "judge_unavailable",
+    "judge_unreliable",
+    "keyword_match_below_threshold",
+    "latency_fail",
+    "needs_human_review",
+    "overall_threshold_not_met",
+    "provider_error",
+    "retrieval_fail",
+    "s1_case_failed",
+    "s2_case_failed",
+    "safety_fail",
+    "schema_fail",
+    "threshold_not_met",
+    "timeout",
+    CI_UNKNOWN_REASON_CODE,
+}
+CI_REASON_ALIASES = {
+    "bad_reference": "evidence_mismatch",
+    "condition_mismatch": "answer_quality_fail",
+    "deadline_or_period_mismatch": "answer_quality_fail",
+    "embedding_reliability": "embedding_fallback_used",
+    "error": "evaluation_error",
+    "exception_omission": "answer_quality_fail",
+    "human_review": "needs_human_review",
+    "insufficient_context": "expected_evidence_recall_below_threshold",
+    "judge_fallback": "judge_fallback_used",
+    "judge_reliability": "judge_unreliable",
+    "keyword_miss": "keyword_match_below_threshold",
+    "missing_evidence": "expected_evidence_recall_below_threshold",
+    "negation_error": "answer_quality_fail",
+    "numeric_mismatch": "answer_quality_fail",
+    "over_assertive_answer": "answer_quality_fail",
+    "policy_gap": "answer_quality_fail",
+    "retrieval_miss": "retrieval_fail",
+    "source_mismatch": "evidence_mismatch",
+    "stale": "answer_quality_fail",
+    "synthesis": "answer_quality_fail",
+    "tool_failure": "provider_error",
+    "unsupported_claim": "answer_quality_fail",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +191,7 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
     if artifacts.check_result is not None:
         from rqg.quality.check import (
             build_case_report_rows,
+            build_ci_case_report_rows,
             build_customer_report_summary,
             collect_target_docs_if_report_mode_allows,
             map_overall_decision,
@@ -147,10 +199,13 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         )
 
         normalized_report_mode = normalize_report_mode(report_mode)
-        cases = build_case_report_rows(
-            artifacts.check_result,
-            report_mode=normalized_report_mode,
-        )
+        if normalized_report_mode == "ci":
+            cases = build_ci_case_report_rows(artifacts.check_result)
+        else:
+            cases = build_case_report_rows(
+                artifacts.check_result,
+                report_mode=normalized_report_mode,
+            )
         target_docs = collect_target_docs_if_report_mode_allows(
             artifacts.check_result,
             normalized_report_mode,
@@ -165,7 +220,7 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "client_name": (
                 None if report_mode == "ci" else _resolve_client_name(artifacts.decision)
             ),
-            "app_name": None if report_mode == "ci" else _resolve_app_name(artifacts.decision),
+            "app_name": (None if report_mode == "ci" else _resolve_app_name(artifacts.decision)),
             "target_docs": target_docs,
             "change_event": (
                 None if report_mode == "ci" else _extract_change_event(artifacts.decision)
@@ -190,16 +245,15 @@ def build_ci_safe_gate_decision_payload(decision: GateDecision) -> dict[str, obj
         if isinstance(value, int | float)
     }
     payload["metrics"] = safe_metrics
-    payload["reasons"] = [sanitize_text(str(item)) for item in payload.get("reasons", [])[:5]]
-    payload["reason_codes"] = [
-        sanitize_text(str(item)) for item in payload.get("reason_codes", [])[:10]
-    ]
+    safe_reason_codes = _ci_safe_reason_codes(payload)
+    payload["reasons"] = safe_reason_codes
+    payload["reason_codes"] = safe_reason_codes
     payload["provenance"] = _ci_safe_provenance(payload.get("provenance"))
     payload["next_actions"] = [
         {
-            "failure_category": sanitize_text(str(item.get("failure_category", ""))),
+            "failure_category": _safe_ci_reason_code(item.get("failure_category")),
             "count": int(item.get("count", 0) or 0),
-            "action": sanitize_text(str(item.get("failure_category", ""))),
+            "action": _safe_ci_reason_code(item.get("failure_category")),
             "owner": "T.B.D.",
             "due": "T.B.D.",
             "affected_case_ids": [],
@@ -214,6 +268,62 @@ def build_ci_safe_gate_decision_payload(decision: GateDecision) -> dict[str, obj
     payload["pack"] = None
     payload["embedding_fallback_reason"] = sanitize_text(payload.get("embedding_fallback_reason"))
     return payload
+
+
+def _ci_safe_reason_codes(payload: dict[str, object]) -> list[str]:
+    """Convert CI decision reasons to bounded reason codes only."""
+    codes: list[str] = []
+    for item in payload.get("reason_codes", []):
+        code = _safe_ci_reason_code(item)
+        if code:
+            codes.append(code)
+
+    reason_text = " ".join(str(item).lower() for item in payload.get("reasons", []))
+    if "s1 pass rate" in reason_text or ("s1" in reason_text and "case:" in reason_text):
+        codes.append("s1_case_failed")
+    if "overall pass rate" in reason_text:
+        codes.append("overall_threshold_not_met")
+    if "expected evidence" in reason_text or "evidence recall" in reason_text:
+        codes.append("expected_evidence_recall_below_threshold")
+    if "judge fallback" in reason_text:
+        codes.append("judge_fallback_used")
+    if "human review" in reason_text:
+        codes.append("needs_human_review")
+    if "embedding fallback" in reason_text:
+        codes.append("embedding_fallback_used")
+
+    if str(payload.get("status") or "").lower() == "fail" and not any(
+        code != CI_UNKNOWN_REASON_CODE for code in codes
+    ):
+        codes.append("threshold_not_met")
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for code in codes:
+        if code not in seen:
+            seen.add(code)
+            deduped.append(code)
+    return deduped[:10]
+
+
+def _normalize_reason_code(value: object) -> str:
+    code = sanitize_text(str(value or "")).strip().lower().replace("-", "_").replace(" ", "_")
+    if not code:
+        return ""
+    if all(ch.isalnum() or ch == "_" for ch in code):
+        return code[:80]
+    return ""
+
+
+def _safe_ci_reason_code(value: object) -> str:
+    code = _normalize_reason_code(value)
+    if not code:
+        return ""
+    if code in CI_SAFE_REASON_CODES:
+        return code
+    if code in CI_REASON_ALIASES:
+        return CI_REASON_ALIASES[code]
+    return CI_UNKNOWN_REASON_CODE
 
 
 def build_ci_safe_history_summary_payload(payload: dict[str, object]) -> dict[str, object]:
@@ -238,7 +348,7 @@ def build_ci_safe_history_summary_payload(payload: dict[str, object]) -> dict[st
             "current_status": sanitize_text(str(comparison.get("current_status", ""))),
             "previous_status": sanitize_text(str(comparison.get("previous_status", ""))),
             "metric_deltas": sanitize_payload(comparison.get("metric_deltas", [])),
-            "action_deltas": sanitize_payload(comparison.get("action_deltas", [])),
+            "action_deltas": _ci_safe_action_deltas(comparison.get("action_deltas", [])),
         }
 
     reliability = payload.get("reliability")
@@ -285,7 +395,12 @@ def _ci_safe_provenance(value: object) -> dict[str, object]:
     if not isinstance(value, dict):
         return {}
     allowed_suffixes = ("_hash", "_version")
-    allowed_keys = {"execution_mode", "quality_pack_version", "case_set_version", "index_version"}
+    allowed_keys = {
+        "execution_mode",
+        "quality_pack_version",
+        "case_set_version",
+        "index_version",
+    }
     return {
         str(key): sanitize_payload(item)
         for key, item in value.items()
@@ -298,7 +413,13 @@ def _ci_safe_manual_review_summary(value: object) -> dict[str, object]:
         return {}
     return {
         key: value.get(key, 0)
-        for key in ("total_reviews", "approved", "rejected", "needs_followup", "waived_with_risk")
+        for key in (
+            "total_reviews",
+            "approved",
+            "rejected",
+            "needs_followup",
+            "waived_with_risk",
+        )
         if key in value
     }
 
@@ -314,10 +435,30 @@ def _ci_safe_failure_action_coverage(value: object) -> dict[str, object] | None:
     }
 
 
+def _ci_safe_action_deltas(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    rows: list[dict[str, object]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            {
+                "failure_category": _safe_ci_reason_code(item.get("failure_category")),
+                "previous_count": int(item.get("previous_count", 0) or 0),
+                "current_count": int(item.get("current_count", 0) or 0),
+                "delta": int(item.get("delta", 0) or 0),
+            }
+        )
+    return rows
+
+
 def _overall_decision_from_gate_decision(decision: GateDecision) -> str:
-    if decision.policy_status == "block" or decision.status == "fail":
+    if decision.policy_status == "block":
         return "ng"
     if decision.policy_status in {"warn", "needs_human_review"} or decision.needs_human_review:
+        return "needs_confirmation"
+    if decision.status == "fail":
         return "needs_confirmation"
     return "ok"
 

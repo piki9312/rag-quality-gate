@@ -104,6 +104,14 @@ FAQ が v1 から v2 に変わった後も、AI が古い条件で答える変�
 - Customer-facing PoC evidence should use customer-safe artifacts such as `customer-summary.md`, not raw JSONL or mixed internal debug output.
 - S1 results still require reviewed cases, grounded evidence, and manual review when the run is uncertain, simulated, or fallback-driven.
 
+## P0 CI-safe hardening
+
+- GitHub-hosted CI is safe-metadata-only. Full reports and raw evidence remain local/private-runner/customer-controlled artifacts.
+- `--report-mode ci` emits aggregate stdout and CI-safe `gate-report-ci.*` artifacts.
+- CI `gate-decision.json` reason fields use a fixed safe taxonomy; customer-specific or free-form reasons are rounded to `unknown_failure`.
+- Customer template workflow uploads only allowlisted safe artifacts and does not upload `logs/customer-poc/`, `cases.csv`, raw config, JSONL, full reports, or vector indexes.
+- Customer-facing retrieval naming uses expected evidence recall/hit-rate wording; legacy `retrieval_precision` is read only as a deprecated compatibility alias.
+
 出力:
 
 - `runs/customer_support_pack/gate-report.md`

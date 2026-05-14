@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,25 @@ from .helpers import (
     validate_index_dir,
     write_json_output,
 )
+
+CI_SAFE_FAILURE_TYPE_CODES = {
+    "bad_reference",
+    "condition_mismatch",
+    "deadline_or_period_mismatch",
+    "error",
+    "exception_omission",
+    "insufficient_context",
+    "judge_fallback",
+    "keyword_miss",
+    "missing_evidence",
+    "negation_error",
+    "numeric_mismatch",
+    "over_assertive_answer",
+    "retrieval_miss",
+    "source_mismatch",
+    "unknown",
+    "unsupported_claim",
+}
 
 
 def _load_rag_config() -> dict[str, Any]:
@@ -190,15 +210,20 @@ def cmd_eval(args: argparse.Namespace) -> int:
                 # Reload store
                 store = RAGStore(index_dir=args.index_dir)
 
+    ci_report_mode = report_mode == "ci"
+
     if args.log_dir and getattr(args, "reset_log_dir", False):
         removed = reset_eval_log_dir(args.log_dir)
-        print(f"Reset log_dir {args.log_dir}: removed {len(removed)} files")
+        if ci_report_mode:
+            print(f"Reset log_dir: removed {len(removed)} previous artifacts")
+        else:
+            print(f"Reset log_dir {args.log_dir}: removed {len(removed)} files")
 
     all_cases = load_cases(args.cases)
     cases = filter_cases_by_status(all_cases, allowed_statuses={"active"})
-    if args.verbose:
+    if args.verbose and not ci_report_mode:
         print(f"Loaded {len(all_cases)} test cases from {args.cases}")
-    if len(cases) != len(all_cases):
+    if len(cases) != len(all_cases) and not ci_report_mode:
         skipped = len(all_cases) - len(cases)
         print(
             f"Selected {len(cases)} active test cases from {args.cases} "
@@ -214,18 +239,21 @@ def cmd_eval(args: argparse.Namespace) -> int:
     run = runner.run_all(cases)
 
     # 結果表示
-    print(f"\n=== RAG Quality Eval ===")
-    print(f"Run ID  : {run.run_id}")
-    print(f"Total   : {run.total}")
-    print(f"Passed  : {run.passed}")
-    print(f"Failed  : {run.failed}")
-    print(f"Pass Rate: {run.pass_rate:.1f}%")
+    if ci_report_mode:
+        _print_ci_eval_summary(run)
+    else:
+        print(f"\n=== RAG Quality Eval ===")
+        print(f"Run ID  : {run.run_id}")
+        print(f"Total   : {run.total}")
+        print(f"Passed  : {run.passed}")
+        print(f"Failed  : {run.failed}")
+        print(f"Pass Rate: {run.pass_rate:.1f}%")
 
-    if run.failed > 0:
-        print(f"\n--- Failures ---")
-        for r in run.results:
-            if not r.passed:
-                print(f"  [{r.case_id}] {r.severity} {r.failure_type}: {r.failure_reason}")
+        if run.failed > 0:
+            print(f"\n--- Failures ---")
+            for r in run.results:
+                if not r.passed:
+                    print(f"  [{r.case_id}] {r.severity} {r.failure_type}: " f"{r.failure_reason}")
 
     # JSONL 保存
     if args.log_dir:
@@ -236,7 +264,8 @@ def cmd_eval(args: argparse.Namespace) -> int:
             report_mode=report_mode,
             execution_mode=execution_mode,
         )
-        print(f"\nSaved -> {jsonl_file}")
+        if not ci_report_mode:
+            print(f"\nSaved -> {jsonl_file}")
         # Use sorted JSON so prompt provenance stays stable even if field order changes later.
         prompt_hash = hash_text(
             json.dumps(
@@ -277,6 +306,43 @@ def cmd_eval(args: argparse.Namespace) -> int:
             change_event=load_change_event(getattr(args, "change_event_file", None)),
         )
         provenance_path = write_run_provenance(args.log_dir, run.run_id, provenance)
-        print(f"Saved provenance -> {provenance_path}")
+        if not ci_report_mode:
+            print(f"Saved provenance -> {provenance_path}")
 
     return 0 if run.failed == 0 else 1
+
+
+def _print_ci_eval_summary(run) -> None:
+    s1_failed = sum(1 for result in run.results if result.severity == "S1" and not result.passed)
+    s2_failed = sum(1 for result in run.results if result.severity == "S2" and not result.passed)
+    needs_review = sum(
+        1
+        for result in run.results
+        if result.judge_fallback_used
+        or result.embedding_fallback_used
+        or (result.severity == "S1" and not result.passed)
+    )
+    failure_types = Counter(
+        _safe_failure_type_code(result.failure_type) for result in run.results if not result.passed
+    )
+    print("\n=== RAG Quality Eval Safe Summary ===")
+    print(f"Run ID  : {run.run_id}")
+    print(f"Total   : {run.total}")
+    print(f"Passed  : {run.passed}")
+    print(f"Failed  : {run.failed}")
+    print(f"S1 failed: {s1_failed}")
+    print(f"S2 failed: {s2_failed}")
+    print(f"Needs human review: {needs_review}")
+    if failure_types:
+        safe_counts = ", ".join(
+            f"{failure_type}={count}" for failure_type, count in sorted(failure_types.items())
+        )
+        print(f"Failure types: {safe_counts}")
+    print(f"Pass Rate: {run.pass_rate:.1f}%")
+
+
+def _safe_failure_type_code(value: object) -> str:
+    code = str(value or "unknown").strip().lower().replace("-", "_").replace(" ", "_")
+    if code in CI_SAFE_FAILURE_TYPE_CODES:
+        return code[:80]
+    return "unknown"

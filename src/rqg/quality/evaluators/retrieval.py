@@ -1,4 +1,4 @@
-"""Retrieval 評価 — expected evidence が検索結果 top-k に含まれるかを検証。"""
+"""期待根拠が検索結果 top-k に含まれる割合を評価する。"""
 
 from __future__ import annotations
 
@@ -30,9 +30,9 @@ def _matches_expected_evidence(retrieved_id: str, expected_chunk: str) -> bool:
 
 
 def retrieval_hit(retrieved_ids: list[str], expected_chunks: list[str]) -> bool:
-    """expected_chunks のうち1つでも retrieved_ids に含まれれば True。"""
+    """期待根拠のいずれかが検索結果に含まれる場合に True を返す。"""
     if not expected_chunks:
-        return True  # 期待 chunk が未定義なら常に hit
+        return True
     return any(
         _matches_expected_evidence(retrieved_id, expected_chunk)
         for retrieved_id in retrieved_ids
@@ -40,8 +40,8 @@ def retrieval_hit(retrieved_ids: list[str], expected_chunks: list[str]) -> bool:
     )
 
 
-def retrieval_precision_at_k(retrieved_ids: list[str], expected_chunks: list[str]) -> float:
-    """Precision@k: top-k の中に expected chunk が何割含まれるか。"""
+def expected_evidence_recall_at_k(retrieved_ids: list[str], expected_chunks: list[str]) -> float:
+    """検索結果 top-k に含まれた期待根拠の割合を返す。"""
     if not expected_chunks:
         return 1.0
     hits = sum(
@@ -53,3 +53,8 @@ def retrieval_precision_at_k(retrieved_ids: list[str], expected_chunks: list[str
         )
     )
     return hits / len(expected_chunks)
+
+
+def retrieval_precision_at_k(retrieved_ids: list[str], expected_chunks: list[str]) -> float:
+    """後方互換のために残す expected_evidence_recall_at_k の別名。"""
+    return expected_evidence_recall_at_k(retrieved_ids, expected_chunks)

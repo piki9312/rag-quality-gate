@@ -257,6 +257,12 @@ GitHub Issues are not required for early PoC. They are an option for continued o
   answer, expected answer, retrieved evidence, or chunk text.
 - Use `full` mode only in local, private runner, or customer-controlled
   environments.
+- The included GitHub Actions workflow uploads only allowlisted safe metadata:
+  `gate-report-ci.md`, `gate-report-ci.json`, `gate-decision.json`, and
+  `gate-history-summary.json`.
+- Do not upload `logs/customer-poc/` as a directory, `cases.csv`, raw `gate.yml`,
+  raw `quality-pack.yml`, full reports, JSONL logs, vector indexes, customer
+  documents, raw answers, or retrieved evidence as GitHub Actions artifacts.
 - Do not upload raw JSONL, full report bundles, vector indexes, or raw external
   RAG responses from GitHub-hosted Actions.
 - Do not use GitHub-hosted Actions for real customer endpoints. Use

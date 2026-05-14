@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,32 @@ logger = logging.getLogger(__name__)
 
 VALID_AGGREGATION_POLICIES = {"latest_run", "window"}
 VALID_REPORT_MODES = {"ci", "redacted", "full"}
+CI_SAFE_FAILURE_CODES = {
+    "answer_mismatch",
+    "bad_reference",
+    "condition_mismatch",
+    "deadline_or_period_mismatch",
+    "embedding_reliability",
+    "error",
+    "exception_omission",
+    "human_review",
+    "insufficient_context",
+    "judge_fallback",
+    "judge_reliability",
+    "keyword_miss",
+    "missing_evidence",
+    "negation_error",
+    "numeric_mismatch",
+    "over_assertive_answer",
+    "policy_gap",
+    "retrieval_miss",
+    "source_mismatch",
+    "stale",
+    "synthesis",
+    "tool_failure",
+    "unknown",
+    "unsupported_claim",
+}
 
 
 def normalize_aggregation_policy(value: object) -> str:
@@ -83,7 +110,7 @@ class GateConfig:
 
     s1_pass_rate: float = 100.0
     overall_pass_rate: float = 80.0
-    retrieval_precision_threshold: float = 0.0  # 0 = チェックしない
+    expected_evidence_hit_rate_threshold: float = 0.0  # 0 = check disabled
     min_faithfulness: float = 0.0  # 0 = チェックしない (例: 70.0 = 70%以上)
     min_evidence_recall: float = 0.0  # 0 = チェックしない (例: 90.0 = 90%以上)
     max_latency_p95_ms: float = 0.0  # 0 = チェックしない
@@ -121,7 +148,10 @@ class GateConfig:
         return cls(
             s1_pass_rate=th.get("s1_pass_rate", 100.0),
             overall_pass_rate=th.get("overall_pass_rate", 80.0),
-            retrieval_precision_threshold=th.get("retrieval_precision", 0.0),
+            expected_evidence_hit_rate_threshold=th.get(
+                "expected_evidence_hit_rate",
+                th.get("retrieval_precision", 0.0),
+            ),
             min_faithfulness=th.get("min_faithfulness", 0.0),
             min_evidence_recall=th.get("min_evidence_recall", 0.0),
             max_latency_p95_ms=th.get("max_latency_p95_ms", 0.0),
@@ -545,17 +575,17 @@ def run_check(
         )
     )
 
-    # Retrieval precision (optional)
-    if config.retrieval_precision_threshold > 0:
+    # Expected evidence hit rate (optional)
+    if config.expected_evidence_hit_rate_threshold > 0:
         hits = sum(1 for r in current if r.retrieval_hit is True)
         ret_cases = sum(1 for r in current if r.retrieval_hit is not None)
-        ret_prec = (hits / ret_cases * 100) if ret_cases else 0.0
+        hit_rate = (hits / ret_cases * 100) if ret_cases else 0.0
         checks.append(
             ThresholdResult(
-                name="Retrieval precision",
-                threshold=config.retrieval_precision_threshold,
-                actual=ret_prec,
-                passed=ret_prec >= config.retrieval_precision_threshold,
+                name="Expected evidence hit rate",
+                threshold=config.expected_evidence_hit_rate_threshold,
+                actual=hit_rate,
+                passed=hit_rate >= config.expected_evidence_hit_rate_threshold,
                 detail=f"{hits}/{ret_cases}",
             )
         )
@@ -578,7 +608,7 @@ def run_check(
         avg_recall = avg_evidence_recall if avg_evidence_recall is not None else 0.0
         checks.append(
             ThresholdResult(
-                name="Avg evidence recall",
+                name="Avg expected evidence recall",
                 threshold=config.min_evidence_recall,
                 actual=avg_recall,
                 passed=avg_recall >= config.min_evidence_recall,
@@ -805,9 +835,11 @@ def _main_failure_category_summary(failure_categories: dict[str, int]) -> str:
 def map_overall_decision(result: CheckResult) -> str:
     """Map gate status into a customer-facing overall decision."""
     policy_status = _policy_status_for_result(result)
-    if policy_status == "block" or result.gate_status == "fail":
+    if policy_status == "block":
         return "ng"
     if policy_status in {"warn", "needs_human_review"} or result.needs_human_review:
+        return "needs_confirmation"
+    if result.gate_status == "fail":
         return "needs_confirmation"
     return "ok"
 
@@ -916,6 +948,47 @@ def build_case_report_rows(
         rows.append(row)
 
     return rows
+
+
+def build_ci_case_report_rows(result: CheckResult) -> list[dict[str, object]]:
+    """Build CI-safe per-case rows without customer-authored identifiers or text."""
+    rows: list[dict[str, object]] = []
+    for record in sorted(result.current_records, key=_case_report_sort_key):
+        needs_human_review = _case_needs_human_review(record)
+        row: dict[str, object] = {
+            "case_id_hash": _stable_case_id_hash(record.case_id),
+            "severity": record.severity,
+            "decision": _case_decision(record, needs_human_review),
+            "pass_fail": "pass" if record.passed else "fail",
+            "failure_type_code": _safe_case_code(
+                record.failure_category or record.failure_type or ""
+            ),
+            "needs_human_review": needs_human_review,
+            "judge_fallback_used": bool(record.judge_fallback_used),
+        }
+        for key in (
+            "latency_ms",
+            "cost_usd",
+            "evidence_recall",
+            "faithfulness_score",
+            "judge_relevance",
+        ):
+            value = getattr(record, key, None)
+            if value is not None:
+                row[key] = value
+        rows.append(row)
+    return rows
+
+
+def _stable_case_id_hash(case_id: object) -> str:
+    return hashlib.sha256(str(case_id or "").encode("utf-8")).hexdigest()[:16]
+
+
+def _safe_case_code(value: object) -> str:
+    code = str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if code in CI_SAFE_FAILURE_CODES:
+        return code[:80]
+    return "unknown"
 
 
 def _case_report_sort_key(record: QARunRecord) -> tuple[int, int, int, str]:
@@ -1092,7 +1165,9 @@ def build_gate_decision(
     metrics["judge_relevance_scored_runs"] = float(result.judge_relevance_scored)
     if result.avg_evidence_recall is not None:
         metrics["avg_evidence_recall"] = result.avg_evidence_recall
+        metrics["avg_expected_evidence_recall"] = result.avg_evidence_recall
     metrics["evidence_recall_scored_runs"] = float(result.evidence_recall_scored)
+    metrics["expected_evidence_recall_scored_runs"] = float(result.evidence_recall_scored)
     if result.baseline_overall_rate is not None:
         metrics["baseline_overall_pass_rate"] = result.baseline_overall_rate
     if result.baseline_s1_rate is not None:
@@ -1176,13 +1251,15 @@ def build_gate_decision(
 
 def _policy_status_for_result(result: CheckResult) -> str:
     s1_fail_count = max(0, result.s1_total - result.s1_passed)
-    if s1_fail_count > 0 or not result.gate_passed:
+    if s1_fail_count > 0:
         return "block"
     if result.execution_mode == "mixed_execution_modes":
         return "needs_human_review"
     if is_simulation_execution_mode(result.execution_mode):
         return "needs_human_review"
     if result.needs_human_review:
+        return "needs_human_review"
+    if not result.gate_passed:
         return "needs_human_review"
     if result.gate_status == "warn":
         return "warn"
@@ -1411,6 +1488,21 @@ def _render_gate_operations_markdown(
         lines.append("- Recommended next action: No immediate action required.")
     lines.append("")
     lines.append(f"- Aggregation Policy: {result.aggregation_policy}")
+    lines.append("")
+    lines.append("### Gate Policy / 顧客向け判定ルール")
+    lines.append("- S1 fail => BLOCK。本番反映せず、原因調査と再実行結果を確認する。")
+    lines.append(
+        "- S1 judge fallback または judge unavailable => NEEDS_HUMAN_REVIEW。"
+        "人手確認が終わるまでは BLOCK 相当として扱う。"
+    )
+    lines.append("- S2 fail => WARN/REVIEW。影響範囲と修正要否を確認する。")
+    lines.append(
+        "- S1重大失敗なしの全体しきい値未達 => REVIEW。" "全体品質の低下として人手確認する。"
+    )
+    lines.append(
+        "- PASS は設定済みケースとしきい値の範囲で基準を満たした状態であり、"
+        "全回答の完全保証ではない。"
+    )
 
     if history_decisions:
         from .history import build_gate_history_summary_lines
@@ -1459,11 +1551,19 @@ def _render_gate_operations_markdown(
         )
     if result.avg_judge_relevance is not None:
         observed_metrics.append(
-            ("Avg judge relevance", result.avg_judge_relevance, result.judge_relevance_scored)
+            (
+                "Avg judge relevance",
+                result.avg_judge_relevance,
+                result.judge_relevance_scored,
+            )
         )
     if result.avg_evidence_recall is not None:
         observed_metrics.append(
-            ("Avg evidence recall", result.avg_evidence_recall, result.evidence_recall_scored)
+            (
+                "Avg expected evidence recall",
+                result.avg_evidence_recall,
+                result.evidence_recall_scored,
+            )
         )
 
     if observed_metrics:
