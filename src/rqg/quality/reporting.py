@@ -79,12 +79,12 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
     decision_payload = artifacts.decision.model_dump(mode="json")
     artifact_base_dir = artifacts.bundle_path.parent
     report_mode = str(getattr(artifacts, "report_mode", "full") or "full")
+    normalized_safe_mode = report_mode in {"ci", "redacted"}
     payload = {
         "schema_version": GATE_REPORT_SCHEMA_VERSION,
         "report_mode": report_mode,
         "decision": decision_payload,
         "history_summary": artifacts.history_summary,
-        "report_markdown": artifacts.markdown,
         "artifact_paths": {
             "report_path": safe_relative_artifact_path(artifacts.report_path, artifact_base_dir),
             "decision_path": safe_relative_artifact_path(
@@ -93,10 +93,17 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "history_summary_path": safe_relative_artifact_path(
                 artifacts.history_summary_path, artifact_base_dir
             ),
-            "history_path": safe_relative_artifact_path(artifacts.history_path, artifact_base_dir),
             "bundle_path": safe_relative_artifact_path(artifacts.bundle_path, artifact_base_dir),
         },
     }
+    if not normalized_safe_mode:
+        payload["artifact_paths"]["history_path"] = safe_relative_artifact_path(
+            artifacts.history_path, artifact_base_dir
+        )
+    if normalized_safe_mode:
+        payload["report_summary_markdown"] = artifacts.markdown
+    else:
+        payload["report_markdown"] = artifacts.markdown
 
     cases: list[dict[str, object]] = []
     target_docs: list[str] = []
@@ -131,13 +138,14 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "executed_at": decision_payload["created_at"],
             "client_name": _resolve_client_name(artifacts.decision),
             "app_name": _resolve_app_name(artifacts.decision),
-            "target_docs": target_docs,
             "change_event": _extract_change_event(artifacts.decision),
             "summary": summary,
             "overall_decision": overall_decision,
             "cases": cases,
         }
     )
+    if not normalized_safe_mode:
+        payload["target_docs"] = target_docs
     return payload
 
 

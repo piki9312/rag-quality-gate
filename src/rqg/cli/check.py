@@ -8,6 +8,73 @@ from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
 
+_CI_STDOUT_FORBIDDEN_TOKENS = {
+    "question",
+    "expected_answer",
+    "answer",
+    "ai_answer",
+    "retrieved_evidence",
+    "chunk_text",
+    "source_path",
+    "endpoint",
+    "token",
+}
+
+
+def _is_ci_stdout_safe_token(value: object) -> bool:
+    normalized = str(value or "").strip().lower()
+    return bool(normalized) and not any(
+        forbidden in normalized for forbidden in _CI_STDOUT_FORBIDDEN_TOKENS
+    )
+
+
+def _render_ci_stdout_summary(result, decision, artifact_refs: list[str]) -> str:
+    """Render aggregate-only stdout for CI report mode."""
+    s1_failed_count = max(0, result.s1_total - result.s1_passed)
+    reason_codes = [
+        str(reason_code)
+        for reason_code in getattr(decision, "reason_codes", [])
+        if _is_ci_stdout_safe_token(reason_code)
+    ]
+    top_failure_categories = [
+        f"{category}={count}"
+        for category, count in list(result.failure_categories.items())[:3]
+        if _is_ci_stdout_safe_token(category)
+    ]
+
+    lines = [
+        "Proof Gate CI summary",
+        f"Gate status: {str(result.gate_status).upper()}",
+        f"policy_status: {str(decision.policy_status).upper()}",
+        f"Overall pass rate: {result.overall_rate:.1f}%",
+        f"S1 failed count: {s1_failed_count}",
+        f"S1 total: {result.s1_total}",
+        f"needs_human_review: {'YES' if result.needs_human_review else 'NO'}",
+    ]
+    if reason_codes:
+        lines.append(f"reason_codes: {', '.join(reason_codes)}")
+    if top_failure_categories:
+        lines.append(f"top_failure_categories: {', '.join(top_failure_categories)}")
+    if artifact_refs:
+        lines.append(f"safe_artifact_refs: {', '.join(artifact_refs)}")
+    return "\n".join(lines)
+
+
+def _default_report_filename(report_mode: str) -> str:
+    if report_mode == "ci":
+        return "gate-report-ci.md"
+    if report_mode == "redacted":
+        return "gate-report-redacted.md"
+    return "gate-report.md"
+
+
+def _default_bundle_filename(report_mode: str) -> str:
+    if report_mode == "ci":
+        return "gate-report-ci.json"
+    if report_mode == "redacted":
+        return "gate-report-redacted.json"
+    return "gate-report.json"
+
 
 def cmd_check(args: argparse.Namespace) -> int:
     """Run the quality gate check and emit stable ASCII output."""
@@ -43,7 +110,8 @@ def cmd_check(args: argparse.Namespace) -> int:
             import sys
 
             print(
-                "[ERROR] --report-mode full is not allowed when GITHUB_ACTIONS=true",
+                "[ERROR] --report-mode full is not allowed when GITHUB_ACTIONS=true. "
+                "Full reports are local/private runner/customer-controlled environment only.",
                 file=sys.stderr,
             )
             return 1
@@ -124,13 +192,13 @@ def cmd_check(args: argparse.Namespace) -> int:
         history_decisions=history_decisions,
         report_mode=report_mode,
     )
-    if report_mode == "ci":
-        print(md.rstrip())
-    else:
+    if report_mode != "ci":
         print(md)
 
     report_path = (
-        Path(args.output_file) if args.output_file else Path(args.log_dir) / "gate-report.md"
+        Path(args.output_file)
+        if args.output_file
+        else Path(args.log_dir) / _default_report_filename(report_mode)
     )
     history_summary_path = Path(args.log_dir) / "gate-history-summary.json"
     decision_path = (
@@ -141,7 +209,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     bundle_path = (
         Path(args.bundle_file)
         if getattr(args, "bundle_file", None)
-        else Path(args.log_dir) / "gate-report.json"
+        else Path(args.log_dir) / _default_bundle_filename(report_mode)
     )
     artifacts = GateReportArtifacts(
         markdown=md,
@@ -184,9 +252,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             safe_relative_artifact_path(decision_path, artifact_base_dir),
             safe_relative_artifact_path(bundle_path, artifact_base_dir),
         ]
-        if appended_history is not None:
-            artifact_refs.append(safe_relative_artifact_path(appended_history, artifact_base_dir))
-        print(f"Artifact refs: {', '.join(artifact_refs)}")
+        print(_render_ci_stdout_summary(result, decision, artifact_refs))
     elif appended_history is not None:
         print(f"Appended gate decision JSONL to {appended_history}")
     else:
@@ -209,8 +275,9 @@ def cmd_check(args: argparse.Namespace) -> int:
         else:
             print(f"[WARN] {warning}")
 
-    status = result.gate_status.upper()
-    print(f"Gate: {status}")
+    if report_mode != "ci":
+        status = result.gate_status.upper()
+        print(f"Gate: {status}")
 
     warn_exit_code = getattr(args, "warn_exit_code", 0)
     if result.gate_status == "fail":
