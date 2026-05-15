@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from rqg.quality.check import (
     build_gate_decision,
     load_failure_actions_from_quality_pack,
     load_records,
+    map_overall_decision,
+    render_customer_summary_markdown,
     render_gate_markdown,
     run_check,
 )
@@ -113,6 +116,30 @@ class TestGateConfig:
         assert cfg.fresh_case_review_rate_warn == 100.0
         assert cfg.min_evidence_recall == 90.0
         assert cfg.aggregation_policy == "window"
+
+    def test_from_yaml_reads_expected_evidence_hit_rate(self):
+        yaml_path = Path("tests/.tmp") / f"{uuid.uuid4()}-gate.yml"
+        yaml_path.parent.mkdir(parents=True, exist_ok=True)
+        yaml_path.write_text(
+            "thresholds:\n  expected_evidence_hit_rate: 75.0\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig.from_yaml(str(yaml_path))
+
+        assert cfg.expected_evidence_hit_rate_threshold == 75.0
+
+    def test_from_yaml_reads_deprecated_retrieval_precision_alias(self):
+        yaml_path = Path("tests/.tmp") / f"{uuid.uuid4()}-gate.yml"
+        yaml_path.parent.mkdir(parents=True, exist_ok=True)
+        yaml_path.write_text(
+            "thresholds:\n  retrieval_precision: 65.0\n",
+            encoding="utf-8",
+        )
+
+        cfg = GateConfig.from_yaml(str(yaml_path))
+
+        assert cfg.expected_evidence_hit_rate_threshold == 65.0
 
     def test_load_failure_actions_from_quality_pack(self, tmp_path):
         quality_pack = tmp_path / "quality-pack.yml"
@@ -509,8 +536,10 @@ def test_render_gate_markdown_includes_recent_history_summary_and_coverage() -> 
         assert result.evidence_recall_scored == 2
         assert decision.metrics["avg_judge_relevance"] == pytest.approx(70.0)
         assert decision.metrics["avg_evidence_recall"] == pytest.approx(75.0)
+        assert decision.metrics["avg_expected_evidence_recall"] == pytest.approx(75.0)
         assert decision.metrics["judge_relevance_scored_runs"] == 2.0
         assert decision.metrics["evidence_recall_scored_runs"] == 2.0
+        assert decision.metrics["expected_evidence_recall_scored_runs"] == 2.0
 
 
 class TestCheckResult:
@@ -630,6 +659,127 @@ class TestCheckResult:
         assert decision.needs_human_review is True
         assert any(action.failure_category == "human_review" for action in decision.next_actions)
 
+    def test_policy_status_blocks_s1_failure(self):
+        result = CheckResult(
+            run_id="run-s1-block",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=50.0,
+            s1_rate=0.0,
+            s1_passed=0,
+            s1_total=1,
+            thresholds=[ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1")],
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.policy_status == "block"
+        assert decision.status == "fail"
+
+    def test_policy_status_warns_for_s2_only_warning(self):
+        result = CheckResult(
+            run_id="run-s2-warn",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=100.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[
+                ThresholdResult(
+                    "Overall pass rate",
+                    80.0,
+                    100.0,
+                    True,
+                    "2/2",
+                    warn_threshold=95.0,
+                    warned=True,
+                )
+            ],
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.policy_status == "warn"
+
+    def test_policy_status_routes_judge_fallback_to_human_review(self):
+        result = CheckResult(
+            run_id="run-fallback-review",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=100.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            judge_fallback_count=1,
+            needs_human_review=True,
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.policy_status == "needs_human_review"
+        assert decision.needs_human_review is True
+
+    def test_policy_status_routes_overall_threshold_fail_without_s1_to_human_review(self):
+        result = CheckResult(
+            run_id="run-overall-review",
+            current_runs=3,
+            baseline_runs=0,
+            overall_rate=66.7,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[
+                ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1"),
+                ThresholdResult("Overall pass rate", 80.0, 66.7, False, "2/3"),
+            ],
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.status == "fail"
+        assert decision.policy_status == "needs_human_review"
+        assert map_overall_decision(result) == "needs_confirmation"
+
+    def test_policy_status_routes_s2_only_fail_to_human_review(self):
+        result = CheckResult(
+            run_id="run-s2-review",
+            current_runs=2,
+            baseline_runs=0,
+            overall_rate=50.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[
+                ThresholdResult("S1 pass rate", 100.0, 100.0, True, "1/1"),
+                ThresholdResult("Overall pass rate", 80.0, 50.0, False, "1/2"),
+            ],
+            current_records=[
+                QARunRecord(
+                    timestamp=datetime.now(timezone.utc),
+                    run_id="run-s2-review",
+                    case_id="QA-S1",
+                    severity="S1",
+                    passed=True,
+                ),
+                QARunRecord(
+                    timestamp=datetime.now(timezone.utc),
+                    run_id="run-s2-review",
+                    case_id="QA-S2",
+                    severity="S2",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="synthesis",
+                ),
+            ],
+        )
+
+        decision = build_gate_decision(result)
+
+        assert decision.status == "fail"
+        assert decision.policy_status == "needs_human_review"
+        assert map_overall_decision(result) == "needs_confirmation"
+
     def test_build_gate_decision_preserves_closing_parentheses_in_reasons(self):
         result = CheckResult(
             run_id="run-reason-format",
@@ -642,7 +792,7 @@ class TestCheckResult:
             thresholds=[
                 ThresholdResult("S1 pass rate", 100.0, 0.0, False, "0/1"),
                 ThresholdResult("Overall pass rate", 85.0, 0.0, False, "0/2"),
-                ThresholdResult("Avg evidence recall", 80.0, 0.0, False, "2 scored"),
+                ThresholdResult("Avg expected evidence recall", 80.0, 0.0, False, "2 scored"),
             ],
             case_thresholds=[
                 ThresholdResult(
@@ -660,7 +810,7 @@ class TestCheckResult:
         assert decision.reasons == [
             "S1 pass rate: 0.0 < 100.0 (0/1)",
             "Overall pass rate: 0.0 < 85.0 (0/2)",
-            "Avg evidence recall: 0.0 < 80.0 (2 scored)",
+            "Avg expected evidence recall: 0.0 < 80.0 (2 scored)",
             "case:VPOC001: 0.0 < 100.0 (Password reset escalation)",
         ]
 
@@ -876,6 +1026,25 @@ class TestRenderMarkdown:
         assert "FAQ・規約・料金表の更新後にS1ケースを再実行する" in md
         assert md.index("QA-S1") < md.index("QA-S2")
 
+    def test_customer_summary_includes_simulation_warning_and_execution_mode(self):
+        result = CheckResult(
+            run_id="run-sim",
+            current_runs=1,
+            baseline_runs=0,
+            overall_rate=100.0,
+            s1_rate=100.0,
+            s1_passed=1,
+            s1_total=1,
+            thresholds=[ThresholdResult("Overall", 80.0, 100.0, True, "1/1")],
+            execution_mode="mock",
+        )
+
+        md = render_customer_summary_markdown(result, report_mode="redacted")
+
+        assert "SIMULATION ONLY" in md
+        assert "execution_mode: mock" in md
+        assert "実システム品質を証明するものではありません" in md
+
     def test_rendering_includes_observed_metrics(self):
         result = CheckResult(
             run_id="run-observed",
@@ -898,7 +1067,9 @@ class TestRenderMarkdown:
 
         assert "Observed Metrics" in md
         assert "Avg judge relevance" in md
-        assert "Avg evidence recall" in md
+        assert "Avg expected evidence recall" in md
+        assert "Gate Policy / 顧客向け判定ルール" in md
+        assert "全回答の完全保証ではない" in md
 
     def test_rendering_inserts_blank_line_before_tables_after_bullets(self):
         result = CheckResult(
@@ -930,7 +1101,8 @@ class TestRenderMarkdown:
 
         md = render_gate_markdown(result)
 
-        assert "- Aggregation Policy: latest_run\n\n| Metric | Actual | Threshold | Status |" in md
+        assert "- Aggregation Policy: latest_run\n\n### Gate Policy / 顧客向け判定ルール" in md
+        assert "全回答の完全保証ではない。\n\n| Metric | Actual | Threshold | Status |" in md
         assert "within 30 days\n\n| Case | Severity | Owner | Reference | Age Days | Issue |" in md
 
 
@@ -1083,7 +1255,7 @@ class TestEvidenceRecallGate:
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_evidence_recall=85.0)
         result = run_check(str(log_dir), cfg, days=1)
         assert result.gate_passed is True
-        recall = [t for t in result.thresholds if t.name == "Avg evidence recall"]
+        recall = [t for t in result.thresholds if t.name == "Avg expected evidence recall"]
         assert len(recall) == 1
         assert recall[0].actual == pytest.approx(90.0)
 
@@ -1117,13 +1289,13 @@ class TestEvidenceRecallGate:
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_evidence_recall=70.0)
         result = run_check(str(log_dir), cfg, days=1)
         assert result.gate_passed is False
-        recall = [t for t in result.thresholds if t.name == "Avg evidence recall"]
+        recall = [t for t in result.thresholds if t.name == "Avg expected evidence recall"]
         assert recall[0].actual == pytest.approx(50.0)
 
     def test_evidence_recall_zero_disables_check(self, log_dir_with_records):
         cfg = GateConfig(s1_pass_rate=0.0, overall_pass_rate=0.0, min_evidence_recall=0.0)
         result = run_check(log_dir_with_records, cfg, days=1)
-        assert not any(t.name == "Avg evidence recall" for t in result.thresholds)
+        assert not any(t.name == "Avg expected evidence recall" for t in result.thresholds)
 
     def test_from_yaml_reads_min_evidence_recall(self, tmp_path):
         yaml_path = tmp_path / "gate.yml"
@@ -1548,4 +1720,4 @@ class TestWarnStatus:
         md = render_gate_markdown(result)
 
         assert "## RAG Quality Gate: PASS" in md
-        assert "WARN" not in md
+        assert "| WARN |" not in md

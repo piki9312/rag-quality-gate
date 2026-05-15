@@ -253,6 +253,24 @@ def test_validate_pack_explains_missing_expected_answer(tmp_path, capsys) -> Non
     assert "expected_answer=Paid leave requests" in captured.out
 
 
+def test_validate_pack_strict_s1_governance_requires_manual_review_marker(tmp_path, capsys) -> None:
+    pack_dir = tmp_path / "pack"
+    _write_pack(pack_dir)
+
+    exit_code = main(
+        [
+            "validate-pack",
+            "--pack-dir",
+            str(pack_dir),
+            "--strict-s1-governance",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "manual_review_required" in captured.out
+
+
 def test_validate_pack_explains_missing_and_too_few_expected_keywords(tmp_path, capsys) -> None:
     pack_dir = tmp_path / "pack"
     _write_pack(pack_dir)

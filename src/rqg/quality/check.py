@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,13 @@ from rqg.domain import GateDecision, GateNextAction, GatePackMetadata
 
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
 from .models import QARunRecord, QATestCase
+from .provenance import (
+    SIMULATION_WARNING_EN,
+    SIMULATION_WARNING_JA,
+    append_simulation_warning,
+    is_simulation_execution_mode,
+    load_run_provenance,
+)
 from .reason_taxonomy import (
     REASON_EMBEDDING_FALLBACK_USED,
     REASON_JUDGE_FALLBACK_USED,
@@ -27,6 +35,32 @@ logger = logging.getLogger(__name__)
 
 VALID_AGGREGATION_POLICIES = {"latest_run", "window"}
 VALID_REPORT_MODES = {"ci", "redacted", "full"}
+CI_SAFE_FAILURE_CODES = {
+    "answer_mismatch",
+    "bad_reference",
+    "condition_mismatch",
+    "deadline_or_period_mismatch",
+    "embedding_reliability",
+    "error",
+    "exception_omission",
+    "human_review",
+    "insufficient_context",
+    "judge_fallback",
+    "judge_reliability",
+    "keyword_miss",
+    "missing_evidence",
+    "negation_error",
+    "numeric_mismatch",
+    "over_assertive_answer",
+    "policy_gap",
+    "retrieval_miss",
+    "source_mismatch",
+    "stale",
+    "synthesis",
+    "tool_failure",
+    "unknown",
+    "unsupported_claim",
+}
 
 
 def normalize_aggregation_policy(value: object) -> str:
@@ -76,7 +110,7 @@ class GateConfig:
 
     s1_pass_rate: float = 100.0
     overall_pass_rate: float = 80.0
-    retrieval_precision_threshold: float = 0.0  # 0 = チェックしない
+    expected_evidence_hit_rate_threshold: float = 0.0  # 0 = check disabled
     min_faithfulness: float = 0.0  # 0 = チェックしない (例: 70.0 = 70%以上)
     min_evidence_recall: float = 0.0  # 0 = チェックしない (例: 90.0 = 90%以上)
     max_latency_p95_ms: float = 0.0  # 0 = チェックしない
@@ -114,7 +148,10 @@ class GateConfig:
         return cls(
             s1_pass_rate=th.get("s1_pass_rate", 100.0),
             overall_pass_rate=th.get("overall_pass_rate", 80.0),
-            retrieval_precision_threshold=th.get("retrieval_precision", 0.0),
+            expected_evidence_hit_rate_threshold=th.get(
+                "expected_evidence_hit_rate",
+                th.get("retrieval_precision", 0.0),
+            ),
             min_faithfulness=th.get("min_faithfulness", 0.0),
             min_evidence_recall=th.get("min_evidence_recall", 0.0),
             max_latency_p95_ms=th.get("max_latency_p95_ms", 0.0),
@@ -250,6 +287,8 @@ class CheckResult:
     needs_human_review: bool = False
     current_records: list[QARunRecord] = field(default_factory=list)
     active_cases: list[QATestCase] = field(default_factory=list)
+    execution_mode: str = "real"
+    run_provenance: dict[str, Any] = field(default_factory=dict)
 
     @property
     def gate_passed(self) -> bool:
@@ -465,6 +504,15 @@ def run_check(
     passed = sum(1 for r in current if r.passed)
     overall_rate = (passed / total * 100) if total else 0.0
     latest_record = max(current, key=lambda r: r.timestamp)
+    execution_modes = {
+        str(record.execution_mode or "").strip().lower()
+        for record in current
+        if str(record.execution_mode or "").strip()
+    }
+    execution_mode = (
+        sorted(execution_modes)[0] if len(execution_modes) == 1 else "mixed_execution_modes"
+    )
+    run_provenance = load_run_provenance(log_dir, latest_record.run_id)
 
     s1 = [r for r in current if r.severity == "S1"]
     s1_passed = sum(1 for r in s1 if r.passed)
@@ -527,17 +575,17 @@ def run_check(
         )
     )
 
-    # Retrieval precision (optional)
-    if config.retrieval_precision_threshold > 0:
+    # Expected evidence hit rate (optional)
+    if config.expected_evidence_hit_rate_threshold > 0:
         hits = sum(1 for r in current if r.retrieval_hit is True)
         ret_cases = sum(1 for r in current if r.retrieval_hit is not None)
-        ret_prec = (hits / ret_cases * 100) if ret_cases else 0.0
+        hit_rate = (hits / ret_cases * 100) if ret_cases else 0.0
         checks.append(
             ThresholdResult(
-                name="Retrieval precision",
-                threshold=config.retrieval_precision_threshold,
-                actual=ret_prec,
-                passed=ret_prec >= config.retrieval_precision_threshold,
+                name="Expected evidence hit rate",
+                threshold=config.expected_evidence_hit_rate_threshold,
+                actual=hit_rate,
+                passed=hit_rate >= config.expected_evidence_hit_rate_threshold,
                 detail=f"{hits}/{ret_cases}",
             )
         )
@@ -560,7 +608,7 @@ def run_check(
         avg_recall = avg_evidence_recall if avg_evidence_recall is not None else 0.0
         checks.append(
             ThresholdResult(
-                name="Avg evidence recall",
+                name="Avg expected evidence recall",
                 threshold=config.min_evidence_recall,
                 actual=avg_recall,
                 passed=avg_recall >= config.min_evidence_recall,
@@ -717,6 +765,8 @@ def run_check(
         needs_human_review=needs_human_review,
         current_records=current,
         active_cases=active_cases or [],
+        execution_mode=execution_mode or "needs_review",
+        run_provenance=run_provenance,
     )
 
 
@@ -785,9 +835,11 @@ def _main_failure_category_summary(failure_categories: dict[str, int]) -> str:
 def map_overall_decision(result: CheckResult) -> str:
     """Map gate status into a customer-facing overall decision."""
     policy_status = _policy_status_for_result(result)
-    if policy_status == "block" or result.gate_status == "fail":
+    if policy_status == "block":
         return "ng"
     if policy_status in {"warn", "needs_human_review"} or result.needs_human_review:
+        return "needs_confirmation"
+    if result.gate_status == "fail":
         return "needs_confirmation"
     return "ok"
 
@@ -804,6 +856,14 @@ def collect_target_docs(result: CheckResult) -> list[str]:
     return docs
 
 
+def collect_target_docs_if_report_mode_allows(
+    result: CheckResult, report_mode: object
+) -> list[str]:
+    # Only full reports may include target_docs so redacted/ci/customer-facing artifacts
+    # do not leak customer document names or private source paths.
+    return collect_target_docs(result) if report_mode_exposes_sensitive_fields(report_mode) else []
+
+
 def build_customer_report_summary(result: CheckResult) -> dict[str, object]:
     total_cases = len(result.current_records) if result.current_records else result.current_runs
     if result.current_records:
@@ -814,7 +874,9 @@ def build_customer_report_summary(result: CheckResult) -> dict[str, object]:
     s1_failed_cases = max(0, result.s1_total - result.s1_passed)
     overall_decision = map_overall_decision(result)
 
-    if overall_decision == "ng":
+    if is_simulation_execution_mode(result.execution_mode):
+        headline = "要確認。mock / simulation 実行のため、実システム品質の証跡には使えません。"
+    elif overall_decision == "ng":
         headline = "NG。重大な失敗または block 判定があるため、本番反映は推奨されません。"
     elif overall_decision == "needs_confirmation":
         headline = "要確認。警告条件または信頼性低下があるため、人手確認後に判断してください。"
@@ -886,6 +948,47 @@ def build_case_report_rows(
         rows.append(row)
 
     return rows
+
+
+def build_ci_case_report_rows(result: CheckResult) -> list[dict[str, object]]:
+    """Build CI-safe per-case rows without customer-authored identifiers or text."""
+    rows: list[dict[str, object]] = []
+    for record in sorted(result.current_records, key=_case_report_sort_key):
+        needs_human_review = _case_needs_human_review(record)
+        row: dict[str, object] = {
+            "case_id_hash": _stable_case_id_hash(record.case_id),
+            "severity": record.severity,
+            "decision": _case_decision(record, needs_human_review),
+            "pass_fail": "pass" if record.passed else "fail",
+            "failure_type_code": _safe_case_code(
+                record.failure_category or record.failure_type or ""
+            ),
+            "needs_human_review": needs_human_review,
+            "judge_fallback_used": bool(record.judge_fallback_used),
+        }
+        for key in (
+            "latency_ms",
+            "cost_usd",
+            "evidence_recall",
+            "faithfulness_score",
+            "judge_relevance",
+        ):
+            value = getattr(record, key, None)
+            if value is not None:
+                row[key] = value
+        rows.append(row)
+    return rows
+
+
+def _stable_case_id_hash(case_id: object) -> str:
+    return hashlib.sha256(str(case_id or "").encode("utf-8")).hexdigest()[:16]
+
+
+def _safe_case_code(value: object) -> str:
+    code = str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
+    if code in CI_SAFE_FAILURE_CODES:
+        return code[:80]
+    return "unknown"
 
 
 def _case_report_sort_key(record: QARunRecord) -> tuple[int, int, int, str]:
@@ -1001,6 +1104,7 @@ def build_gate_decision(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
     pack_metadata: dict[str, Any] | None = None,
+    manual_review_summary: dict[str, object] | None = None,
 ) -> GateDecision:
     """Convert a gate check result into a GateDecision model."""
     failed_thresholds = [t for t in result.thresholds if not t.passed]
@@ -1030,6 +1134,9 @@ def build_gate_decision(
         )
     if result.needs_human_review:
         reasons.append("Human review required because run reliability signals were degraded")
+    if is_simulation_execution_mode(result.execution_mode):
+        reasons.append(SIMULATION_WARNING_EN)
+        reasons.append(SIMULATION_WARNING_JA)
     reason_codes = [canonical_reason(category) for category in result.failure_categories]
     if result.judge_fallback_count > 0:
         reason_codes.append(REASON_JUDGE_FALLBACK_USED)
@@ -1058,7 +1165,9 @@ def build_gate_decision(
     metrics["judge_relevance_scored_runs"] = float(result.judge_relevance_scored)
     if result.avg_evidence_recall is not None:
         metrics["avg_evidence_recall"] = result.avg_evidence_recall
+        metrics["avg_expected_evidence_recall"] = result.avg_evidence_recall
     metrics["evidence_recall_scored_runs"] = float(result.evidence_recall_scored)
+    metrics["expected_evidence_recall_scored_runs"] = float(result.evidence_recall_scored)
     if result.baseline_overall_rate is not None:
         metrics["baseline_overall_pass_rate"] = result.baseline_overall_rate
     if result.baseline_s1_rate is not None:
@@ -1079,6 +1188,11 @@ def build_gate_decision(
         "embedding_fallback_reason": result.embedding_fallback_reason,
         "retrieval_reliability": result.retrieval_reliability,
     }
+    if is_simulation_execution_mode(result.execution_mode):
+        fallback_summary["simulation_warning"] = {
+            "en": SIMULATION_WARNING_EN,
+            "ja": SIMULATION_WARNING_JA,
+        }
     next_actions = _build_structured_next_actions(
         result.failure_categories, failure_actions, result.failure_case_ids
     )
@@ -1115,6 +1229,8 @@ def build_gate_decision(
         reasons=reasons,
         reason_codes=reason_codes,
         metrics=metrics,
+        execution_mode=result.execution_mode,
+        provenance=result.run_provenance,
         next_actions=next_actions,
         judge_fallback_used=result.judge_fallback_count > 0,
         judge_fallback_count=result.judge_fallback_count,
@@ -1125,6 +1241,7 @@ def build_gate_decision(
         embedding_fallback_reason=result.embedding_fallback_reason,
         retrieval_reliability=result.retrieval_reliability,  # type: ignore[arg-type]
         fallback_summary=fallback_summary,
+        manual_review_summary=manual_review_summary or {},
         needs_human_review=result.needs_human_review,
         approval=_approval_for_policy_status(policy_status),
         pack=GatePackMetadata.model_validate(pack_metadata or None) if pack_metadata else None,
@@ -1134,9 +1251,15 @@ def build_gate_decision(
 
 def _policy_status_for_result(result: CheckResult) -> str:
     s1_fail_count = max(0, result.s1_total - result.s1_passed)
-    if s1_fail_count > 0 or not result.gate_passed:
+    if s1_fail_count > 0:
         return "block"
+    if result.execution_mode == "mixed_execution_modes":
+        return "needs_human_review"
+    if is_simulation_execution_mode(result.execution_mode):
+        return "needs_human_review"
     if result.needs_human_review:
+        return "needs_human_review"
+    if not result.gate_passed:
         return "needs_human_review"
     if result.gate_status == "warn":
         return "warn"
@@ -1199,6 +1322,7 @@ def _render_customer_report_markdown(
     lines.append(f"- client_name: {client_name}")
     lines.append(f"- app_name: {app_name}")
     lines.append(f"- run_id: {result.run_id}")
+    lines.append(f"- execution_mode: {result.execution_mode}")
     lines.append(f"- current_cases: {summary['total_cases']}")
     lines.append(f"- baseline_runs: {result.baseline_runs}")
     lines.append(f"- aggregation_policy: {result.aggregation_policy}")
@@ -1215,6 +1339,13 @@ def _render_customer_report_markdown(
         lines.append("- change_event: 未設定")
     else:
         lines.append(f"- change_event: {change_event}")
+    provenance = result.run_provenance or {}
+    if provenance:
+        lines.append(f"- prompt_hash: {provenance.get('prompt_hash') or '未設定'}")
+        lines.append(f"- model: {provenance.get('model') or '未設定'}")
+        lines.append(
+            f"- quality_pack_version: {provenance.get('quality_pack_version') or '未設定'}"
+        )
 
     lines.append("")
     lines.append("## 4. 実行結果サマリ")
@@ -1342,6 +1473,7 @@ def _render_gate_operations_markdown(
     lines.append(f"- Production promotion: {_executive_promotion_summary(status)}")
     lines.append(f"- Gate status: {status}")
     lines.append(f"- Policy status: {_policy_status_for_result(result).upper()}")
+    lines.append(f"- Execution mode: {result.execution_mode}")
     lines.append(
         f"- S1 pass rate: {result.s1_rate:.1f}% ({s1_failure_count} S1 failure"
         f"{'s' if s1_failure_count != 1 else ''})"
@@ -1356,6 +1488,21 @@ def _render_gate_operations_markdown(
         lines.append("- Recommended next action: No immediate action required.")
     lines.append("")
     lines.append(f"- Aggregation Policy: {result.aggregation_policy}")
+    lines.append("")
+    lines.append("### Gate Policy / 顧客向け判定ルール")
+    lines.append("- S1 fail => BLOCK。本番反映せず、原因調査と再実行結果を確認する。")
+    lines.append(
+        "- S1 judge fallback または judge unavailable => NEEDS_HUMAN_REVIEW。"
+        "人手確認が終わるまでは BLOCK 相当として扱う。"
+    )
+    lines.append("- S2 fail => WARN/REVIEW。影響範囲と修正要否を確認する。")
+    lines.append(
+        "- S1重大失敗なしの全体しきい値未達 => REVIEW。" "全体品質の低下として人手確認する。"
+    )
+    lines.append(
+        "- PASS は設定済みケースとしきい値の範囲で基準を満たした状態であり、"
+        "全回答の完全保証ではない。"
+    )
 
     if history_decisions:
         from .history import build_gate_history_summary_lines
@@ -1370,6 +1517,22 @@ def _render_gate_operations_markdown(
             lines.extend(history_lines)
 
     lines.append("")
+    provenance = result.run_provenance or {}
+    if provenance:
+        lines.append("### Provenance")
+        lines.append(f"- Model: {provenance.get('model') or '-'}")
+        lines.append(f"- Prompt hash: {provenance.get('prompt_hash') or '-'}")
+        lines.append(f"- Prompt version: {provenance.get('prompt_version') or '-'}")
+        lines.append(f"- Retrieval config hash: {provenance.get('retrieval_config_hash') or '-'}")
+        lines.append(f"- Adapter config hash: {provenance.get('adapter_config_hash') or '-'}")
+        lines.append(f"- Index version: {provenance.get('index_version') or '-'}")
+        lines.append(f"- Quality pack version: {provenance.get('quality_pack_version') or '-'}")
+        lines.append(f"- Case set version: {provenance.get('case_set_version') or '-'}")
+        lines.append(f"- Change event id: {provenance.get('change_event_id') or '-'}")
+        snapshot_ids = provenance.get("doc_snapshot_ids") or []
+        if snapshot_ids:
+            lines.append(f"- Doc snapshot ids: {', '.join(str(item) for item in snapshot_ids)}")
+
     lines.append("| Metric | Actual | Threshold | Status |")
     lines.append("|--------|--------|-----------|--------|")
     for t in result.thresholds:
@@ -1388,11 +1551,19 @@ def _render_gate_operations_markdown(
         )
     if result.avg_judge_relevance is not None:
         observed_metrics.append(
-            ("Avg judge relevance", result.avg_judge_relevance, result.judge_relevance_scored)
+            (
+                "Avg judge relevance",
+                result.avg_judge_relevance,
+                result.judge_relevance_scored,
+            )
         )
     if result.avg_evidence_recall is not None:
         observed_metrics.append(
-            ("Avg evidence recall", result.avg_evidence_recall, result.evidence_recall_scored)
+            (
+                "Avg expected evidence recall",
+                result.avg_evidence_recall,
+                result.evidence_recall_scored,
+            )
         )
 
     if observed_metrics:
@@ -1475,11 +1646,13 @@ def _render_customer_report_markdown_clean(
     result: CheckResult,
     failure_actions: dict[str, str] | None = None,
     pack_metadata: dict[str, Any] | None = None,
+    *,
+    report_mode: str = "full",
 ) -> str:
     overall_decision = map_overall_decision(result)
     summary = build_customer_report_summary(result)
-    case_rows = build_case_report_rows(result, failure_actions)
-    target_docs = collect_target_docs(result)
+    case_rows = build_case_report_rows(result, failure_actions, report_mode=report_mode)
+    target_docs = collect_target_docs_if_report_mode_allows(result, report_mode)
     pack_metadata = pack_metadata or {}
     client_name = str(pack_metadata.get("client_name") or "未設定").strip() or "未設定"
     app_name = str(pack_metadata.get("app_name") or "未設定").strip() or "未設定"
@@ -1500,6 +1673,7 @@ def _render_customer_report_markdown_clean(
     lines.append(f"- client_name: {client_name}")
     lines.append(f"- app_name: {app_name}")
     lines.append(f"- run_id: {result.run_id}")
+    lines.append(f"- execution_mode: {result.execution_mode}")
     lines.append(f"- current_cases: {summary['total_cases']}")
     lines.append(f"- baseline_runs: {result.baseline_runs}")
     lines.append(f"- aggregation_policy: {result.aggregation_policy}")
@@ -1516,6 +1690,13 @@ def _render_customer_report_markdown_clean(
         lines.append("- change_event: 未設定")
     else:
         lines.append(f"- change_event: {change_event}")
+    provenance = result.run_provenance or {}
+    if provenance:
+        lines.append(f"- prompt_hash: {provenance.get('prompt_hash') or '未設定'}")
+        lines.append(f"- model: {provenance.get('model') or '未設定'}")
+        lines.append(
+            f"- quality_pack_version: {provenance.get('quality_pack_version') or '未設定'}"
+        )
 
     lines.append("")
     lines.append("## 4. 実行結果サマリ")
@@ -1613,11 +1794,13 @@ def render_gate_markdown(
     normalized_report_mode = normalize_report_mode(report_mode)
     if normalized_report_mode != "full":
         return render_gate_safe_summary_markdown(result, report_mode=normalized_report_mode)
-
+    customer_markdown_lines = []
+    append_simulation_warning(customer_markdown_lines, result.execution_mode)
     customer_markdown = _render_customer_report_markdown_clean(
         result,
         failure_actions=failure_actions,
         pack_metadata=pack_metadata,
+        report_mode=normalized_report_mode,
     )
     operations_markdown = _render_gate_operations_markdown(
         result,
@@ -1626,7 +1809,49 @@ def render_gate_markdown(
         compare_offset=compare_offset,
         trend_window=trend_window,
     )
-    return customer_markdown.rstrip() + "\n\n" + operations_markdown.lstrip()
+    prefix = "\n".join(customer_markdown_lines).strip()
+    if prefix:
+        prefix = prefix + "\n\n"
+    return prefix + customer_markdown.rstrip() + "\n\n" + operations_markdown.lstrip()
+
+
+def render_customer_summary_markdown(
+    result: CheckResult,
+    failure_actions: dict[str, str] | None = None,
+    *,
+    pack_metadata: dict[str, Any] | None = None,
+    report_mode: str = "redacted",
+) -> str:
+    """Render a customer-safe summary distinct from the internal report."""
+    normalized_report_mode = normalize_report_mode(report_mode)
+    if normalized_report_mode == "ci":
+        normalized_report_mode = "redacted"
+    lines = ["# Proof Gate Customer Summary", ""]
+    append_simulation_warning(lines, result.execution_mode)
+    lines.extend(
+        [
+            "## Scope And Meaning",
+            "",
+            f"- execution_mode: {result.execution_mode}",
+            f"- report_mode: {normalized_report_mode}",
+            (
+                "- PASS means the configured checks passed for the specified cases, "
+                "documents, model, and settings in this run."
+            ),
+            "- PASS does not guarantee overall production safety, legal compliance, or correctness for all questions.",
+            "- S1 outcomes still require human review when the run is uncertain, simulated, or fallback-driven.",
+            "",
+        ]
+    )
+    lines.append(
+        _render_customer_report_markdown_clean(
+            result,
+            failure_actions=failure_actions,
+            pack_metadata=pack_metadata,
+            report_mode=normalized_report_mode,
+        ).strip()
+    )
+    return "\n".join(lines) + "\n"
 
 
 def render_gate_safe_summary_markdown(result: CheckResult, *, report_mode: str) -> str:
@@ -1639,6 +1864,7 @@ def render_gate_safe_summary_markdown(result: CheckResult, *, report_mode: str) 
         "# Proof Gate Safe Summary",
         "",
         f"- report_mode: {normalize_report_mode(report_mode)}",
+        f"- execution_mode: {result.execution_mode}",
         f"- gate_status: {status}",
         f"- policy_status: {policy_status}",
         f"- run_id: {result.run_id}",
@@ -1653,4 +1879,6 @@ def render_gate_safe_summary_markdown(result: CheckResult, *, report_mode: str) 
         f"- needs_human_review: {'YES' if result.needs_human_review else 'NO'}",
         f"- judge_fallback_count: {result.judge_fallback_count}",
     ]
+    if is_simulation_execution_mode(result.execution_mode):
+        lines.extend(["", SIMULATION_WARNING_EN, SIMULATION_WARNING_JA])
     return "\n".join(lines) + "\n"

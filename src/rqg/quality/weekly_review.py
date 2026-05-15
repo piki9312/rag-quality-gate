@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping
 
-from rqg.security import redact_text, sanitize_mapping
+from ..security import sanitize_payload, sanitize_text
 
 DEFAULT_WEEKLY_REVIEW_TITLE_PREFIX = "[Phase2.5][Weekly Review]"
 DEFAULT_WEEKLY_REVIEW_LABELS = ["phase2-5", "weekly-review", "ops"]
@@ -30,17 +30,19 @@ def build_weekly_review_issue_payload(
     stale_case_review = _mapping(summary_payload.get("stale_case_review"))
     stale_owner_rollup = _list_of_mappings(stale_case_review.get("owners"))
     stale_cases = _list_of_mappings(stale_case_review.get("stale_cases"))
-    review_steward = str(summary_payload.get("review_steward", "")).strip()
+    review_steward = sanitize_text(str(summary_payload.get("review_steward", "")).strip())
     week_start = (
         str(week_start or "").strip()
         or str(summary_payload.get("week_start", "")).strip()
         or _current_week_start_iso()
     )
 
-    latest_run_id = str(
-        trend.get("latest_run_id") or comparison.get("current_run_id") or "unknown-run"
+    latest_run_id = sanitize_text(
+        str(trend.get("latest_run_id") or comparison.get("current_run_id") or "unknown-run")
     )
-    latest_status = str(trend.get("latest_status") or comparison.get("current_status") or "UNKNOWN")
+    latest_status = sanitize_text(
+        str(trend.get("latest_status") or comparison.get("current_status") or "UNKNOWN")
+    )
     uncovered_count = len(uncovered_categories)
     stale_case_count = len(stale_cases)
     issue_needed = uncovered_count > 0 or stale_case_count > 0
@@ -121,10 +123,10 @@ def build_weekly_review_issue_payload(
             affected_case_ids = [str(case_id) for case_id in item.get("affected_case_ids", [])]
             affected_cases = ", ".join(affected_case_ids) if affected_case_ids else "-"
             body_lines.append(
-                f"| {redact_text(item.get('failure_category', '-'))} | "
+                f"| {sanitize_text(str(item.get('failure_category', '-')))} | "
                 f"{int(item.get('total_count', 0) or 0)} | "
-                f"{redact_text(item.get('last_seen_run_id', '-'))} | "
-                f"{redact_text(affected_cases)} |"
+                f"{sanitize_text(str(item.get('last_seen_run_id', '-')))} | "
+                f"{sanitize_text(affected_cases)} |"
             )
     else:
         body_lines.append("- No uncovered failure categories in the current history window.")
@@ -138,9 +140,9 @@ def build_weekly_review_issue_payload(
             highest_age_days = item.get("highest_age_days")
             age_text = str(highest_age_days) if highest_age_days is not None else "-"
             body_lines.append(
-                f"| {redact_text(item.get('owner', 'unassigned'))} | "
+                f"| {sanitize_text(str(item.get('owner', 'unassigned')))} | "
                 f"{int(item.get('stale_count', 0) or 0)} | {age_text} | "
-                f"{redact_text(case_ids)} |"
+                f"{sanitize_text(case_ids)} |"
             )
     else:
         body_lines.append("- No stale active cases in the latest gate summary.")
@@ -150,18 +152,18 @@ def build_weekly_review_issue_payload(
         body_lines.append("| Case | Owner | Severity | Age Days | Reference | Issue |")
         body_lines.append("|---|---|---|---|---|---|")
         for item in stale_cases:
-            reference = str(item.get("reference_field", "-") or "-")
-            reference_value = str(item.get("reference_value", "")).strip()
+            reference = sanitize_text(str(item.get("reference_field", "-") or "-"))
+            reference_value = sanitize_text(str(item.get("reference_value", "")).strip())
             if reference_value:
                 reference = f"{reference}={reference_value}".strip("=")
             age_days = item.get("age_days")
             age_text = str(age_days) if age_days is not None else "-"
-            issue_text = redact_text(item.get("issue", "-") or "-")
+            issue_text = sanitize_text(str(item.get("issue", "-") or "-"))
             body_lines.append(
-                f"| {redact_text(item.get('case_id', '-'))} | "
-                f"{redact_text(item.get('owner', 'unassigned'))} | "
-                f"{redact_text(item.get('severity', '-'))} | {age_text} | "
-                f"{redact_text(reference or '-')} | {issue_text} |"
+                f"| {sanitize_text(str(item.get('case_id', '-')))} | "
+                f"{sanitize_text(str(item.get('owner', 'unassigned')))} | "
+                f"{sanitize_text(str(item.get('severity', '-')))} | "
+                f"{age_text} | {reference or '-'} | {issue_text} |"
             )
 
     body_lines.extend(["", "## Required Actions", ""])
@@ -182,7 +184,7 @@ def build_weekly_review_issue_payload(
             ]
         )
 
-    summary_lines = [str(line) for line in summary_payload.get("summary_lines", [])]
+    summary_lines = [sanitize_text(str(line)) for line in summary_payload.get("summary_lines", [])]
     if summary_lines:
         body_lines.extend(["", "## Recent History", ""])
         body_lines.extend(_normalize_summary_lines(summary_lines))
@@ -199,28 +201,24 @@ def build_weekly_review_issue_payload(
         ]
     )
 
-    return sanitize_mapping(
-        {
-            "title": title.strip(),
-            "body": "\n".join(body_lines).strip() + "\n",
-            "labels": labels,
-            "issue_needed": issue_needed,
-            "review_steward": review_steward or None,
-            "summary": {
-                "week_start": week_start,
-                "latest_run_id": latest_run_id,
-                "latest_status": latest_status,
-                "entries": int(summary_payload.get("entries", 0) or 0),
-                "coverage_rate": (
-                    float(coverage.get("coverage_rate", 0.0) or 0.0) if coverage else 0.0
-                ),
-                "uncovered_categories_count": uncovered_count,
-                "stale_cases_count": stale_case_count,
-            },
-            "uncovered_categories": uncovered_categories,
-            "stale_case_review": stale_case_review,
-        }
-    )
+    return {
+        "title": title.strip(),
+        "body": "\n".join(body_lines).strip() + "\n",
+        "labels": labels,
+        "issue_needed": issue_needed,
+        "review_steward": review_steward or None,
+        "summary": {
+            "week_start": week_start,
+            "latest_run_id": latest_run_id,
+            "latest_status": latest_status,
+            "entries": int(summary_payload.get("entries", 0) or 0),
+            "coverage_rate": float(coverage.get("coverage_rate", 0.0) or 0.0) if coverage else 0.0,
+            "uncovered_categories_count": uncovered_count,
+            "stale_cases_count": stale_case_count,
+        },
+        "uncovered_categories": sanitize_payload(uncovered_categories),
+        "stale_case_review": sanitize_payload(stale_case_review),
+    }
 
 
 def _mapping(value: Any) -> Mapping[str, Any]:
@@ -260,11 +258,11 @@ def _normalize_summary_lines(lines: list[str]) -> list[str]:
     normalized: list[str] = []
     for line in lines:
         if not line.startswith("#"):
-            normalized.append(redact_text(line))
+            normalized.append(line)
             continue
 
         heading_markers = len(line) - len(line.lstrip("#"))
-        heading_text = redact_text(line[heading_markers:].lstrip())
+        heading_text = line[heading_markers:].lstrip()
         normalized_level = min(6, heading_markers + 1)
         normalized.append("#" * normalized_level + " " + heading_text)
     return normalized

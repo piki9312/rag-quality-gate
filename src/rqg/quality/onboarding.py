@@ -94,6 +94,7 @@ def validate_pack_onboarding(
     connection_query: str = "healthcheck",
     connection_top_k: int = 3,
     connection_timeout_sec: float = 10.0,
+    strict_s1_governance: bool = False,
 ) -> PackOnboardingValidationResult:
     root_dir = Path(pack_dir)
     findings: list[OnboardingFinding] = []
@@ -227,7 +228,9 @@ def validate_pack_onboarding(
             )
             require_active_owner = bool(gate_config and gate_config.staleness_policy_enabled)
             for issue in validate_case_rows(
-                normalized_rows, require_active_owner=require_active_owner
+                normalized_rows,
+                require_active_owner=require_active_owner,
+                strict_s1_governance=strict_s1_governance,
             ):
                 findings.append(
                     OnboardingFinding(

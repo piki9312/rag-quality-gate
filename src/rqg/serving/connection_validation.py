@@ -5,7 +5,12 @@ from __future__ import annotations
 import time
 
 from ..domain import ConnectionValidationErrorType, ConnectionValidationResult
-from ..security import redact_text, sanitize_error_message, sanitize_source_ref, sanitize_url
+from ..security import (
+    sanitize_endpoint,
+    sanitize_error_message,
+    sanitize_query_text,
+    sanitize_source_ref,
+)
 from .external_adapter import (
     ExternalRAGAuthError,
     ExternalRAGError,
@@ -102,8 +107,8 @@ def validate_http_rag_connection(
                 issues.extend(sanitize_error_message(warning) for warning in warnings)
 
     return ConnectionValidationResult(
-        endpoint=sanitize_url(endpoint),
-        query=redact_text(query),
+        endpoint=sanitize_endpoint(endpoint),
+        query=sanitize_query_text(query),
         top_k=top_k,
         ok=True,
         latency_ms=latency_ms,
@@ -125,8 +130,8 @@ def _error_result(
     issue: str,
 ) -> ConnectionValidationResult:
     return ConnectionValidationResult(
-        endpoint=sanitize_url(endpoint),
-        query=redact_text(query),
+        endpoint=sanitize_endpoint(endpoint),
+        query=sanitize_query_text(query),
         top_k=top_k,
         ok=False,
         error_type=error_type,

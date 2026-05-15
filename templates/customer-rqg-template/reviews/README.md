@@ -16,6 +16,7 @@ The main artifact customers usually read is the `Gate Review`.
 | Gate Report | Gate Reviewの根拠となる詳細結果 | 技術担当・監査担当 | 詳細確認時 |
 | Investigation | BLOCK/REVIEW/CONDITIONAL時の原因調査 | 技術担当・責任者 | 問題発生時のみ |
 | Action Item | 修正・確認タスクの管理 | 作業担当 | 対応が必要な時 |
+| FP/FN Review Log | false positive / false negative の振り返り | 技術担当・責任者 | 判定見直し時 |
 | Raw artifacts | 機械可読ログ | 開発者・自動化 | 監査/自動処理時 |
 
 ## Relationship to Gate History
@@ -33,6 +34,7 @@ The main artifact customers usually read is the `Gate Review`.
 3. Create a Gate Review for customer decision-making.
 4. Create an Investigation only for BLOCK / REVIEW / CONDITIONAL results.
 5. Create an Action Item only when follow-up work is required.
+6. Record false positive / false negative findings in the FP/FN review log.
 
 ## Directory Layout
 
@@ -45,6 +47,7 @@ reviews/
     gate_review.md
     investigation.md
     action_item.md
+    fp_fn_review.csv
 ```
 
 ## Safety Rules

@@ -3,14 +3,53 @@
 from __future__ import annotations
 
 import argparse
+import sys
 
 from .check import cmd_check
 from .eval import cmd_eval
-from .helpers import build_dry_run_log_dir, validate_index_dir
+from .helpers import (
+    build_dry_run_log_dir,
+    github_actions_enabled,
+    github_actions_fail_fast_message,
+    validate_index_dir,
+)
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
+    requested_report_mode = str(getattr(args, "report_mode", "") or "").strip().lower()
+    if getattr(args, "customer_facing", False) and getattr(args, "mock", False):
+        if not getattr(args, "allow_simulation_output", False):
+            print(
+                "[ERROR] --customer-facing cannot be used with --mock unless "
+                "--allow-simulation-output is set. "
+                "Mock output is simulation only and must not be treated as customer quality evidence.",
+                file=sys.stderr,
+            )
+            return 1
+        print(
+            "[WARN] customer-facing simulation output enabled; the resulting artifact will be marked "
+            "SIMULATION ONLY and must not be used as production quality evidence.",
+            file=sys.stderr,
+        )
+    if github_actions_enabled():
+        if requested_report_mode == "full":
+            print(
+                github_actions_fail_fast_message(
+                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        if getattr(args, "rag_endpoint", None) or getattr(args, "adapter_config", None):
+            print(
+                github_actions_fail_fast_message(
+                    "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
+                ),
+                file=sys.stderr,
+            )
+            return 1
+
     # Skip index-dir validation when using external RAG
     rag_endpoint = getattr(args, "rag_endpoint", None)
     adapter_config = getattr(args, "adapter_config", None)
@@ -42,6 +81,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             adapter_config=getattr(args, "adapter_config", None),
             report_mode=getattr(args, "report_mode", None),
             verbose=args.verbose,
+            customer_facing=getattr(args, "customer_facing", False),
         )
     )
 
@@ -67,6 +107,12 @@ def cmd_gate(args: argparse.Namespace) -> int:
             decision_file=args.decision_file,
             bundle_file=getattr(args, "bundle_file", None),
             report_mode=getattr(args, "report_mode", None),
+            customer_facing=getattr(args, "customer_facing", False),
+            allow_simulation_output=getattr(args, "allow_simulation_output", False),
+            strict_s1_governance=getattr(args, "strict_s1_governance", False),
+            change_event_file=getattr(args, "change_event_file", None),
+            manual_review_file=getattr(args, "manual_review_file", None),
+            baseline_bundle=getattr(args, "baseline_bundle", None),
             warn_exit_code=args.warn_exit_code,
             append_history=check_append_history,
             notifications_enabled=notifications_enabled,

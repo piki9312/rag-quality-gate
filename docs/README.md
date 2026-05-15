@@ -109,6 +109,10 @@ Getting started:
 Sales / proposal:
 
 - [FAQ change sales demo draft](sales/customer-support-faq-change-demo.md)
+- [PoC security and deliverables summary](sales/proof-gate-poc-security-and-deliverables.md)
+- [Customer data handling one-pager](sales/customer-data-handling-onepager.md)
+- [PoC offer](sales/proof-gate-poc-offer.md)
+- [After-PoC offer](sales/proof-gate-next-offer.md)
 
 Understanding the code:
 
@@ -132,6 +136,10 @@ Product strategy:
 - [Service menu](strategy/service-menu.md)
 - [GTM 0 to 10](strategy/gtm-0-to-10.md)
 - [Product roadmap](roadmap/product-roadmap.md)
+
+Security:
+
+- [Logging and evidence policy](security/logging-and-evidence-policy.md)
 
 Past plans & release records:
 

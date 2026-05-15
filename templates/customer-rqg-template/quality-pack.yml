@@ -24,6 +24,11 @@ severity_policy:
   s1_definition:
     - escalation or compliance guidance that must be correct before release
     - customer-impacting answers that block production when incorrect
+    - active S1 rows should include a reviewed expected_answer
+    - active S1 rows should include reviewed expected_evidence
+    - active S1 rows should include owner and last_reviewed_at
+    - active S1 rows should include the manual_review_required note marker
+    - active S1 rows should include a failure pattern reference
   s2_definition:
     - non-critical regressions, clarity issues, or incomplete explanations
 
@@ -40,3 +45,6 @@ common_failure_patterns:
   - name: policy_gap
     symptom: "The source policy does not fully answer the question"
     first_action: "Escalate the gap to the document owner and update the source guidance"
+  - name: judge_fallback
+    symptom: "Judge fallback or parse failure prevented a trustworthy S1 decision"
+    first_action: "Treat as needs_human_review, confirm the model/API path, and rerun"

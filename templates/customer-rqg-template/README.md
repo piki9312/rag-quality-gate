@@ -20,6 +20,7 @@ Use it when you want a clean project skeleton for:
 - `.github/workflows/monthly-gate.yml`: scheduled and manual gate workflow
 - `reports/`: a place for reviewed report exports that you want to keep
 - `reviews/`: a file-based Gate Review, Investigation, and Action Item register for early PoC operations
+- `customer-summary.md`: the customer-safe decision artifact emitted by `rqg gate --customer-facing`
 
 ## How The Template Connects PoC Artifacts
 
@@ -40,6 +41,10 @@ Use the template as a small operating folder, not as a copy of the runtime code:
 The normal customer-facing decision packet should start with a Gate Review. Gate
 Report and safe summaries support that decision. Raw artifacts are for audit or
 automation and should not become the main customer review material.
+
+Do not use `mock` output as customer quality evidence. `mock` and `ci_mock`
+results are simulation only. For customer PoC evidence, prefer a real or
+`external_real` run, reviewed S1 cases, and the customer-safe summary.
 
 ## How To Start A Customer PoC
 
@@ -162,7 +167,7 @@ The older `--rag-endpoint` and `--rag-api-key-env` flags still work for endpoint
 This template uses the standard root pack layout, so pack onboarding can run directly from the repository root.
 
 ```bash
-python -m rqg.cli validate-pack --pack .
+python -m rqg.cli validate-pack --pack . --strict-s1-governance
 ```
 
 Expected result for the placeholder template: onboarding validation is OK.
@@ -183,6 +188,9 @@ python -m rqg.cli gate --pack . \
   --log-dir logs/customer-poc
 ```
 
+This command is appropriate for demo/template validation only. It must not be
+used as customer quality evidence.
+
 PowerShell:
 
 ```powershell
@@ -200,6 +208,8 @@ For customer-specific external retrieval with a mapped customer response schema,
 ```bash
 python -m rqg.cli gate --pack . \
   --adapter-config adapter/adapter_config.yml \
+  --customer-facing \
+  --strict-s1-governance \
   --reset-log-dir \
   --index-dir indexes/external-gate \
   --log-dir logs/external-gate
@@ -215,6 +225,8 @@ python -m json.tool logs/customer-poc/gate-report.json
 ```
 
 The Markdown report is for human review. The JSON bundle is for CI, automation, or downstream dashboards.
+`customer-summary.md` is the customer-safe artifact. `gate-report.md` is the
+internal mixed report and may contain internal-only operational detail.
 
 ## Use reviews/ For Customer Decisions
 
@@ -238,13 +250,24 @@ GitHub Issues are not required for early PoC. They are an option for continued o
 ## Report Modes And Safe Artifacts
 
 - Use `ci` mode for GitHub-hosted automation. It keeps stdout and artifacts to
-  safe summaries.
+  safe summaries. CI outputs use explicit names such as `gate-report-ci.md`
+  and `gate-report-ci.json` so they are not confused with local/private full
+  evidence reports.
 - Use `redacted` mode when sharing structure and results without raw question,
   answer, expected answer, retrieved evidence, or chunk text.
 - Use `full` mode only in local, private runner, or customer-controlled
   environments.
+- The included GitHub Actions workflow uploads only allowlisted safe metadata:
+  `gate-report-ci.md`, `gate-report-ci.json`, `gate-decision.json`, and
+  `gate-history-summary.json`.
+- Do not upload `logs/customer-poc/` as a directory, `cases.csv`, raw `gate.yml`,
+  raw `quality-pack.yml`, full reports, JSONL logs, vector indexes, customer
+  documents, raw answers, or retrieved evidence as GitHub Actions artifacts.
 - Do not upload raw JSONL, full report bundles, vector indexes, or raw external
   RAG responses from GitHub-hosted Actions.
+- Do not use GitHub-hosted Actions for real customer endpoints. Use
+  dummy/sample endpoints in GitHub-hosted CI, or run `external_real` checks in
+  local, private runner, or customer-controlled environments.
 - For external RAG validation, prefer staging, test, or read-only endpoints and
   keep API keys in secrets.
 

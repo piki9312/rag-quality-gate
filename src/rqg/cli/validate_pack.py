@@ -24,6 +24,7 @@ def cmd_validate_pack(args: argparse.Namespace) -> int:
         connection_query=args.connection_query,
         connection_top_k=args.connection_top_k,
         connection_timeout_sec=args.connection_timeout_sec,
+        strict_s1_governance=getattr(args, "strict_s1_governance", False),
     )
 
     summary = render_pack_onboarding_summary(result)

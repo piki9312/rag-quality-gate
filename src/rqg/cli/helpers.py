@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import uuid
 from datetime import datetime, timezone
@@ -56,6 +57,21 @@ def write_text_output(path: str | Path, content: str) -> Path:
     return output_path
 
 
+def github_actions_enabled() -> bool:
+    return os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+
+
+def github_actions_data_boundary_guidance() -> str:
+    return (
+        "GitHub Actions may handle sample/mock/dummy data only; customer/full/external runs "
+        "must be executed in a local/private runner or customer-controlled environment."
+    )
+
+
+def github_actions_fail_fast_message(reason: str) -> str:
+    return f"[ERROR] {reason} {github_actions_data_boundary_guidance()}"
+
+
 # ---------------------------------------------------------------------------
 # Log-dir / index-dir utilities
 # ---------------------------------------------------------------------------
@@ -76,10 +92,17 @@ def reset_eval_log_dir(log_dir: str | Path) -> list[Path]:
 
     for filename in (
         "gate-report.md",
+        "gate-report-ci.md",
+        "customer-summary.md",
         "gate-report.json",
+        "gate-report-ci.json",
         "gate-decision.json",
         "gate-decisions.jsonl",
         "gate-history-summary.json",
+        "connection-validation.json",
+        "before-after-summary.json",
+        "before-after-summary.md",
+        "run-provenance-latest.json",
     ):
         artifact_path = path / filename
         if artifact_path.exists() and artifact_path.is_file():

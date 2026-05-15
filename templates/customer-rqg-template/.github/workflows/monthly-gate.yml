@@ -37,6 +37,9 @@ jobs:
           rm -rf logs/customer-poc
           python -m rqg.cli gate --pack . \
             --mock \
+            --report-mode ci \
+            --output-file logs/customer-poc/gate-report-ci.md \
+            --bundle-file logs/customer-poc/gate-report-ci.json \
             --index-dir indexes/customer-poc \
             --reset-log-dir \
             --log-dir logs/customer-poc
@@ -47,11 +50,11 @@ jobs:
         with:
           name: customer-monthly-gate-${{ github.run_number }}
           path: |
-            logs/customer-poc/
-            cases.csv
-            gate.yml
-            quality-pack.yml
-          retention-days: 90
+            logs/customer-poc/gate-report-ci.md
+            logs/customer-poc/gate-report-ci.json
+            logs/customer-poc/gate-decision.json
+            logs/customer-poc/gate-history-summary.json
+          retention-days: 7
 
       - name: Fail workflow when gate fails
         if: steps.gate.outcome == 'failure'

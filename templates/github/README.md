@@ -33,15 +33,11 @@ Minimal setup checklist:
 
 When `run_pack_validation` is enabled, the reusable workflow runs `rqg validate-pack` before connection validation or gate execution. `pack_validation_preset` expands the common env requirements for each caller profile, `pack_required_env` appends repo-specific env names, and the workflow writes `pack-validation.json` into `log_dir/`, surfaces `pack_validation_ok` / `pack_validation_path` as workflow outputs, and adds top findings to the GitHub job summary.
 
-The reusable workflow uploads CI-safe artifacts by allowlist only. It does not upload the whole `log_dir/`.
+The reusable workflow uses GitHub-hosted runners for sample/mock/dummy data only. CI artifacts are allowlisted and safe-metadata-only: `gate-report-ci.md`, `gate-report-ci.json`, `gate-decision.json`, and `gate-history-summary.json`. Full `gate-report.md`, full `gate-report.json`, raw JSONL logs, vector index files, `index/meta.json`, `faiss.index`, raw questions, raw answers, evidence text, source paths, endpoints, and token-like strings are forbidden artifacts. Full evidence belongs only in local, private runner, or customer-controlled environments.
 
-Allowed CI artifacts are safe summaries such as `gate-decision.json`, `gate-history-summary.json`, `pack-validation.json`, `connection-validation.json`, `gate-report-ci.json`, and `gate-report-ci.md`.
+`gate-report-ci.json`, `gate-decision.json`, and `gate-history-summary.json` are CI-safe variants. They keep aggregate status, pass rates, S1 failure counts, reason codes, execution mode, run ID, and safe artifact references, while omitting customer/app/tenant names, raw case text, owner/steward names, source references, endpoints, and internal paths. Artifact retention is intentionally short (`7` days).
 
-Full reports are local/private runner/customer-controlled environment only. Full `gate-report.json` and full `gate-report.md` are not GitHub Actions artifacts. Raw JSONL logs, index metadata, FAISS files, raw retrieved evidence, raw external RAG response bodies, and raw customer documents are forbidden artifacts.
-
-The CI-safe report bundle JSON contains aggregate decision, history, and summary fields for automation. The history summary JSON contains the same recent-history summary shown in the gate report and GitHub job summary, plus structured `uncovered_categories`, `stale_case_review`, and `review_steward` data for weekly review automation and issue creation.
-
-The weekly review example downloads the uploaded gate artifacts, prefers the CI-safe bundle via `gate_report_json_path`, falls back to `gate-history-summary.json` when needed, and shows how to upsert a GitHub issue plus send an optional Slack Block Kit summary based on the exported payload.
+The weekly review example downloads the uploaded gate artifacts, prefers the CI-safe report bundle via `gate_report_json_path`, falls back to `gate-history-summary.json` when needed, and shows how to upsert a GitHub issue plus send an optional Slack Block Kit summary based on the exported payload.
 
 For triage board linking, set these repository secrets when you use a GitHub Project v2 board:
 

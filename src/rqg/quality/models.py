@@ -153,6 +153,8 @@ class QARunRecord(BaseModel):
     answer_hash: str | None = Field(default=None)
     answer_present: bool = Field(default=False)
     answer_redacted: bool = Field(default=False)
+    execution_mode: str | None = Field(default=None)
+    report_mode: str | None = Field(default=None)
     retrieved_ids: list[str] = Field(default_factory=list)
     latency_ms: float = Field(default=0.0)
     cost_usd: float | None = Field(None)
@@ -179,6 +181,7 @@ class QARunRecord(BaseModel):
         case: QATestCase,
         *,
         report_mode: str = "full",
+        execution_mode: str | None = None,
     ) -> QARunRecord:
         reasons = [result.failure_reason] if result.failure_reason else []
         answer_match = result.answer_match
@@ -212,6 +215,8 @@ class QARunRecord(BaseModel):
             answer_hash=answer_hash,
             answer_present=answer_present,
             answer_redacted=answer_redacted,
+            execution_mode=execution_mode,
+            report_mode=normalized_report_mode,
             retrieved_ids=result.retrieved_ids,
             latency_ms=result.latency_ms,
             cost_usd=result.cost_usd if result.cost_usd > 0 else None,

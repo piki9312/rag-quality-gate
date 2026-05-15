@@ -93,6 +93,42 @@ def test_reusable_gate_template_normalizes_pack_relative_overrides() -> None:
     assert 'docs_dir = normalize_pack_override("DOCS_DIR", pack_dir)' in run_script
 
 
+def test_reusable_gate_template_rejects_external_customer_modes_and_uploads_safe_artifacts() -> (
+    None
+):
+    payload = _load_yaml(Path("templates/github/workflows/rqg-reusable-gate.yml"))
+
+    preflight_step = _find_step(payload, "rqg_gate", "Preflight configuration")
+    preflight_script = preflight_step["run"]
+    upload_step = _find_step(payload, "rqg_gate", "Upload gate artifacts")
+    upload_paths = upload_step["with"]["path"]
+    upload_lines = [line.strip() for line in upload_paths.splitlines() if line.strip()]
+    run_gate_step = _find_step(payload, "rqg_gate", "Run gate")
+    run_gate_script = run_gate_step["run"]
+
+    assert "inputs.mock" in preflight_script
+    assert "sample/mock/dummy data only" in preflight_script
+    assert "RQG_RAG_API_ENDPOINT" in preflight_script
+    assert "RQG_RAG_API_KEY" in preflight_script
+    assert "inputs.run_connection_validation" in preflight_script
+    assert "inputs.pack_validation_preset" in preflight_script
+    assert "customer-controlled environment" in preflight_script
+    assert "--report-mode ci" in run_gate_script
+    assert "gate-report-ci.md" in run_gate_script
+    assert "gate-report-ci.json" in run_gate_script
+    assert upload_step["with"]["retention-days"] == "7"
+    assert "gate-report-ci.md" in upload_paths
+    assert "gate-report-ci.json" in upload_paths
+    assert "gate-report.md" not in upload_paths
+    assert "gate-report.json" not in upload_paths
+    assert "gate-decisions.jsonl" not in upload_paths
+    assert "faiss.index" not in upload_paths
+    assert "index/meta.json" not in upload_paths
+    assert "${{ inputs.log_dir }}/" not in upload_lines
+    assert "${{ inputs.log_dir }}/*" not in upload_paths
+    assert "pack-validation.json" not in upload_paths
+
+
 def test_template_callers_use_reusable_gate_workflow() -> None:
     expected_presets = {
         "rqg-gate-mock.yml": "local_docs",
@@ -140,53 +176,6 @@ def test_repo_reusable_gate_workflow_matches_template() -> None:
     )
 
     assert repo_workflow.rstrip() == template_workflow.rstrip()
-
-
-def test_workflow_artifact_allowlist() -> None:
-    forbidden_upload_paths = [
-        "*.jsonl",
-        "gate-report.json",
-        "gate-report.md",
-        "index/meta.json",
-        "faiss.index",
-    ]
-
-    for workflow_path in [
-        Path(".github/workflows/rqg-reusable-gate.yml"),
-        Path("templates/github/workflows/rqg-reusable-gate.yml"),
-    ]:
-        payload = _load_yaml(workflow_path)
-        upload_step = _find_step(payload, "rqg_gate", "Upload gate artifacts")
-        upload_path = upload_step["with"]["path"]
-        upload_lines = [line.strip() for line in upload_path.splitlines() if line.strip()]
-
-        assert upload_step["with"]["retention-days"] == "7"
-        for forbidden in forbidden_upload_paths:
-            assert forbidden not in upload_path
-        assert "${{ inputs.log_dir }}" not in upload_lines
-        assert "${{ inputs.log_dir }}/" not in upload_lines
-        assert "${{ inputs.log_dir }}/gate-decision.json" in upload_path
-        assert "${{ inputs.log_dir }}/gate-history-summary.json" in upload_path
-        assert "${{ inputs.log_dir }}/pack-validation.json" in upload_path
-        assert "${{ inputs.log_dir }}/connection-validation.json" in upload_path
-
-
-def test_workflow_uploads_safe_bundle_only() -> None:
-    for workflow_path in [
-        Path(".github/workflows/rqg-reusable-gate.yml"),
-        Path("templates/github/workflows/rqg-reusable-gate.yml"),
-    ]:
-        payload = _load_yaml(workflow_path)
-        upload_step = _find_step(payload, "rqg_gate", "Upload gate artifacts")
-        upload_path = upload_step["with"]["path"]
-        collect_step = _find_step(payload, "rqg_gate", "Collect gate outputs")
-
-        assert "${{ inputs.log_dir }}/gate-report-ci.json" in upload_path
-        assert "${{ inputs.log_dir }}/gate-report-ci.md" in upload_path
-        assert "${{ inputs.log_dir }}/gate-report.json" not in upload_path
-        assert "${{ inputs.log_dir }}/gate-report.md" not in upload_path
-        assert 'report_bundle_path = log_dir / "gate-report-ci.json"' in collect_step["run"]
-        assert 'report_path = log_dir / "gate-report-ci.md"' in collect_step["run"]
 
 
 def test_repo_mock_workflow_uses_reusable_gate_workflow() -> None:
@@ -268,10 +257,11 @@ def test_template_readme_mentions_reusable_workflow_outputs() -> None:
     assert "connection_ok" in readme
     assert "gate_report_json_path" in readme
     assert "gate-report-ci.json" in readme
-    assert "Full `gate-report.json`" in readme
-    assert "Raw JSONL logs" in readme
+    assert "gate-report-ci.md" in readme
     assert "gate_history_summary_path" in readme
     assert "gate-history-summary.json" in readme
+    assert "raw JSONL logs" in readme
+    assert "faiss.index" in readme
     assert "rqg-gate-weekly-review.yml" in readme
     assert "[Phase2.5][Weekly Review] YYYY-MM-DD" in readme
     assert "RQG_TRIAGE_PROJECT_ID" in readme

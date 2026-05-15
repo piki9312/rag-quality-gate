@@ -6,7 +6,11 @@ import pytest
 
 from rqg.quality.evaluators.keyword import keyword_match_rate
 from rqg.quality.evaluators.reference import extract_references, reference_accuracy
-from rqg.quality.evaluators.retrieval import retrieval_hit, retrieval_precision_at_k
+from rqg.quality.evaluators.retrieval import (
+    expected_evidence_recall_at_k,
+    retrieval_hit,
+    retrieval_precision_at_k,
+)
 
 # ==================================================================
 # keyword_match_rate
@@ -74,31 +78,34 @@ class TestRetrievalHit:
 
 
 # ==================================================================
-# retrieval_precision_at_k
+# expected_evidence_recall_at_k
 # ==================================================================
 
 
-class TestRetrievalPrecision:
+class TestExpectedEvidenceRecall:
     def test_all_found(self):
-        assert retrieval_precision_at_k(["a", "b", "c"], ["a", "b"]) == 1.0
+        assert expected_evidence_recall_at_k(["a", "b", "c"], ["a", "b"]) == 1.0
 
     def test_half_found(self):
-        assert retrieval_precision_at_k(["a", "b"], ["a", "x"]) == 0.5
+        assert expected_evidence_recall_at_k(["a", "b"], ["a", "x"]) == 0.5
 
     def test_none_found(self):
-        assert retrieval_precision_at_k(["a", "b"], ["x", "y"]) == 0.0
+        assert expected_evidence_recall_at_k(["a", "b"], ["x", "y"]) == 0.0
 
     def test_empty_expected(self):
-        assert retrieval_precision_at_k(["a"], []) == 1.0
+        assert expected_evidence_recall_at_k(["a"], []) == 1.0
 
     def test_counts_alias_match_for_section_evidence(self):
         assert (
-            retrieval_precision_at_k(
+            expected_evidence_recall_at_k(
                 ["leave_policy.md@abc123#chunk0"],
                 ["docs/leave_policy.md#sec-1"],
             )
             == 1.0
         )
+
+    def test_legacy_precision_name_remains_alias(self):
+        assert retrieval_precision_at_k(["a"], ["a"]) == expected_evidence_recall_at_k(["a"], ["a"])
 
 
 # ==================================================================

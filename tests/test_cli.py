@@ -6,6 +6,7 @@ import csv
 import subprocess
 import sys
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -13,7 +14,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from rqg.cli import main
-from rqg.quality.models import QATestCase
+from rqg.quality.models import EvalResult, EvalRun, QATestCase
 
 
 def _subparser_option_strings(command: str) -> set[str]:
@@ -265,6 +266,17 @@ class TestCLIParserContract:
             assert args.command == command
             assert args.aggregation_policy == "window"
 
+    def test_gate_option_contract_includes_customer_safety_flags(self):
+        options = _subparser_option_strings("gate")
+        assert {
+            "--customer-facing",
+            "--allow-simulation-output",
+            "--strict-s1-governance",
+            "--change-event-file",
+            "--manual-review-file",
+            "--baseline-bundle",
+        }.issubset(options)
+
 
 class TestCLIParsing:
     """CLI のパースロジックだけをテスト (実行はモック)。"""
@@ -340,6 +352,12 @@ class TestCLIParsing:
         args = parser.parse_args(["eval", "cases.csv", "--reset-log-dir"])
         assert args.command == "eval"
         assert args.reset_log_dir is True
+
+    def test_gate_blocks_customer_facing_mock_without_override(self, capsys):
+        exit_code = main(["gate", "packs/hr/cases.csv", "--mock", "--customer-facing"])
+        captured = capsys.readouterr()
+        assert exit_code == 1
+        assert "--allow-simulation-output" in captured.err
 
     def test_check_defaults(self):
         from rqg.cli import build_parser
@@ -1041,6 +1059,68 @@ class TestPhase1CLI:
         saved_cases = runner_cls.save_jsonl.call_args.args[1]
         assert [case.case_id for case in run_cases] == ["active_001"]
         assert [case.case_id for case in saved_cases] == ["active_001"]
+
+    def test_gate_ci_report_mode_eval_stdout_is_safe_summary_only(self, capsys):
+        log_dir = Path("tests/.tmp") / f"{uuid.uuid4()}-gate-ci-stdout"
+        case = QATestCase(
+            case_id="VIP_REFUND_ABC",
+            name="ACME special refund case",
+            question="Question mentioning ACME private refund terms?",
+            status="active",
+            severity="S1",
+            expected_answer="Expected ACME private refund answer",
+        )
+        fake_run = EvalRun(
+            run_id="run-gate-ci-safe",
+            timestamp=datetime.now(timezone.utc),
+            results=[
+                EvalResult(
+                    case_id="VIP_REFUND_ABC",
+                    severity="S1",
+                    passed=False,
+                    failure_type="keyword_miss",
+                    failure_category="answer_mismatch",
+                    failure_reason="ACME private refund failure detail",
+                    answer="Raw answer with ACME private terms",
+                    retrieved_ids=["C:/customer/source.md"],
+                )
+            ],
+        )
+
+        with patch("rqg.quality.loader.load_cases", return_value=[case]):
+            with patch("rqg.serving.rag.RAGStore") as store_cls:
+                store_cls.return_value.index = object()
+                with patch("rqg.quality.runner.RAGQualityRunner") as runner_cls:
+                    runner_cls.return_value.run_all.return_value = fake_run
+                    runner_cls.save_jsonl.return_value = log_dir / "20260513.jsonl"
+                    with patch("rqg.cli.gate.cmd_check", return_value=1):
+                        exit_code = main(
+                            [
+                                "gate",
+                                "packs/hr/cases.csv",
+                                "--mock",
+                                "--report-mode",
+                                "ci",
+                                "--log-dir",
+                                str(log_dir),
+                            ]
+                        )
+
+        captured = capsys.readouterr()
+
+        assert exit_code == 1
+        assert "RAG Quality Eval Safe Summary" in captured.out
+        assert "Total" in captured.out
+        assert "Passed" in captured.out
+        assert "Failed" in captured.out
+        assert "S1 failed: 1" in captured.out
+        assert "Failure types: keyword_miss=1" in captured.out
+        assert "--- Failures ---" not in captured.out
+        assert "VIP_REFUND_ABC" not in captured.out
+        assert "ACME special refund case" not in captured.out
+        assert "ACME private refund" not in captured.out
+        assert "Raw answer" not in captured.out
+        assert "C:/customer/source.md" not in captured.out
 
     def test_init_pack_list_profiles(self, capsys):
         exit_code = main(["init-pack", "--list-profiles"])

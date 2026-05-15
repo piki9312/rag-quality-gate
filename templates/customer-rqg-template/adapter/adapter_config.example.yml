@@ -3,6 +3,9 @@
 #
 # Do not commit live tokens. Keep secrets in environment variables or GitHub
 # Actions secrets.
+#
+# Customer-facing evidence should come from real / external_real runs. Mock or
+# simulation runs must not be presented as production quality proof.
 
 adapter:
   type: http
@@ -32,3 +35,7 @@ response_mapping:
 # - source: optional in the upstream response; "external-rag" if missing
 # - text: required; this is the retrieved context used by eval/check
 # - score: optional
+#
+# The gate/report layer will record execution provenance (execution_mode,
+# adapter_config_hash, prompt/config hashes) without logging raw bearer tokens or
+# raw upstream payloads.

@@ -17,7 +17,7 @@ _TRACKED_HISTORY_METRICS: tuple[tuple[str, str, str], ...] = (
     ("fresh_case_review_rate", "Fresh case review rate", "pct"),
     ("avg_faithfulness", "Avg faithfulness", "pct"),
     ("avg_judge_relevance", "Avg judge relevance", "pct"),
-    ("avg_evidence_recall", "Avg evidence recall", "pct"),
+    ("avg_evidence_recall", "Avg expected evidence recall", "pct"),
     ("stale_case_count", "Stale case count", "count"),
     ("current_runs", "Current runs", "count"),
     ("baseline_runs", "Baseline runs", "count"),
@@ -290,6 +290,7 @@ def build_gate_history_summary_payload(
     return {
         "entries": len(decisions),
         "status_mix": counts,
+        "execution_mode": decisions[-1].execution_mode if decisions else None,
         "week_start": _week_start_iso(decisions[-1].created_at) if decisions else None,
         "compare_offset": compare_offset,
         "trend_window": trend_window,
@@ -319,6 +320,8 @@ def build_gate_history_summary_lines(
     latest = decisions[-1] if decisions else None
     if trend is not None:
         lines.append(f"- Latest status: {trend.latest_status} ({trend.latest_run_id})")
+        if latest is not None and getattr(latest, "execution_mode", None):
+            lines.append(f"- Execution mode: {latest.execution_mode}")
         lines.append(f"- Current streak: {trend.latest_status} x{trend.streak_count}")
         if len(trend.status_sequence) > 1:
             sequence = " -> ".join(trend.status_sequence)

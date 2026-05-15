@@ -1,7 +1,7 @@
 case_id,name,status,severity,eval_mode,question,expected_answer,expected_evidence,expected_keywords,category,source_doc,owner,min_case_score,updated_at,last_reviewed_at,notes
 HR001,有給申請期限,active,S1,evidence_keyword,有給休暇の申請期限はいつですか？,有給休暇は5営業日前までに勤怠管理システムから申請し上長承認を得ます,就業規則.md@8794322103c34064#chunk0,5営業日前;勤怠管理システム;上長承認|上長の承認,deadline,就業規則.md,hr-team,100,2026-05-03,2026-05-03,
 HR002,有給申請手順,active,S2,evidence_keyword,有給休暇はどの手順で申請しますか？,,就業規則.md@8794322103c34064#chunk0,勤怠管理システム;上長承認|上長の承認;半日単位,procedure,就業規則.md,hr-team,85,2026-05-03,2026-05-03,
-HR003,経費精算締め日,active,S1,grounded_judge,経費精算の締め日はいつですか？,経費精算の締め日は毎月25日で25日が休日の場合は前営業日です,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,毎月25日;前営業日;レシート原本,deadline,経費精算ガイドライン.md,finance-team,100,2026-05-03,2026-05-03,
+HR003,経費精算締め日,active,S1,grounded_judge,経費精算の締め日はいつですか？,経費精算の締め日は毎月25日です,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,毎月25日;休日の場合は前営業日|前営業日;レシート原本,deadline,経費精算ガイドライン.md,finance-team,100,2026-05-03,2026-05-12,reviewed against current 締め日と提出方法 text; canonical answer kept in expected_answer
 HR004,経費証憑要件,active,S2,evidence_keyword,経費精算に必要な証憑は何ですか？,,経費精算ガイドライン.md@bdd0e3fbc459b02d#chunk0,レシート原本|レシート;添付;経費精算システム,procedure,経費精算ガイドライン.md,finance-team,85,2026-05-03,2026-05-03,
 HR005,在宅勤務承認条件,active,S2,evidence_keyword,在宅勤務を利用する際の承認条件は何ですか？,,就業規則.md@8794322103c34064#chunk0,上司の承認;週2回;在宅,policy,就業規則.md,hr-team,85,2026-05-03,2026-05-03,
 HR006,打刻漏れ修正期限,active,S1,evidence_keyword,打刻漏れの修正期限はいつまでですか？,打刻漏れは翌営業日までに上長へ報告し勤怠管理システムで修正申請します,就業規則.md@8794322103c34064#chunk0,翌営業日;上長へ報告|上長報告;修正申請,deadline,就業規則.md,hr-team,100,2026-05-03,2026-05-03,
