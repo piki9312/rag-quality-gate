@@ -147,10 +147,10 @@ on:
         description: Path to gate-decision.json inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_decision_path }}
       gate_report_path:
-        description: Path to gate-report.md inside the caller workspace
+        description: Path to CI-safe gate report markdown inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_report_path }}
       gate_report_json_path:
-        description: Path to gate-report.json inside the caller workspace
+        description: Path to CI-safe gate report JSON inside the caller workspace
         value: ${{ jobs.rqg_gate.outputs.gate_report_json_path }}
       pack_validation_ok:
         description: true, false, or skipped
@@ -484,8 +484,8 @@ jobs:
 
           log_dir = Path(os.environ["LOG_DIR"])
           gate_path = log_dir / "gate-decision.json"
-          report_path = log_dir / "gate-report.md"
-          report_bundle_path = log_dir / "gate-report.json"
+          report_path = log_dir / "gate-report-ci.md"
+          report_bundle_path = log_dir / "gate-report-ci.json"
           pack_validation_path = log_dir / "pack-validation.json"
           connection_path = log_dir / "connection-validation.json"
           history_summary_path = log_dir / "gate-history-summary.json"
@@ -608,12 +608,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact_name }}
-          retention-days: 14
+          retention-days: 7
           if-no-files-found: ignore
           path: |
             ${{ inputs.log_dir }}/gate-decision.json
             ${{ inputs.log_dir }}/gate-history-summary.json
             ${{ inputs.log_dir }}/pack-validation.json
+            ${{ inputs.log_dir }}/connection-validation.json
+            ${{ inputs.log_dir }}/gate-report-ci.json
+            ${{ inputs.log_dir }}/gate-report-ci.md
 
       - name: Fail when connection validation failed
         if: ${{ always() && inputs.run_connection_validation && steps.validate_connection.outcome == 'failure' }}
