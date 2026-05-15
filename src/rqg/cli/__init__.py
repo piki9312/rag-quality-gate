@@ -202,6 +202,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to external RAG adapter_config.yml with request/response mapping.",
     )
+    p_eval.add_argument(
+        "--report-mode",
+        choices=["ci", "redacted", "full"],
+        default=None,
+        help="JSONL exposure mode: ci/redacted persist answer metadata without raw answer; full preserves existing detail",
+    )
 
     # --- gate ---
     p_gate = sub.add_parser("gate", help="Run eval + check in one command")
