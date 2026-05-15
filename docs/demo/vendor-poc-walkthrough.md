@@ -26,6 +26,39 @@ By the end, you should be able to show a customer:
 4. `gate-report.json` is stable enough for downstream consumers.
 5. External RAG response schema issues produce actionable diagnostics.
 
+## Customer-Safe PoC Explanation
+
+Proof Gate PoC does more than score AI/RAG answers. It checks high-risk
+questions such as refunds, cancellation, pricing, terms, escalation, and policy
+rules, then turns the result into a Gate Review that says whether the change can
+move forward.
+
+For customer-facing delivery, use these boundaries:
+
+- GitHub-hosted Actions handle sample, mock, dummy, or aggregate metadata only.
+- CI output and CI artifacts should use safe summaries, not full evidence.
+- Full reports with raw questions, expected answers, AI answers, retrieved
+  evidence, or chunk text stay in local, private runner, or customer-controlled
+  environments.
+- API keys are stored in environment variables or GitHub Secrets, never in the
+  repository.
+- External RAG PoCs should prefer staging, test, or read-only endpoints.
+
+The main customer decision document is the Gate Review. Gate Report is the
+detailed basis. Raw artifacts are for audit or automation, not the usual
+customer-facing decision packet.
+
+## PoC Deliverables
+
+Typical customer-facing deliverables are:
+
+- Gate Review: production readiness, major risks, and final recommendation.
+- Redacted Gate Report: technical detail without raw sensitive text.
+- Safe CI summary: automated status, pass rates, S1 failures, and safe artifact refs.
+- Risk / failure pattern summary: what failed and why it matters.
+- Action Items: fixes, owners, and due dates.
+- Final PoC Report: continue, productionize, improve existing RAG, or start Monitor.
+
 ## Prerequisites
 
 Bash:

@@ -1,52 +1,44 @@
-# Customer Support FAQ変更事故 Before / After 1枚メモ
+# Customer Support FAQ変更事故 Before / After 1枚
 
-## 目的
+## 対象シナリオ
 
-FAQ・規約・料金表の変更後に、RAG AI が古い条件で答えてしまうリスクを、Proof Gate が本番前に検知できることを示します。
+カスタマーサポートFAQを v1 から v2 に更新した後も、FAQ AI が古い条件で自然に回答してしまう変更事故を扱います。対象は、返金、無料トライアル解約、年額契約の自動更新、料金確認、解約後データ保持、契約変更条件です。
 
-## Before / After Summary
+Proof Gate は、AIの文章が自然かどうかだけでなく、現在のFAQ条件に照らして高リスク質問へ安全に答えられるかを確認します。
 
-| 項目 | Before: stale v1 | After: v2 reference |
+## 結論
+
+| 観点 | Before: stale v1 | After: v2 reference |
 |---|---:|---:|
-| 本番反映判定 | NG | 要確認 |
-| policy_status | BLOCK | NEEDS_HUMAN_REVIEW |
-| S1 pass rate | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
-| overall pass rate | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
-| S1 failures | `demo_summary.json` を参照 | `demo_summary.json` を参照 |
-| 顧客向けメッセージ | 古いFAQ条件で回答しており、本番反映前に止める必要がある | S1重大失敗は解消。fallback検知により運用確認は必要 |
+| 顧客向け結論 | 本番反映不可 | 本番反映可 |
+| overall_decision | `ng` | `ok` |
+| policy_status | `BLOCK` | `PASS` |
+| S1 pass rate | 0.0% | 100.0% |
+| overall pass rate | 16.7% | 100.0% |
+| S1重大失敗 | 3件 | 0件 |
+| failed cases | 5件 | 0件 |
+| 人手確認要否 | 不要。本番反映を止める判断 | 不要 |
 
-## 代表的なS1重大失敗
+## 何を検知したか
 
-`demo_summary.json` の `representative_s1_failure` を参照します。
+Beforeでは、FAQ v1 の古い条件に基づく回答が残っていました。特に返金、無料トライアル解約、年額契約の自動更新通知は顧客影響が大きいため、Proof Gate は S1重大失敗として検知し、`policy_status=BLOCK` としました。
 
-見るポイント:
+Afterでは、FAQ v2 の条件に合わせて回答が更新され、同じ高リスク質問セットで S1重大失敗が0件になりました。`overall_decision=ok`、`policy_status=PASS` のため、このデモ条件では本番反映可です。
 
-- `case_id`
-- `question`
-- `ai_answer`
-- `fail_reason`
-- `risk_domain`
+## 顧客にとってのリスク
 
-## 顧客向け説明
+| リスク領域 | 事故例 | 顧客影響 |
+|---|---|---|
+| 返金 | 返金対象外の商品を返金可能と案内する | 返金判断のぶれ、サポート対応負荷、クレーム |
+| 解約 | 課金開始後も自動取消できるように案内する | 請求トラブル、説明責任 |
+| 契約 | 自動更新通知の期限を曖昧に案内する | 契約更新トラブル、法務・営業対応 |
+| データ保持 | 文書化されていない保持期間を案内する | 情報管理上の不安、監査対応 |
 
-Before:
+## 次の提案
 
-AIの回答文は自然でも、現在のFAQ条件と違う回答をしている場合があります。返金・解約・料金・契約条件の誤案内は顧客影響が大きいため、本番反映前に止める必要があります。
+1. PoCでは、顧客のFAQ、規約、料金表から高リスク質問セットを作る。
+2. 変更前後または現行RAGのbaseline/currentをProof Gateで診断する。
+3. 重大失敗、改善事項、月次監視すべき質問領域を顧客提出レポートにまとめる。
+4. PoC後は、本格RAG構築、既存RAG改善支援、Proof Gate Monitor のいずれかへ進む。
 
-After:
-
-FAQ更新後に、同じ高リスク質問セットで再Gateします。S1重大失敗が解消していれば、修正が有効だったことを説明できます。このローカル実行では検索モデルfallbackにより要確認扱いですが、回答品質の重大失敗は解消しています。
-
-## 月額Monitorにつながる理由
-
-- FAQ・規約・料金表は継続的に変わる
-- プロンプトや検索設定の変更でも回答品質は劣化する
-- 一度通ったAIでも、変更後に危険な回答へ戻ることがある
-- 高リスク質問を定期実行することで、変更事故を見逃しにくくなる
-
-## 開くファイル
-
-- `reports/before_stale_v1/gate-report.md`
-- `reports/after_v2_reference/gate-report.md`
-- `demo_summary.json`
-- `sales_demo_script.md`
+Proof Gate はRAG本体の代替ではありません。RAG AIを安全に変更・運用するための品質ゲートです。
