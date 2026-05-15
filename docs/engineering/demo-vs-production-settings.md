@@ -9,7 +9,7 @@ easy to run while avoiding production-quality claims from demo-only shortcuts.
 | Mode | Purpose | Acceptable settings | Avoid | Recommended command |
 |---|---|---|---|---|
 | Client demo | Show the product flow quickly with no secrets or customer systems. | `--mock`, `EMB_MODEL=local-fallback-hash-embedding`, isolated `--index-dir` and `--log-dir`, sample packs such as `examples/demo-client-pack` or `examples/vendor-poc-pack`. | Claiming the result proves production answer quality, reusing a shared index, hiding that mock evaluation was used. | `rqg gate --pack examples/demo-client-pack --mock --reset-log-dir --index-dir indexes/demo-client-pack --log-dir logs/demo-client-pack` |
-| Customer PoC | Validate the customer's actual RAG/FAQ behavior against a customer-specific Quality Pack. | External RAG adapter or a real embedding path, customer-specific cases copied from `templates/customer-rqg-template`, isolated run directories, `rqg doctor` before onboarding, `--customer-facing`, `--strict-s1-governance`. | Using `--mock` for customer quality claims, relying on implicit local fallback, mixing demo and customer indexes, skipping manual review for uncertain S1 runs. | `rqg validate-pack --pack path/to/customer-pack --strict-s1-governance` then `rqg gate --pack path/to/customer-pack --rag-endpoint https://example.invalid/search --rag-api-key-env RAG_API_KEY --customer-facing --strict-s1-governance --index-dir indexes/customer-poc --log-dir logs/customer-poc` |
+| Customer PoC | Validate the customer's actual RAG/FAQ behavior against a customer-specific Quality Pack. | External RAG adapter or a real embedding path, customer-specific cases copied from `templates/customer-rqg-template`, isolated run directories, `rqg doctor` before onboarding. | Using `--mock` for customer quality claims, relying on implicit local fallback, mixing demo and customer indexes. | `rqg validate-pack --pack path/to/customer-pack` then `rqg gate --pack path/to/customer-pack --rag-endpoint https://example.invalid/search --rag-api-key-env RAG_API_KEY --index-dir indexes/customer-poc --log-dir logs/customer-poc` |
 | Pre-production gate | Decide whether a release can proceed before production traffic. | Real RAG path, explicit judge and embedding configuration, S1 pass rate at `100%`, strict review of `gate-report.json` and `gate-report.md`. | Silent judge fallback, silent embedding fallback, lower S1 thresholds for production-blocking cases, demo packs. | `rqg gate --pack path/to/production-pack --rag-endpoint https://example.invalid/search --rag-api-key-env RAG_API_KEY --s1-threshold 100 --index-dir indexes/preprod --log-dir logs/preprod` |
 | CI blocking | Fail a PR or deployment when the quality gate blocks release. | Isolated CI `--index-dir` and `--log-dir`, `--warn-exit-code 1`, no real API keys unless the job is explicitly configured for secure customer or staging systems. | Shared indexes across packs, external calls without secret scoping, treating mock CI as production proof. | `rqg gate --pack path/to/pack --mock --warn-exit-code 1 --reset-log-dir --index-dir indexes/ci-pack --log-dir logs/ci-pack` |
 
@@ -30,12 +30,6 @@ Safe CI artifacts should include aggregate status, pass rates, S1 failed count,
 reason codes, and safe report references. They should not include raw JSONL,
 full `gate-report.json`, full `gate-report.md`, vector indexes, raw retrieved
 evidence, raw endpoint values, or customer documents.
-
-GitHub-hosted CI writes CI-safe report names such as `gate-report-ci.md` and
-`gate-report-ci.json` so operators do not confuse aggregate CI summaries with
-local/private full evidence reports. CI-safe `gate-decision.json` and
-`gate-history-summary.json` are aggregate-only/redacted variants; full evidence
-and raw case-level diagnostics remain local/private/customer-controlled only.
 
 ## Recommended Commands
 
@@ -78,9 +72,7 @@ rqg gate --pack path/to/pack --mock --warn-exit-code 1 --reset-log-dir --index-d
 ## What Not To Claim From Demo Results
 
 Do not claim that a `--mock` result proves production answer quality. `--mock`
-is for demos and local validation of the Proof Gate workflow. Customer-facing
-simulation output should be blocked by default and only generated with an
-explicit override plus the built-in `SIMULATION ONLY` warning.
+is for demos and local validation of the Proof Gate workflow.
 
 Do not claim that `local-fallback-hash-embedding` represents the customer's real
 retrieval quality. It is useful for reproducible demos and avoiding first-run
@@ -101,12 +93,10 @@ configured thresholds under demo settings. It is suitable for showing the flow:
 validate the pack, run the gate, read the Markdown report, and inspect
 `gate-report.json`.
 
-A production-style PASS means the customer's own Quality Pack passed against the
-real RAG path for the specified cases, documents, model, and settings, with
-production-blocking S1 cases meeting a `100%` pass rate. It still does **not**
-mean universal correctness or safety for all questions. Fallback, reliability,
-manual review, and report artifacts must still be reviewed under the release
-policy for that customer.
+A production PASS means the customer's own Quality Pack passed against the real
+RAG path, with production-blocking S1 cases meeting a `100%` pass rate. It also
+means fallback, reliability, and report artifacts were reviewed under the
+release policy for that customer.
 
 ## Related Entry Points
 

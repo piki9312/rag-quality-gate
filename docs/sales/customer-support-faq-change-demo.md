@@ -8,12 +8,26 @@ FAQ・規約・料金表が変わった後、RAG AI が古い条件で自然に�
 
 このデモでは、FAQ v1 では危険な回答が出る状態を before、FAQ v2 に修正した後に同じケースで改善する状態を after として見せます。
 
+## 統一した判定
+
+| 観点 | Before | After |
+|---|---:|---:|
+| 顧客向け結論 | 本番反映不可 | 本番反映可 |
+| 本番反映判定 | `NG` | `OK` |
+| policy_status | `BLOCK` | `PASS` |
+| overall_decision | `ng` | `ok` |
+| S1 pass rate | 0.0% | 100.0% |
+| overall pass rate | 16.7% | 100.0% |
+| S1重大失敗 | 3件 | 0件 |
+| 人手確認要否 | 不要。本番反映を止める判断 | 不要 |
+
 ## 使用ファイル
 
 - デモ一式: `demos/customer_support_faq_change/`
+- 1枚比較: `demos/customer_support_faq_change/before_after_onepager.md`
+- 顧客提出版レポート: `demos/customer_support_faq_change/customer_gate_report.md`
 - before report: `demos/customer_support_faq_change/reports/before_stale_v1/gate-report.md`
 - after report: `demos/customer_support_faq_change/reports/after_v2_reference/gate-report.md`
-- 比較メモ: `demos/customer_support_faq_change/before_after_onepager.md`
 - 要約JSON: `demos/customer_support_faq_change/demo_summary.json`
 
 ## 実行
@@ -26,29 +40,28 @@ FAQ・規約・料金表が変わった後、RAG AI が古い条件で自然に�
 
 ### Before
 
-1. `reports/before_stale_v1/gate-report.md` を開く。
-2. `1. 本番反映判定` で `NG` と `policy_status: BLOCK` を見せる。
-3. `5. S1重大失敗一覧` で、返金・解約・料金・契約条件などの高リスク質問が失敗していることを見せる。
-4. 「AIの文章は自然でも、現在のFAQ条件とは違う回答をしている」と説明する。
+1. `before_after_onepager.md` で全体像を見せる。
+2. beforeは `NG` / `policy_status=BLOCK` で、本番反映不可と説明する。
+3. S1重大失敗が3件あり、返金・解約・契約条件で古いFAQ条件の回答が残っていたと説明する。
+4. 必要に応じて `reports/before_stale_v1/gate-report.md` の詳細を開く。
 
 ### After
 
-1. `reports/after_v2_reference/gate-report.md` を開く。
-2. `1. 本番反映判定` で `OK` と `policy_status: PASS` を見せる。
-3. `4. 実行結果サマリ` で S1 pass rate と overall pass rate の改善、S1重大失敗の解消を見せる。
-4. 「before の BLOCK から、対象文書範囲では重大誤回答を解消した状態まで改善した」と説明する。
-5. 「同じ高リスク質問セットで再確認し、改善を証明できる」と説明する。
+1. afterは `OK` / `policy_status=PASS` / `overall_decision=ok` と説明する。
+2. S1 pass rate 100.0%、S1重大失敗0件、human review不要であることを見せる。
+3. 「同じ高リスク質問セットで再確認し、改善を証明できる」と説明する。
+4. 必要に応じて `reports/after_v2_reference/gate-report.md` の詳細を開く。
 
 ### Closing
 
-`before_after_onepager.md` または `demo_summary.json` を見せて、Build / Improve / Monitor の次の選択肢につなげます。
-
-月額Monitorの説明:
+`customer_gate_report.md` を見せて、PoC後の提案へつなげます。
 
 - FAQ・規約・料金表・プロンプト変更は継続的に起きる。
-- 一度 PASS したAIでも、変更後に危険な回答へ戻ることがある。
-- 高リスク質問を定期実行し、S1重大失敗と未解決リスクを継続確認する。
+- 一度通ったAIでも、変更後に危険な回答へ戻ることがある。
+- PoC後は、本格RAG構築、既存RAG改善支援、Proof Gate Monitor のいずれかを選ぶ。
 
 ## 顧客向け一言
 
-Proof Gate は、RAGを置き換えるものではありません。RAG AIの更新や運用の前後に、高リスク質問を再確認し、重大誤回答リスクを可視化してリリース判断を支援する品質ゲートです。
+Proof Gate は、RAGを置き換えるものではありません。RAG AIの更新や運用の前後に、高リスク質問を再確認し、危険な回答を本番前に止めるための品質ゲートです。
+
+PoC用の簡易RAGは診断と説明のための軽量構成です。本番RAGに進む場合は、顧客環境、セキュリティ、監視、改善サイクルを含む本格構築として別途設計します。

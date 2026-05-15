@@ -1,28 +1,36 @@
 {
   "before": {
+    "label": "Before: stale v1",
     "overall_decision": "ng",
     "policy_status": "BLOCK",
+    "production_decision": "本番反映不可",
+    "needs_human_review": false,
     "overall_pass_rate": 16.666666666666664,
     "s1_pass_rate": 0.0,
     "s1_failures": 3,
+    "failed_cases": 5,
     "report_path": "reports/before_stale_v1/gate-report.md",
     "bundle_path": "reports/before_stale_v1/gate-report.json"
   },
   "after": {
+    "label": "After: v2 reference",
     "overall_decision": "ok",
     "policy_status": "PASS",
+    "production_decision": "本番反映可",
+    "needs_human_review": false,
     "overall_pass_rate": 100.0,
     "s1_pass_rate": 100.0,
     "s1_failures": 0,
+    "failed_cases": 0,
     "report_path": "reports/after_v2_reference/gate-report.md",
     "bundle_path": "reports/after_v2_reference/gate-report.json"
   },
   "representative_s1_failure": {
     "case_id": "customer_support_faq_001",
-    "question": "キャンペーン商品は購入から7日以内なら返金できますか。",
-    "ai_answer": "キャンペーン商品は購入から7日以内なら返金できますか。については、通常商品もキャンペーン商品も、購入から7日以内であれば返金を案内できます。サポート担当者は、まず返金フォームを案内してください。",
+    "risk_domain": "refund",
+    "summary": "キャンペーン商品の返金条件について、古いFAQ条件のまま案内していたため、beforeではS1重大失敗としてBLOCKした。",
     "fail_reason": "Keyword match 33% < 80%",
-    "risk_domain": "refund"
+    "customer_risk": "返金可否を誤って案内すると、顧客対応事故、返金判断のぶれ、サポート部門の説明責任につながる。"
   },
-  "key_message": "FAQ変更後に古い回答が残る事故をProof GateがS1重大失敗として検知し、修正後のv2 reference runでS1失敗の解消とGateのPASS改善を確認できる。"
+  "key_message": "FAQ変更後にAIが古い条件で自然に答える変更事故を、Proof GateがbeforeでS1重大失敗としてBLOCKした。FAQ v2へ修正後のafterでは、同じ高リスク質問セットでS1重大失敗0件、S1 pass rate 100%、policy_status=PASSとなり、本番反映可の判断になった。"
 }
