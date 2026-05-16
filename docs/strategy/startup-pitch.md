@@ -83,7 +83,7 @@ Proof Gate は、既存または新規の RAG/FAQ AI の**外側**に品質ゲ�
 - 初期 GTM フェーズでは 0→10 社導入を狙う
 - 入口商品は PoC / 本番前診断
 - 継続商品は変更時チェック / 月次 Monitor
-- 初期の価格仮説レンジは、初回 PoC 20万〜80万円、継続 Monitor 月額5万〜20万円と置く
+- 初期の価格仮説レンジは、日本円ベースで初回 PoC 20万〜80万円、継続 Monitor 月額5万〜20万円と置く
 
 ### Pitch での注意点
 
@@ -155,7 +155,7 @@ Proof Gate は、サービス支援型プロダクトとして売ります。
 ## 9. Roadmap
 
 - まずは 0→10 導入で CLI / Quality Pack / adapter / report の型を磨く
-- この 0→10 導入フェーズは、外部向け資料では「何件のヒアリング、PoC 提案、有償導入を何四半期で積むか」の前提と合わせて期間を補って示し、前提値は `docs/strategy/gtm-0-to-10.md` 側で管理する
+- この 0→10 導入フェーズは、外部向け資料では「何件のヒアリング、PoC 提案、有償導入を何四半期で積むか」の前提と合わせて期間を補って示し、前提値は `docs/strategy/gtm-0-to-10.md` 側で管理する。参照先が未整備な場合は、まずヒアリング件数・提案件数・有償 PoC 件数の順で達成条件を固定してから期間を置く
 - 実案件から失敗パターンを資産化する
 - 業界別 Gate Policy を整備する
 - レポートテンプレートを磨く
@@ -197,4 +197,4 @@ Proof Gate は、サービス支援型プロダクトとして売ります。
 
 ## Suggested Next Step
 
-If this is turned into a startup pitch, keep the 9 core sections above and add at most 1 closing or summary slide so the first-pass deck stays within 10 slides, which matches common early-stage pitch and competition formats. Customer proposals or longer investor decks can expand beyond that when the audience requires more detail.
+If this is turned into a startup pitch, keep the 9 core sections above and add at most 1 closing or summary slide, resulting in a 10-slide first-pass deck that matches common early-stage pitch and competition formats. Customer proposals or longer investor decks can expand beyond that when the audience requires more detail.
