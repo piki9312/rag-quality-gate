@@ -89,7 +89,7 @@ Proof Gate は、既存または新規の RAG/FAQ AI の**外側**に品質ゲ�
 
 - この repository から強く言えるのは、市場の切り方、単価仮説、SOM 仮説です
 - TAM/SAM の絶対額は外部データで補強する前提で扱います
-- 価格レンジは日本円ベースの初期仮説であり、既存の PoC / Monitor 提案レンジを基準に置いています
+- 価格レンジは日本円ベースの初期仮説であり、`docs/strategy/notion-business/03_商品メニュー.md` と `docs/strategy/notion-business/Proof Gate 事業トップ.md` の PoC / Monitor 提案レンジを基準に置いています
 - ただし資料では、**汎用 LLMOps 市場ではなく、本番判断と変更時 QA の市場である**ことを先に定義します
 - 投資家向けや公的ピッチへ転用する場合は、0→10 社導入に対する期間を外部前提と合わせて別途明記します
 
@@ -155,7 +155,7 @@ Proof Gate は、サービス支援型プロダクトとして売ります。
 ## 9. Roadmap
 
 - まずは 0→10 導入で CLI / Quality Pack / adapter / report の型を磨く
-- この 0→10 導入フェーズは、外部向け資料では「何件のヒアリング、PoC 提案、有償導入を何四半期で積むか」の前提と合わせて期間を補って示す
+- この 0→10 導入フェーズは、外部向け資料では「何件のヒアリング、PoC 提案、有償導入を何四半期で積むか」の前提と合わせて期間を補って示し、前提値は `docs/strategy/gtm-0-to-10.md` 側で管理する
 - 実案件から失敗パターンを資産化する
 - 業界別 Gate Policy を整備する
 - レポートテンプレートを磨く
@@ -197,4 +197,4 @@ Proof Gate は、サービス支援型プロダクトとして売ります。
 
 ## Suggested Next Step
 
-If this is turned into a startup pitch, keep the 9 core sections above and add at most 1 closing or summary slide so the first-pass deck stays within 10 slides. Customer proposals or longer investor decks can expand beyond that when the audience requires more detail.
+If this is turned into a startup pitch, keep the 9 core sections above and add at most 1 closing or summary slide so the first-pass deck stays within 10 slides, which matches common early-stage pitch and competition formats. Customer proposals or longer investor decks can expand beyond that when the audience requires more detail.
