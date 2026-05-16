@@ -33,6 +33,7 @@ PoC デモを見る:
 提案・営業で使う:
 
 - [PoC提案メモ](sales/customer-support-faq-change-demo.md)
+- [スタートアップピッチ構成](strategy/startup-pitch.md)
 
 コードを理解する:
 
@@ -135,6 +136,7 @@ Product strategy:
 - [Product positioning](strategy/product-positioning.md)
 - [Service menu](strategy/service-menu.md)
 - [GTM 0 to 10](strategy/gtm-0-to-10.md)
+- [Startup pitch narrative](strategy/startup-pitch.md)
 - [Product roadmap](roadmap/product-roadmap.md)
 
 Security:
