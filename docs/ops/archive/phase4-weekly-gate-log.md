@@ -1,5 +1,9 @@
 # Phase 4 Weekly Dog-fooding Gate Log
 
+> Archive note: this is a historical dogfooding tracker. Use
+> `docs/README.md` and `docs/strategy/current-working-set.md` for the current
+> operating path.
+
 週次ゲート実行の 4 週間追跡テンプレート。  
 GitHub Actions の `phase4-weekly-gate.yml` が毎週月曜に自動実行し、
 結果を Issue に投稿します。このファイルには確認済み週のサマリを手動で記入してください。
@@ -65,7 +69,7 @@ gh workflow run phase4-weekly-gate.yml -f pack=packs/hr -f use_real_llm=false
 
 ## 関連ドキュメント
 
-- [`.github/workflows/phase4-weekly-gate.yml`](../../.github/workflows/phase4-weekly-gate.yml)
-- [`packs/hr/quality-pack.yml`](../../packs/hr/quality-pack.yml) — ROI セクション参照
-- [`packs/hr/gate.yml`](../../packs/hr/gate.yml) — SLO 設定
-- [`docs/ops/phase2-5-weekly-metrics-register.md`](phase2-5-weekly-metrics-register.md) — Phase 2.5 週次記録同形式
+- [`.github/workflows/phase4-weekly-gate.yml`](../../../.github/workflows/phase4-weekly-gate.yml)
+- [`packs/hr/quality-pack.yml`](../../../packs/hr/quality-pack.yml) — ROI セクション参照
+- [`packs/hr/gate.yml`](../../../packs/hr/gate.yml) — SLO 設定
+- [`docs/ops/operations/phase2-5-weekly-metrics-register.md`](../operations/phase2-5-weekly-metrics-register.md) — Phase 2.5 週次記録同形式
