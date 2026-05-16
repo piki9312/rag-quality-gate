@@ -80,7 +80,7 @@ Proof Gate は、既存または新規の RAG/FAQ AI の**外側**に品質ゲ�
 
 ### SOM
 
-- 初期は 0→10 社導入を狙う
+- 初期 GTM フェーズでは 0→10 社導入を狙う
 - 入口商品は PoC / 本番前診断
 - 継続商品は変更時チェック / 月次 Monitor
 - 価格仮説は、初回 PoC 20万〜80万円、継続 Monitor 月額5万〜20万円をベースに考える
@@ -194,4 +194,4 @@ Proof Gate は、サービス支援型プロダクトとして売ります。
 
 ## Suggested Next Step
 
-If this pitch is turned into slides, keep it within 10 slides and preserve the section order above so the story moves from problem framing to quality-gate differentiation, then to market, revenue, and roadmap.
+If this pitch is turned into slides, keep the 9 core sections above and add at most 1 closing or summary slide so the whole deck stays within 10 slides.
