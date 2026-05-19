@@ -1,62 +1,51 @@
-# ドキュメント入口
+# Documentation Index
 
-このディレクトリは、Proof Gate の技術仕様、PoC 実行手順、営業資料、運用設計をまとめた入口です。
+このディレクトリは、Proof Gate のドキュメント入口です。現在のrepoは作業リポジトリでもあるため、資料を「正本」「顧客向け」「デモ」「技術契約」「運用」「archive」に分けて読む前提にします。
 
-製品概要と全体の導線は [README.md](../README.md) を参照してください。
+短い製品入口は [README.md](../README.md) を参照してください。
 
-## 顧客・営業・PoC実行者の最短導線
+## まず読む
 
-日本企業向けに、Proof Gate付きRAG AI導入診断PoC の価値を短時間で理解したい場合は、次の順が最短です。
+1. [Proof Gate Product Map](strategy/proof-gate-product-map.md) - 事業目的、対象範囲、現在の実装、やらないこと。
+2. [Current Working Set](strategy/current-working-set.md) - 今読む・使う資料だけを集めた入口。
+3. [Product positioning](strategy/product-positioning.md) - Proof Gate が何であり、何ではないか。
+4. [Logging and evidence policy](security/logging-and-evidence-policy.md) - 顧客データ、ログ、artifact、report-modeの境界。
 
-1. [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md)
-2. [FAQ変更事故 before / afterデモ](../demos/customer_support_faq_change/README.md)
-3. [PoC提案メモ](sales/customer-support-faq-change-demo.md)
-4. [Customer Support Pack ガイド](../packs/customer_support_pack/README.md)
+## 顧客向け・営業
 
-## 目的別に読む
+- [PoC offer](sales/proof-gate-poc-offer.md)
+- [PoC security and deliverables summary](sales/proof-gate-poc-security-and-deliverables.md)
+- [Customer gate report template](sales/customer_gate_report_template.md)
+- [Customer data handling one-pager](sales/customer_data_handling_onepager.md)
+- [Post-PoC options](sales/post_poc_options_onepager.md)
+- [After-PoC offer](sales/proof-gate-next-offer.md)
+- [Simple RAG PoC vs production RAG scope](sales/rag_build_scope.md)
+- [Positioning boundaries](sales/positioning-boundaries.md)
+- [PoC readiness checklist](sales/poc-readiness-checklist.md)
+- [FAQ change sales demo memo](sales/customer-support-faq-change-demo.md)
 
-初めて導入する:
+## デモ・内部検証
 
-- [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md)
-- [onboarding-quickstart](demo/onboarding-quickstart.md)
-- [fail-fix-cycle](demo/fail-fix-cycle.md)
-- [impact-cycle](demo/impact-cycle.md)
-- [external-contract-localhost](demo/external-contract-localhost.md) — localhost から weekly review payload まで外部契約を 1 本通す
-- `rqg serve-dashboard` — pack / run / monthly summary を 1 画面で閲覧する read-only UI
-- [packs/hr guide](../packs/hr/README.md)
+- [FAQ change accident demo](../demos/customer_support_faq_change/README.md)
+- [Internal S1 case authoring](demo/internal-s1-case-authoring.md)
+- [Onboarding quickstart](demo/onboarding-quickstart.md)
+- [Fail-fix cycle](demo/fail-fix-cycle.md)
+- [Impact cycle](demo/impact-cycle.md)
+- [External RAG walkthrough](demo/external-rag-walkthrough.md)
+- [External contract localhost](demo/external-contract-localhost.md)
+- [External real PoC runbook](demo/external-real-poc-runbook.md)
 
-PoC デモを見る:
+## 利用ガイド
 
-- [FAQ変更事故 before / afterデモ](../demos/customer_support_faq_change/README.md)
-- [Customer Support Pack ガイド](../packs/customer_support_pack/README.md)
+- [Proof Gate PoC guide](user-guide/proof-gate-poc.md)
+- [PoC / Monitor runbook](user-guide/poc-monitor-runbook.md)
+- [Quality Pack S1/S2 design guide](user-guide/quality-pack-s1-s2-design.md)
+- [Windows PowerShell command guide](user-guide/windows-powershell.md)
 
-提案・営業で使う:
+## 技術契約・設計意図
 
-- [PoC提案メモ](sales/customer-support-faq-change-demo.md)
-
-コードを理解する:
-
-- [Phase1.5 code-reading checklist](ops/getting-started/phase1-5-code-reading-checklist.md)
-- [Phase2 code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
-
-週次運用する:
-
-- [週次メトリクス登録](ops/operations/phase2-5-weekly-metrics-register.md)
-- `rqg monthly-summary` — 月次の blocked run / fallback / unresolved issue を要約
-- [ケース品質レビュー](ops/operations/phase2-5-case-quality-weekly-review.md)
-- [失敗レビューテンプレート](ops/operations/phase2-5-ws2-failure-review-template.md)
-- [ゲート例外申請テンプレート](ops/operations/phase2-5-ws3-gate-exception-approval-template.md)
-- [investigate 対応フロー](ops/operations/phase2-5-investigate-response-flow.md)
-- [ベースラインシート](ops/operations/phase2-5-ws1-baseline-sheet.md)
-- [KPI 週次テンプレート](ops/operations/execution-template-charter-kpi-weekly.md)
-- [社内文書向けパックガイド](ops/operations/phase3-internal-docs-vertical-pack.md)
-
-過去の計画・リリース記録を確認する:
-
-- [archive/](ops/archive/) — Phase2/2.5 のキックオフ、計画、リリースノート、完了記録
-
-設計意図を確認する:
-
+- [External RAG adapter contract](engineering/external-rag-adapter-contract.md)
+- [Demo vs production settings](engineering/demo-vs-production-settings.md)
 - [ADR: model boundaries](adr/0001-model-boundaries.md)
 - [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
 - [ADR: external RAG integration contract](adr/0003-external-rag-integration-contract.md)
@@ -65,61 +54,11 @@ PoC デモを見る:
 - [ADR: responsibility boundary for external systems](adr/0006-responsibility-boundary-for-external-systems.md)
 - [ADR: auto-generated review and merge policy](adr/0007-auto-generated-review-and-merge-policy.md)
 - [ADR: RQG scope and non-goals](adr/0008-rqg-scope-and-non-goals.md)
+- [ADR: CI logging and evidence policy](adr/0009-ci-logging-and-evidence-policy.md)
 
-## 用語集
+## 運用
 
-→ [glossary.md](glossary.md)
-
-## まず確認する順番
-
-1. [Proof Gate付きRAG AI導入診断PoC](user-guide/proof-gate-poc.md) で、PoC の全体像と実行順を確認する
-2. [FAQ変更事故 before / afterデモ](../demos/customer_support_faq_change/README.md) で、変更事故と改善確認の流れを把握する
-3. [PoC提案メモ](sales/customer-support-faq-change-demo.md) で、顧客への説明トークを確認する
-4. 外部 endpoint 境界を先に見たい場合は [external-contract-localhost](demo/external-contract-localhost.md) を使う
-5. 技術理解が必要なら [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md) と [週次メトリクス](ops/operations/phase2-5-weekly-metrics-register.md) に進む
-
-## 補足
-
-- ワークフロー定義は `.github/workflows/` を参照
-- テンプレートは `templates/` を参照
-- 実行サンプルは `demo_runs/` を参照
-
----
-
-## English
-
-This directory is the documentation entry point for detailed technical and operational guidance in RAG Quality Gate.
-
-For product overview and quick onboarding, see [README.md](../README.md).
-
-### Browse By Goal
-
-Getting started:
-
-- [Vendor PoC walkthrough](demo/vendor-poc-walkthrough.md)
-- [onboarding-quickstart](demo/onboarding-quickstart.md)
-- [Proof Gate customer support PoC](user-guide/proof-gate-poc.md)
-- [Windows PowerShell command guide](user-guide/windows-powershell.md)
-- [Quality Pack S1/S2 design guide](user-guide/quality-pack-s1-s2-design.md)
-- [fail-fix-cycle](demo/fail-fix-cycle.md)
-- [impact-cycle](demo/impact-cycle.md)
-- [external-contract-localhost](demo/external-contract-localhost.md) — run the external contract story from localhost to weekly review payload
-- [packs/hr guide](../packs/hr/README.md)
-
-Sales / proposal:
-
-- [FAQ change sales demo draft](sales/customer-support-faq-change-demo.md)
-- [PoC security and deliverables summary](sales/proof-gate-poc-security-and-deliverables.md)
-- [Customer data handling one-pager](sales/customer-data-handling-onepager.md)
-- [PoC offer](sales/proof-gate-poc-offer.md)
-- [After-PoC offer](sales/proof-gate-next-offer.md)
-
-Understanding the code:
-
-- [Phase1.5 code-reading checklist](ops/getting-started/phase1-5-code-reading-checklist.md)
-- [Phase2 code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
-
-Weekly operations:
+PoCから月額監視や内部dogfoodingへ進むときに使います。
 
 - [Weekly metrics register](ops/operations/phase2-5-weekly-metrics-register.md)
 - [Case quality review](ops/operations/phase2-5-case-quality-weekly-review.md)
@@ -130,45 +69,19 @@ Weekly operations:
 - [KPI weekly template](ops/operations/execution-template-charter-kpi-weekly.md)
 - [Internal docs pack guide](ops/operations/phase3-internal-docs-vertical-pack.md)
 
-Product strategy:
+## Archive・作業メモ
 
-- [Product positioning](strategy/product-positioning.md)
-- [Service menu](strategy/service-menu.md)
-- [GTM 0 to 10](strategy/gtm-0-to-10.md)
-- [Product roadmap](roadmap/product-roadmap.md)
+過去Phaseの計画、dogfooding記録、古い読解メモは履歴として扱います。必要なときだけ参照し、現在の導線とは分けます。
 
-Security:
+- [Archive](ops/archive/)
+- [Phase1.5 code-reading checklist](ops/getting-started/phase1-5-code-reading-checklist.md)
+- [Phase2 code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
+- [Notion business drafts](strategy/notion-business/)
 
-- [Logging and evidence policy](security/logging-and-evidence-policy.md)
+## Reference
 
-Past plans & release records:
-
-- [archive/](ops/archive/) — Phase2/2.5 kickoff, plans, release notes, completion records
-
-Architecture rationale:
-
-- [ADR: model boundaries](adr/0001-model-boundaries.md)
-- [ADR: product charter and priorities](adr/0002-product-charter-and-development-priorities.md)
-- [ADR: external RAG integration contract](adr/0003-external-rag-integration-contract.md)
-- [ADR: evaluation status taxonomy](adr/0004-evaluation-status-taxonomy.md)
-- [ADR: quality asset governance](adr/0005-quality-asset-governance.md)
-- [ADR: responsibility boundary for external systems](adr/0006-responsibility-boundary-for-external-systems.md)
-- [ADR: auto-generated review and merge policy](adr/0007-auto-generated-review-and-merge-policy.md)
-- [ADR: RQG scope and non-goals](adr/0008-rqg-scope-and-non-goals.md)
-
-### Glossary
-
-→ [glossary.md](glossary.md)
-
-### Suggested Reading Order
-
-1. Run [onboarding-quickstart](demo/onboarding-quickstart.md) once for the built-in path
-2. If the external endpoint boundary matters first, run [external-contract-localhost](demo/external-contract-localhost.md)
-3. Read [code-reading checklist](ops/getting-started/phase2-code-reading-checklist.md)
-4. Start [weekly metrics](ops/operations/phase2-5-weekly-metrics-register.md)
-
-### Notes
-
-- See `.github/workflows/` for workflow definitions
-- See `templates/` for onboarding templates
-- See `demo_runs/` for execution samples
+- [Glossary](glossary.md)
+- Workflow definitions: [../.github/workflows/](../.github/workflows/)
+- GitHub templates: [../templates/github/](../templates/github/)
+- Sample pack template: [../templates/sample_pack/](../templates/sample_pack/)
+- Demo artifacts: [../demos/](../demos/)

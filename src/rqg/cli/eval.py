@@ -146,6 +146,11 @@ def cmd_eval(args: argparse.Namespace) -> int:
     ):
         default_report_mode = "redacted"
     report_mode = normalize_report_mode(default_report_mode)
+    try:
+        change_event = load_change_event(getattr(args, "change_event_file", None))
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
 
     if adapter_config_path:
         from ..serving.external_adapter import ExternalRAGError, load_http_rag_adapter_config
@@ -303,7 +308,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
                 Path(args.cases).with_name("quality-pack.yml")
             ),
             case_set_version_value=case_set_version(args.cases),
-            change_event=load_change_event(getattr(args, "change_event_file", None)),
+            change_event=change_event,
         )
         provenance_path = write_run_provenance(args.log_dir, run.run_id, provenance)
         if not ci_report_mode:

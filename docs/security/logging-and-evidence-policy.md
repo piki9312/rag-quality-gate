@@ -25,6 +25,18 @@ GitHub Actions must not handle:
 - CI workspace paths such as `/home/runner/work/...`
 - unredacted full report artifacts containing customer text
 
+## `change-event.yml` Data Boundary
+
+`change-event.yml` は release review の補助入力ですが、顧客名、実在文書名、社内パス、target_release、customer-specific summary を入れすぎると、そのまま高リスク metadata になります。
+
+Required handling:
+
+- `change-event.yml` には bounded な ID、version、hash、category、retest reason だけを優先して書く
+- CI-safe artifact には raw asset name / raw document name / path / target_release / customer-specific summary を出さない
+- safe 版では hash / count / bounded metadata のみを扱う
+- full change metadata は local / private runner / customer-controlled 環境のみで扱う
+- sanitizer を前提にせず、入力時点で最小情報にする
+
 ## Report Modes
 
 ### `ci`

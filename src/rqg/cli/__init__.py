@@ -309,7 +309,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Treat missing S1 active-case governance fields as blocking validation errors",
     )
     p_gate.add_argument(
+        "--change-event",
         "--change-event-file",
+        dest="change_event_file",
         default=None,
         help="Optional JSON/YAML file describing the docs/model/prompt/config change event for this run",
     )
@@ -410,7 +412,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Treat missing S1 active-case governance fields as blocking validation errors",
     )
     p_check.add_argument(
+        "--change-event",
         "--change-event-file",
+        dest="change_event_file",
         default=None,
         help="Optional JSON/YAML file describing the docs/model/prompt/config change event for this run",
     )

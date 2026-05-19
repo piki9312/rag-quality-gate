@@ -1,0 +1,21 @@
+change_id: orbitdesk-release-review-202605
+change_type: document_update
+change_summary: Pricing and policy documents changed for refund and cancellation rules.
+changed_assets:
+  - type: document
+    name: pricing_policy_v2
+    version: v2
+    content_hash: demo_hash_pricing_policy_v2
+  - type: document
+    name: refund_policy_v2
+    version: v2
+    content_hash: demo_hash_refund_policy_v2
+  - type: document
+    name: cancellation_policy_v2
+    version: v2
+    content_hash: demo_hash_cancellation_policy_v2
+affected_business_categories:
+  - pricing
+  - refund
+  - cancellation
+retest_reason: Refund eligibility and cancellation deadline answers changed after the policy update.
