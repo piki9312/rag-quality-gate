@@ -1,0 +1,18 @@
+# Safe example: replace only bounded IDs and hashes.
+change_id: pricing-refund-update-001
+change_type: document_update
+change_summary: Pricing and refund source documents were updated.
+changed_assets:
+  - type: document
+    name: pricing_policy_v2
+    version: v2
+    content_hash: example_hash_pricing_v2
+  - type: document
+    name: refund_policy_v2
+    version: v2
+    content_hash: example_hash_refund_v2
+affected_business_categories:
+  - pricing
+  - refund
+  - cancellation
+retest_reason: pricing and refund answers may be affected

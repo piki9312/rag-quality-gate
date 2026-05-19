@@ -181,7 +181,7 @@ def run_demo() -> DemoSummary:
         representative_s1_failure=_representative_s1_failure(before_bundle),
         key_message=(
             "FAQ変更後に古い回答が残る事故をProof GateがS1重大失敗として検知し、"
-            "修正後のv2 reference runでS1失敗の解消とGateのPASS改善を確認できる。"
+            "修正後のv2 reference runでS1失敗の解消とGate改善を確認できる。"
         ),
     )
     SUMMARY_PATH.write_text(json.dumps(asdict(summary), indent=2, ensure_ascii=False), encoding="utf-8")

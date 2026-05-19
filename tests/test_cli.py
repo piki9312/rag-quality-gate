@@ -30,6 +30,13 @@ def _subparser_option_strings(command: str) -> set[str]:
     return {option for action in subparser._actions for option in action.option_strings}
 
 
+def test_gate_and_check_accept_change_event_alias() -> None:
+    assert "--change-event" in _subparser_option_strings("gate")
+    assert "--change-event-file" in _subparser_option_strings("gate")
+    assert "--change-event" in _subparser_option_strings("check")
+    assert "--change-event-file" in _subparser_option_strings("check")
+
+
 def _create_pack_dir(
     base_dir: Path,
     *,

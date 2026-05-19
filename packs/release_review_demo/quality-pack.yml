@@ -1,0 +1,50 @@
+pack:
+  pack_id: release_review_demo
+  name: orbitdesk-release-review-demo
+  version: "0.1"
+  pack_name: OrbitDesk Release Review Demo Pack
+  tenant_name: demo_workspace
+  use_case: faq_change_release_review
+  vertical: customer_support
+  risk_profile: high_external_response
+  environment: demo
+  owner: proofgate-demo
+  review_steward: proofgate-demo
+  pack_version: "0.1.0"
+  source_pack: null
+  created_from_template: false
+  description: Demo pack for pricing and refund and cancellation release review after document updates.
+
+cases_file: cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+risk_domains:
+  - pricing
+  - refund
+  - cancellation
+  - contract_terms
+  - campaign
+
+s1_policy:
+  description: Customer-facing pricing and refund and cancellation answers that can create financial or contractual harm.
+  required_action_on_fail: block
+  required_action_on_uncertain: needs_human_review
+
+reporting:
+  monthly_summary_enabled: true
+  notify_on_s1_fail: true
+
+common_failure_patterns:
+  - name: retrieval_fail
+    symptom: Required policy evidence was not retrieved for a release review case.
+    first_action: Review document ingestion and confirm the intended source document is in the current corpus.
+  - name: evidence_mismatch
+    symptom: The answer contradicts the approved pricing or refund or cancellation evidence.
+    first_action: Align the corpus and prompt behavior with the updated source documents and rerun.
+  - name: answer_quality_fail
+    symptom: The answer reused old pricing or refund or cancellation wording after the change.
+    first_action: Fix the stale source reference and rerun before release approval.
+  - name: needs_human_review
+    symptom: The run still requires human review for exception handling or reliability reasons.
+    first_action: Route the run to the release reviewer before customer release.

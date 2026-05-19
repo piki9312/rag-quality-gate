@@ -147,27 +147,10 @@ def case_set_version(cases_path: str | Path | None) -> str | None:
 
 
 def load_change_event(path: str | Path | None) -> dict[str, Any] | None:
-    payload = load_yaml_or_json(path)
-    if not payload:
-        return None
-    normalized = {
-        "change_event_id": str(payload.get("change_event_id") or "").strip() or None,
-        "change_type": str(payload.get("change_type") or "unknown").strip() or "unknown",
-        "description": str(payload.get("description") or "").strip(),
-        "changed_by": str(payload.get("changed_by") or "").strip(),
-        "changed_at": str(payload.get("changed_at") or "").strip(),
-        "affected_sources": (
-            payload.get("affected_sources")
-            if isinstance(payload.get("affected_sources"), list)
-            else []
-        ),
-        "linked_run_ids": (
-            payload.get("linked_run_ids") if isinstance(payload.get("linked_run_ids"), list) else []
-        ),
-    }
-    if not normalized["change_event_id"]:
-        return None
-    return normalized
+    from rqg.quality.change_event import change_event_to_provenance, load_change_event_file
+
+    event = load_change_event_file(path)
+    return change_event_to_provenance(event) if event is not None else None
 
 
 def load_manual_review_records(path: str | Path | None) -> list[dict[str, Any]]:

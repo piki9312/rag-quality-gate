@@ -133,7 +133,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         baseline_days=args.baseline_days,
         cases_file=args.cases_file,
     )
-    change_event = load_change_event(getattr(args, "change_event_file", None))
+    try:
+        change_event = load_change_event(getattr(args, "change_event_file", None))
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
     if change_event and not result.run_provenance.get("change_event_id"):
         result.run_provenance = {
             **result.run_provenance,

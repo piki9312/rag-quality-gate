@@ -27,6 +27,12 @@ Proof Gate は、RAG AI を「作るだけ」で終わらせず、返金・解�
 
 FAQ・規約・料金表・プロンプト・モデル変更後に高リスク質問を再実行し、重大誤回答リスクと品質劣化を継続確認します。
 
+## `change-event.yml` を使って変更後レビューを残す
+
+`change-event.yml` は、今回のレビューで何を変えたかを最小情報で残す入力です。FAQ / 規約 / 料金表 / プロンプト / モデル / retriever 設定の変更後に、`rqg gate` / `rqg check` へ渡して ReviewPacket の change summary と dashboard 表示を安定させます。
+
+使い始めるときは [templates/change-event.example.yml](../../templates/change-event.example.yml) を複製し、bounded な ID、version、hash、business category だけを埋めてください。顧客名、実在文書名、絶対パス、社内 release 名はできるだけ入れません。
+
 ## 最短営業デモ: FAQ変更事故 before / after
 
 ```powershell
@@ -78,6 +84,19 @@ FAQ・規約・料金表・プロンプト・モデル変更後に高リスク�
 .\.venv\Scripts\python -m rqg.cli report-monthly --log-dir runs\customer_support_pack --month 2026-04
 ```
 
+変更後レビューで `change-event.yml` を付ける例:
+
+```powershell
+.\.venv\Scripts\python -m rqg.cli gate --pack packs\customer_support_pack --mock --change-event change-event.yml --log-dir runs\customer_support_pack --reset-log-dir
+.\.venv\Scripts\python -m rqg.cli check --log-dir runs\customer_support_pack --change-event change-event.yml
+```
+
+このとき Dashboard / review では次を確認します。
+
+- Change Event Card
+- Production Readiness Card / warning
+- Report Preview の Change Summary
+
 ## 顧客に準備してもらうもの
 
 - FAQ、規約、料金表、サポート手順などの対象文書
@@ -111,3 +130,5 @@ PoC case selection may use `S3` as a classification band in `case_set_summary.js
 ローカルPoCでは、文書・ケース・評価ログは指定した作業ディレクトリに保存されます。外部RAG診断では、Proof Gate は外部RAG APIの検索結果と回答を評価し、顧客RAG本体を置き換えません。
 
 実案件では、保存場所、外部送信有無、APIキー管理、ログ保持期間をPoC開始前に合意してください。詳細は [顧客データ取扱い説明](../sales/customer_data_handling_onepager.md) を参照してください。
+
+`change-event.yml` についても同じです。CI-safe artifact には raw asset name / raw document name / path / target_release / customer-specific summary を出さず、full metadata は local / private runner / customer-controlled 環境だけで扱います。sanitizer を前提にせず、入力時点で最小情報にしてください。
