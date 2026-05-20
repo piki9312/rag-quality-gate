@@ -1381,9 +1381,11 @@ def create_dashboard_app(
             raise HTTPException(status_code=404, detail="No runs found for pack")
         rows = []
         for run in reversed(runs):
+            run_id = _esc(run["run_id"])
+            run_href = _href(f"/runs/{run_id}", lang)
             rows.append(
                 "<tr>"
-                f"<td><a href='{_href(f'/runs/{_esc(run['run_id'])}', lang)}'>{_esc(run['run_id'])}</a></td>"
+                f"<td><a href='{run_href}'>{run_id}</a></td>"
                 f"<td>{_esc(run['pack_id'])}</td>"
                 f"<td>{_esc(run.get('policy_status', run['status']))}</td>"
                 f"<td>{_esc('{:.1f}%'.format(run['overall_pass_rate']))}</td>"
@@ -2428,7 +2430,11 @@ def _render_major_failures(run: dict[str, Any], *, lang: str) -> str:
         failure_id = str(failure.get("failure_id") or failure.get("case_id_hash") or "")
         detail = "-"
         if failure.get("full_detail_ref") and failure_id:
-            detail = f"<a class='link-button' href='{_run_href(run['run_id'], lang, f'/failures/{_esc(failure_id)}')}'>{_esc(_tr(lang, 'Detail'))}</a>"
+            failure_suffix = f"/failures/{_esc(failure_id)}"
+            detail_href = _run_href(run["run_id"], lang, failure_suffix)
+            detail = (
+                f"<a class='link-button' href='{detail_href}'>" f"{_esc(_tr(lang, 'Detail'))}</a>"
+            )
         failure_code = (
             failure.get("safe_reason_code")
             or failure.get("failure_category")
