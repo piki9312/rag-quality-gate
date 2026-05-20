@@ -113,7 +113,7 @@ Partner onboarding（初回オンボーディング）は次の流れを前提�
 7. 2 案件目以降はベンダーが自走
 8. 月次で safe 集計をもとに改善支援
 
-この導線では、初回案件で safe/full boundary、review stage、customer submission readiness の考え方を必ずすり合わせます。
+この導線では、初回案件で safe/full boundary、review stage、`customer_shareability`、`customer_submission_readiness` の考え方を必ずすり合わせます。
 
 ## 6. 通常運用導線
 
@@ -134,11 +134,17 @@ Partner onboarding（初回オンボーディング）は次の流れを前提�
 - `post_delivery_change`: 納品後変更事故防止レビュー
 - `monthly_review`: 月次 AI 回答品質レビュー
 
+提出判断の原則:
+
+- `customer_shareability` は、safe に共有できるかの判断です。
+- `customer_submission_readiness` は、正式な顧客提出物として推奨できるかの判断です。
+- No-Go でも safe draft が shareable な場合はありますが、通常は正式提出には使いません。
+
 ## 7. 継続提供価値
 
 monthly partner review を含む継続提供価値は以下です。
 
-- test case pack 更新
+- test pack 更新
 - Failure Pattern 更新
 - Severity / Go-NoGo 基準の改善
 - 顧客提出レポート文言の改善
