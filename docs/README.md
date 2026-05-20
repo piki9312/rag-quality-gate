@@ -9,7 +9,8 @@
 1. [Proof Gate Product Map](strategy/proof-gate-product-map.md) - 事業目的、対象範囲、現在の実装、やらないこと。
 2. [Current Working Set](strategy/current-working-set.md) - 今読む・使う資料だけを集めた入口。
 3. [Product positioning](strategy/product-positioning.md) - Proof Gate が何であり、何ではないか。
-4. [Logging and evidence policy](security/logging-and-evidence-policy.md) - 顧客データ、ログ、artifact、report-modeの境界。
+4. [Partner Platform model](strategy/partner-platform-model.md) - ベンダー向けパートナー提供方式、資産境界、オンボーディング、通常運用の整理。
+5. [Logging and evidence policy](security/logging-and-evidence-policy.md) - 顧客データ、ログ、artifact、report-modeの境界。
 
 ## 顧客向け・営業
 
