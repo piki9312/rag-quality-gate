@@ -430,6 +430,13 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "本番移行の準備は未完了です。1 件のブロッカーと 1 件の注意事項への対応が必要です。" in run_detail.text
     assert "顧客提出レポートを開く" in run_detail.text
     assert "safeモードでは表示しません" in run_detail.text
+    assert "納品判定サマリー" in run_detail.text
+    assert "レビュー段階" in run_detail.text
+    assert "納品後変更レビュー" in run_detail.text
+    assert "正式提出の推奨度" in run_detail.text
+    assert "正式提出は非推奨" in run_detail.text
+    assert "Delivery Review Summary" not in run_detail.text
+    assert "Formal submission readiness" not in run_detail.text
     assert "RAW QUESTION SHOULD NOT RENDER" not in run_detail.text
     assert "RAW ANSWER SHOULD NOT RENDER" not in run_detail.text
 
