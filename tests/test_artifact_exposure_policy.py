@@ -12,6 +12,8 @@ from rqg.quality.check import (
     build_gate_decision,
     render_customer_summary_markdown,
 )
+from rqg.quality.artifact_exposure_policy import ArtifactType, FieldExposure
+from rqg.quality.artifact_exposure_policy import resolve_artifact_exposure
 from rqg.quality.models import QARunRecord, QATestCase
 from rqg.quality.reporting import GateReportArtifacts, build_gate_report_bundle_payload
 
@@ -126,3 +128,18 @@ def test_full_case_rows_preserve_existing_sensitive_fields() -> None:
     assert case_row["ai_answer"] == "raw AI answer with customer detail"
     assert case_row["source_doc"] == "customer/refund-policy.md"
     assert case_row["fail_reason"] == "raw fail reason with customer contract detail"
+
+
+def test_history_summary_policy_hashes_ids_and_denies_raw_content() -> None:
+    policy = resolve_artifact_exposure(ArtifactType.HISTORY_SUMMARY, "full")
+
+    assert policy.exposure_for("overall_pass_rate") == FieldExposure.ALLOWED
+    assert policy.exposure_for("prompt_hash") == FieldExposure.ALLOWED
+    assert policy.exposure_for("case_id") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("target_docs") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("source_doc") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("question") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("answer") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("expected_answer") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("raw_fail_reason") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN

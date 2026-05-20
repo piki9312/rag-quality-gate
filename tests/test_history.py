@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from rqg.cli import main
+from rqg.domain import GateDecision, GateNextAction
+from rqg.quality.history import build_gate_history_summary_payload
+from rqg.quality.staleness import CaseStalenessItem
 
 
 def test_history_command_renders_recent_gate_decisions(capsys) -> None:
@@ -165,3 +170,90 @@ def test_history_command_rejects_invalid_compare_offset(capsys) -> None:
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "--compare-offset must be >= 1" in captured.out
+
+
+def test_history_summary_uses_safe_projection_even_for_full_mode() -> None:
+    raw_case_id = "ACME-SECRET-CASE"
+    decision = GateDecision(
+        run_id="run-history-safe",
+        status="fail",
+        policy_status="block",
+        reasons=[
+            "raw fail_reason question=How does ACME reset payroll? "
+            "answer=Use raw answer expected_answer=golden answer "
+            "source_doc=/customer/source/payroll.md"
+        ],
+        reason_codes=["retrieval_miss"],
+        metrics={
+            "overall_pass_rate": 25.0,
+            "s1_pass_rate": 0.0,
+            "s1_fail_count": 1.0,
+            "current_runs": 4.0,
+        },
+        execution_mode="external_real",
+        provenance={
+            "prompt_hash": "prompt-hash-123",
+            "index_version": "index-v7",
+            "case_set_version": "cases-v2",
+            "endpoint": "https://rag.example.test/search",
+        },
+        next_actions=[
+            GateNextAction(
+                failure_category="retrieval_miss",
+                count=1,
+                action="Define next action in weekly review issue",
+                owner="customer-owner@example.test",
+                affected_case_ids=[raw_case_id],
+            )
+        ],
+        needs_human_review=True,
+        judge_reliability="low",
+        retrieval_reliability="medium",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = build_gate_history_summary_payload(
+        [decision],
+        stale_cases=[
+            CaseStalenessItem(
+                case_id=raw_case_id,
+                name="Customer-authored summary",
+                severity="S1",
+                owner="customer-owner@example.test",
+                reference_field="source_doc",
+                reference_value="/customer/source/payroll.md",
+                age_days=42,
+                issue="raw fail_reason includes customer text",
+            )
+        ],
+        stale_after_days=30,
+        fresh_case_review_rate=50.0,
+        fresh_case_count=1,
+        fresh_case_total=4,
+        review_steward="customer-owner@example.test",
+    )
+    serialized = json.dumps(payload, ensure_ascii=False)
+
+    for forbidden in [
+        "How does ACME reset payroll?",
+        "Use raw answer",
+        "golden answer",
+        "/customer/source/payroll.md",
+        raw_case_id,
+        "raw fail_reason",
+        "Customer-authored summary",
+        "customer-owner@example.test",
+        "https://rag.example.test/search",
+    ]:
+        assert forbidden not in serialized
+
+    assert payload["review_steward"] is None
+    assert payload["uncovered_categories"][0]["case_id_hashes"]
+    assert payload["stale_case_review"]["stale_cases"][0]["case_id_hash"]
+    assert payload["comparison"] is None
+    assert payload["reliability"]["judge_reliability"] == "low"
+    assert payload["reliability"]["retrieval_reliability"] == "medium"
+    assert payload["provenance"]["prompt_hash"] == "prompt-hash-123"
+    assert payload["provenance"]["index_version"] == "index-v7"
+    assert payload["provenance"]["case_set_version"] == "cases-v2"
+    assert payload["stale_case_review"]["total_cases"] == 4

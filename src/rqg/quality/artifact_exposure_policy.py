@@ -13,6 +13,8 @@ class ArtifactType(str, Enum):
     CUSTOMER_SUMMARY = "customer_summary"
     CI_CASE_ROW = "ci_case_row"
     NOTIFICATION_PAYLOAD = "notification_payload"
+    HISTORY_SUMMARY = "history_summary"
+    GATE_DECISION_HISTORY = "gate_decision_history"
 
 
 class FieldExposure(str, Enum):
@@ -206,6 +208,131 @@ _NOTIFICATION_FORBIDDEN = frozenset(
     }
 )
 
+_HISTORY_ALLOWED = frozenset(
+    {
+        "action_deltas",
+        "age_days",
+        "aggregate_counts",
+        "baseline_runs",
+        "case_id_hash",
+        "case_id_hashes",
+        "case_set_version",
+        "compare_offset",
+        "comparison",
+        "covered",
+        "covered_categories",
+        "coverage_rate",
+        "created_at",
+        "current",
+        "current_count",
+        "current_run_id",
+        "current_runs",
+        "current_status",
+        "delta",
+        "embedding_fallback_count",
+        "embedding_fallback_used",
+        "entries",
+        "execution_mode",
+        "failed_cases",
+        "failure_action_coverage",
+        "failure_category",
+        "failure_type_code",
+        "fresh_case_count",
+        "fresh_case_review_rate",
+        "index_version",
+        "judge_failure_types",
+        "judge_fallback_count",
+        "judge_fallback_used",
+        "judge_reliability",
+        "key",
+        "label",
+        "last_seen_run_id",
+        "latest_run_id",
+        "latest_status",
+        "metric_deltas",
+        "needs_human_review",
+        "new_reason_codes",
+        "overall_pass_rate",
+        "pass",
+        "policy_status",
+        "previous",
+        "previous_count",
+        "previous_run_id",
+        "previous_status",
+        "prompt_hash",
+        "provenance",
+        "quality_pack_version",
+        "reason_code",
+        "reason_codes",
+        "reliability",
+        "retrieval_reliability",
+        "resolved_reason_codes",
+        "review_steward",
+        "run_id",
+        "s1_failed_count",
+        "s1_pass_rate",
+        "safe_reason_codes",
+        "stale_after_days",
+        "stale_case_review",
+        "stale_cases",
+        "stale_cases_count",
+        "status_mix",
+        "status_sequence",
+        "streak_count",
+        "summary_lines",
+        "total_cases",
+        "total_categories",
+        "total_count",
+        "trend",
+        "trend_metrics",
+        "trend_window",
+        "uncovered_categories",
+        "unit",
+        "warn",
+        "week_start",
+        "window_size",
+        "fail",
+    }
+)
+
+_HISTORY_FORBIDDEN = frozenset(
+    {
+        "ai_answer",
+        "answer",
+        "api_key",
+        "api_keys",
+        "case_id",
+        "change_event",
+        "change_event_text",
+        "customer_name",
+        "endpoint",
+        "endpoint_url",
+        "expected_answer",
+        "expected_evidence",
+        "fail_reason",
+        "failure_reason",
+        "internal_notes",
+        "name",
+        "notes",
+        "owner",
+        "question",
+        "rag_endpoint",
+        "raw_answer",
+        "raw_case_id",
+        "raw_change_event",
+        "raw_fail_reason",
+        "reference_value",
+        "retrieved_evidence",
+        "secret",
+        "secrets",
+        "source_doc",
+        "summary",
+        "target_docs",
+        "token",
+        "tokens",
+    }
+)
+
 
 def resolve_artifact_exposure(
     artifact_type: ArtifactType | str,
@@ -222,6 +349,19 @@ def resolve_artifact_exposure(
             allowed_fields=_NOTIFICATION_ALLOWED,
             hashed_only_fields=frozenset({"case_id"}),
             forbidden_fields=_NOTIFICATION_FORBIDDEN,
+        )
+    if resolved_artifact_type in {
+        ArtifactType.HISTORY_SUMMARY,
+        ArtifactType.GATE_DECISION_HISTORY,
+    }:
+        return ArtifactExposurePolicy(
+            artifact_type=resolved_artifact_type,
+            report_mode=normalized_report_mode,
+            allowed_fields=_HISTORY_ALLOWED,
+            hashed_only_fields=frozenset(
+                {"case_id", "change_event_id", "source_doc", "target_docs"}
+            ),
+            forbidden_fields=_HISTORY_FORBIDDEN,
         )
 
     if normalized_report_mode == "full":

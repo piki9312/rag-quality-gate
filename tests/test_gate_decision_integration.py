@@ -1406,7 +1406,8 @@ common_failure_patterns:
     assert summary_payload["comparison"]["previous_run_id"] == "run-201"
     assert summary_payload["failure_action_coverage"]["coverage_rate"] == 50.0
     assert summary_payload["uncovered_categories"][0]["failure_category"] == "unknown"
-    assert summary_payload["uncovered_categories"][0]["affected_case_ids"] == ["QA-4"]
+    assert "affected_case_ids" not in summary_payload["uncovered_categories"][0]
+    assert summary_payload["uncovered_categories"][0]["case_id_hashes"]
 
 
 def test_check_command_summary_includes_review_steward_and_stale_owner_rollup() -> None:
@@ -1473,5 +1474,6 @@ def test_check_command_summary_includes_review_steward_and_stale_owner_rollup() 
     )
     assert summary_payload["review_steward"] == "ops-team"
     assert summary_payload["stale_case_review"]["stale_cases_count"] == 1
-    assert summary_payload["stale_case_review"]["owners"][0]["owner"] == "hr-team"
-    assert summary_payload["stale_case_review"]["owners"][0]["case_ids"] == ["QA-stale-1"]
+    assert "owners" not in summary_payload["stale_case_review"]
+    assert summary_payload["stale_case_review"]["stale_cases"][0]["case_id_hash"]
+    assert "QA-stale-1" not in json.dumps(summary_payload, ensure_ascii=False)
