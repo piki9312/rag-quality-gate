@@ -52,11 +52,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         SIMULATION_WARNING_JA,
         is_simulation_execution_mode,
         load_change_event,
-        load_yaml_or_json,
         load_manual_review_records,
+        load_yaml_or_json,
     )
     from ..quality.report_mode_policy import ReportModeContext, resolve_report_mode_policy
-    from ..quality.review_stage import resolve_review_stage
     from ..quality.reporting import (
         BundleJsonReportAdapter,
         DecisionHistoryJsonlReportAdapter,
@@ -67,6 +66,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         SafeDecisionHistoryJsonlReportAdapter,
         safe_relative_artifact_path,
     )
+    from ..quality.review_stage import resolve_review_stage
 
     try:
         github_actions = github_actions_enabled()
@@ -77,9 +77,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 github_actions=github_actions,
                 customer_facing=bool(getattr(args, "customer_facing", False)),
                 mock=bool(getattr(args, "mock", False)),
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
         if early_report_policy.blocked:
@@ -145,9 +143,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 customer_facing=bool(getattr(args, "customer_facing", False)),
                 execution_mode=result.execution_mode,
                 mock=bool(getattr(args, "mock", False)),
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
     except ValueError as exc:

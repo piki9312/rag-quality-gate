@@ -285,8 +285,11 @@ def test_notification_payload_uses_safe_projection_even_in_full_mode() -> None:
 
 
 def test_notification_payload_policy_default_denies_raw_fields() -> None:
-    from rqg.quality.artifact_exposure_policy import ArtifactType, FieldExposure
-    from rqg.quality.artifact_exposure_policy import resolve_artifact_exposure
+    from rqg.quality.artifact_exposure_policy import (
+        ArtifactType,
+        FieldExposure,
+        resolve_artifact_exposure,
+    )
 
     policy = resolve_artifact_exposure(ArtifactType.NOTIFICATION_PAYLOAD, "full")
 

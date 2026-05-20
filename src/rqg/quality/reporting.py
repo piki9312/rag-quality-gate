@@ -404,9 +404,7 @@ def _build_review_failures(
             str(getattr(item, "case_id", "")),
         ),
     ):
-        if record.passed and not (
-            record.judge_fallback_used or record.embedding_fallback_used
-        ):
+        if record.passed and not (record.judge_fallback_used or record.embedding_fallback_used):
             continue
         case = case_by_id.get(record.case_id)
         failure_category = str(record.failure_category or record.failure_type or "").strip()
@@ -429,9 +427,7 @@ def _build_review_failures(
             failure_type=record.failure_type,
             business_category=business_category,
             required_action=(
-                getattr(case, "required_action", "")
-                if case
-                else record.required_action
+                getattr(case, "required_action", "") if case else record.required_action
             ),
             human_review_required=human_review_required,
         )
@@ -462,9 +458,7 @@ def _build_review_failures(
                     str(getattr(case, "question", "") or "") if packet_mode == "full" else ""
                 ),
                 expected_summary=(
-                    str(getattr(case, "expected_answer", "") or "")
-                    if packet_mode == "full"
-                    else ""
+                    str(getattr(case, "expected_answer", "") or "") if packet_mode == "full" else ""
                 ),
                 actual_summary=str(record.answer or "") if packet_mode == "full" else "",
                 evidence_status=_evidence_status(record),
@@ -780,9 +774,7 @@ def _build_change_summary(
             "affected_business_categories": [],
             "target_release": "",
             "change_summary": (
-                "Change event metadata is available."
-                if raw_change_event is not None
-                else ""
+                "Change event metadata is available." if raw_change_event is not None else ""
             ),
             "retest_reason": _safe_retest_reason(change_type, raw_change_event),
             "changed_assets": [],
@@ -1096,9 +1088,7 @@ def _build_report_sections(
 ) -> dict[str, str]:
     customer_status = _customer_status(decision)
     critical_or_high = [
-        failure
-        for failure in failures
-        if failure.customer_severity in {"Critical", "High"}
+        failure for failure in failures if failure.customer_severity in {"Critical", "High"}
     ]
     corpus = document_corpus or {}
     corpus_summary = (
@@ -1397,9 +1387,7 @@ def build_customer_review_markdown(packet: ReviewPacket | dict[str, object]) -> 
         else {}
     )
     change = (
-        payload.get("change_summary", {})
-        if isinstance(payload.get("change_summary"), dict)
-        else {}
+        payload.get("change_summary", {}) if isinstance(payload.get("change_summary"), dict) else {}
     )
     corpus = (
         payload.get("document_corpus", {})
@@ -1422,10 +1410,7 @@ def build_customer_review_markdown(packet: ReviewPacket | dict[str, object]) -> 
         else {}
     )
     review_stage = str(payload.get("review_stage") or "unknown")
-    title = str(
-        report_sections.get("report_title")
-        or _customer_report_title(review_stage)
-    )
+    title = str(report_sections.get("report_title") or _customer_report_title(review_stage))
     blocking_items = payload.get("blocking_items", [])
     if not isinstance(blocking_items, list):
         blocking_items = []
@@ -1528,9 +1513,7 @@ def _build_production_readiness(
     blockers: list[dict[str, str]] = []
     warnings: list[dict[str, str]] = []
 
-    critical_count = sum(
-        1 for failure in failures if failure.customer_severity == "Critical"
-    )
+    critical_count = sum(1 for failure in failures if failure.customer_severity == "Critical")
     if critical_count:
         blockers.append(
             _readiness_blocker(

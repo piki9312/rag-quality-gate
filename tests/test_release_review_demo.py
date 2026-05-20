@@ -7,7 +7,6 @@ from pathlib import Path
 from rqg.cli import main
 from rqg.quality.change_event import load_change_event_file
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PACK_DIR = REPO_ROOT / "packs" / "release_review_demo"
 
@@ -59,9 +58,7 @@ def test_release_review_demo_assets_are_complete_and_safe() -> None:
         assert required_text in readme
 
 
-def test_release_review_demo_gate_produces_no_go_review_packet(
-    tmp_path, monkeypatch
-) -> None:
+def test_release_review_demo_gate_produces_no_go_review_packet(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("HF_HUB_OFFLINE", "1")
     monkeypatch.setenv("TRANSFORMERS_OFFLINE", "1")
 

@@ -27,9 +27,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
                 mock=bool(getattr(args, "mock", False)),
                 rag_endpoint=getattr(args, "rag_endpoint", None),
                 adapter_config=getattr(args, "adapter_config", None),
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
     except ValueError as exc:

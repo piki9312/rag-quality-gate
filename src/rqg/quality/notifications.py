@@ -270,7 +270,9 @@ def _build_summary_text(
     if report_path:
         lines.append(f"Report: {_safe_notification_artifact_path(report_path, decision_path)}")
     if decision_path:
-        lines.append(f"Decision JSON: {_safe_notification_artifact_path(decision_path, report_path)}")
+        lines.append(
+            f"Decision JSON: {_safe_notification_artifact_path(decision_path, report_path)}"
+        )
     return "\n".join(lines)
 
 

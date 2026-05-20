@@ -4,6 +4,11 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from rqg.quality.artifact_exposure_policy import (
+    ArtifactType,
+    FieldExposure,
+    resolve_artifact_exposure,
+)
 from rqg.quality.check import (
     CheckResult,
     ThresholdResult,
@@ -12,8 +17,6 @@ from rqg.quality.check import (
     build_gate_decision,
     render_customer_summary_markdown,
 )
-from rqg.quality.artifact_exposure_policy import ArtifactType, FieldExposure
-from rqg.quality.artifact_exposure_policy import resolve_artifact_exposure
 from rqg.quality.models import QARunRecord, QATestCase
 from rqg.quality.reporting import GateReportArtifacts, build_gate_report_bundle_payload
 

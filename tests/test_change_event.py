@@ -7,7 +7,6 @@ import pytest
 from rqg.cli import build_parser
 from rqg.quality.change_event import change_event_to_provenance, load_change_event_file
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 

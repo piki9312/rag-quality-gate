@@ -1,17 +1,17 @@
 """Domain models for Phase 1 quality gate scaffolding."""
 
-from .connection_validation import ConnectionValidationErrorType, ConnectionValidationResult
 from .change_event import ChangedAsset, ChangeEvent
+from .connection_validation import ConnectionValidationErrorType, ConnectionValidationResult
 from .document_snapshot import DocumentSnapshot
 from .eval_case import EvalCase
 from .gate_decision import GateApprovalInfo, GateDecision, GateNextAction, GatePackMetadata
 from .impact_report import ImpactDetail, ImpactReport
 from .review_packet import (
-    BlockingReason,
     BlockingItem,
+    BlockingReason,
     ChangeSummary,
-    CustomerSubmissionReadiness,
     CustomerShareability,
+    CustomerSubmissionReadiness,
     DecisionExplanation,
     DeliveryReview,
     DocumentCorpus,

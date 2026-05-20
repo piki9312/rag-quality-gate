@@ -278,10 +278,7 @@ def build_gate_history_summary_payload(
     uncovered_categories = (
         []
         if coverage is None
-        else [
-            _serialize_safe_action_coverage_item(item)
-            for item in coverage.uncovered_categories
-        ]
+        else [_serialize_safe_action_coverage_item(item) for item in coverage.uncovered_categories]
     )
     stale_case_review = _build_safe_stale_case_review_payload(
         stale_cases or [],

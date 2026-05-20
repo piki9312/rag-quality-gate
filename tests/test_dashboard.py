@@ -427,7 +427,10 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "重大なケースを修正して再検査してください。" in run_detail.text
     assert "根拠不一致 (evidence_mismatch)" in run_detail.text
     assert "根拠文書に沿って回答を修正し、再検査してください。" in run_detail.text
-    assert "本番移行の準備は未完了です。1 件のブロッカーと 1 件の注意事項への対応が必要です。" in run_detail.text
+    assert (
+        "本番移行の準備は未完了です。1 件のブロッカーと 1 件の注意事項への対応が必要です。"
+        in run_detail.text
+    )
     assert "顧客提出レポートを開く" in run_detail.text
     assert "safeモードでは表示しません" in run_detail.text
     assert "納品判定サマリー" in run_detail.text

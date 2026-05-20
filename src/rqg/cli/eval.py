@@ -130,9 +130,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
                 mock=bool(getattr(args, "mock", False)),
                 rag_endpoint=rag_endpoint,
                 adapter_config=adapter_config_path,
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
     except ValueError as exc:
@@ -180,9 +178,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
                 mock=bool(getattr(args, "mock", False)),
                 rag_endpoint=rag_endpoint,
                 adapter_config=adapter_config_path,
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
     except ValueError as exc:

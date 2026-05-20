@@ -9,8 +9,8 @@ from rqg.quality.check import CheckResult, ThresholdResult, build_gate_decision
 from rqg.quality.models import QARunRecord, QATestCase
 from rqg.quality.reporting import (
     GateReportArtifacts,
-    build_gate_report_bundle_payload,
     build_customer_review_markdown,
+    build_gate_report_bundle_payload,
     build_review_packet_full,
     build_review_packet_safe,
 )
