@@ -12,6 +12,7 @@ class ArtifactType(str, Enum):
     GATE_REPORT_JSON = "gate_report_json"
     CUSTOMER_SUMMARY = "customer_summary"
     CI_CASE_ROW = "ci_case_row"
+    NOTIFICATION_PAYLOAD = "notification_payload"
 
 
 class FieldExposure(str, Enum):
@@ -143,6 +144,68 @@ _CI_FORBIDDEN = frozenset(
     }
 )
 
+_NOTIFICATION_ALLOWED = frozenset(
+    {
+        "case_id_hash",
+        "created_at",
+        "decision_path",
+        "event",
+        "execution_mode",
+        "failed_cases",
+        "failure_category",
+        "failure_type_code",
+        "gate_status",
+        "needs_human_review",
+        "overall_pass_rate",
+        "policy_status",
+        "reason_code",
+        "reason_codes",
+        "report_mode",
+        "report_path",
+        "run_id",
+        "s1_failed_count",
+        "s1_pass_rate",
+        "safe_reason_codes",
+        "status",
+        "summary",
+        "text",
+        "total_cases",
+    }
+)
+
+_NOTIFICATION_FORBIDDEN = frozenset(
+    {
+        "ai_answer",
+        "answer",
+        "api_key",
+        "api_keys",
+        "case_id",
+        "change_event",
+        "customer_authored_identifiers",
+        "endpoint",
+        "endpoint_url",
+        "expected_answer",
+        "expected_evidence",
+        "fail_reason",
+        "failure_reason",
+        "internal_notes",
+        "notes",
+        "question",
+        "rag_endpoint",
+        "raw_answer",
+        "raw_case_id",
+        "raw_change_event",
+        "raw_fail_reason",
+        "retrieved_evidence",
+        "secret",
+        "secrets",
+        "source_doc",
+        "target_docs",
+        "token",
+        "tokens",
+    }
+)
+
 
 def resolve_artifact_exposure(
     artifact_type: ArtifactType | str,
@@ -151,6 +214,15 @@ def resolve_artifact_exposure(
     """Resolve the allowlist policy for one artifact/report mode pair."""
     resolved_artifact_type = ArtifactType(artifact_type)
     normalized_report_mode = normalize_report_mode_value(report_mode)
+
+    if resolved_artifact_type == ArtifactType.NOTIFICATION_PAYLOAD:
+        return ArtifactExposurePolicy(
+            artifact_type=resolved_artifact_type,
+            report_mode=normalized_report_mode,
+            allowed_fields=_NOTIFICATION_ALLOWED,
+            hashed_only_fields=frozenset({"case_id"}),
+            forbidden_fields=_NOTIFICATION_FORBIDDEN,
+        )
 
     if normalized_report_mode == "full":
         return ArtifactExposurePolicy(

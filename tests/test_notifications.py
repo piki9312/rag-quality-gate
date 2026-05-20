@@ -56,7 +56,7 @@ def test_check_sends_notifications_from_rqg_config() -> None:
     payload = json.loads(request.data.decode("utf-8"))
     assert payload["event"] == "rqg.gate_decision"
     assert payload["status"] == "fail"
-    assert payload["decision_path"] == decision_path.as_posix()
+    assert payload["decision_path"] == "gate-decision.json"
 
 
 def test_check_warns_when_notification_delivery_fails(capsys, monkeypatch) -> None:
@@ -156,7 +156,7 @@ def test_notifications_do_not_include_sensitive_text() -> None:
         assert "SECRET_TOKEN_ABC" not in text
         assert "/internal/customer/path.md" not in text
 
-    assert "retrieval_miss" in slack_text
+    assert "retrieval_fail" in slack_text
     assert '"policy_status": "block"' in webhook_text
     assert '"report_path": "gate-report.md"' in webhook_text
 
@@ -213,6 +213,86 @@ def test_ci_notification_payloads_are_safe_summary_only() -> None:
     ]:
         assert forbidden not in combined
 
-    assert "retrieval_miss" in combined
+    assert "retrieval_fail" in combined
     assert '"policy_status": "block"' in combined
     assert "gate-report-ci.md" in combined
+
+
+def test_notification_payload_uses_safe_projection_even_in_full_mode() -> None:
+    raw_case_id = "ACME-CASE-777"
+    decision = GateDecision(
+        run_id="run-notify-full",
+        status="fail",
+        policy_status="block",
+        reasons=[
+            "raw fail_reason: question=How does ACME reset payroll? "
+            "answer=Use source_doc payroll.md endpoint=https://rag.example.test"
+        ],
+        reason_codes=["retrieval_miss"],
+        metrics={
+            "overall_pass_rate": 25.0,
+            "s1_pass_rate": 0.0,
+            "s1_fail_count": 1.0,
+            "current_runs": 4.0,
+        },
+        next_actions=[
+            GateNextAction(
+                failure_category="retrieval_miss",
+                count=1,
+                action="Investigate raw answer and expected_answer in source_doc",
+                owner="customer-owner@example.test",
+                affected_case_ids=[raw_case_id],
+            )
+        ],
+        fallback_summary={"expected_evidence": "payroll.md#secret"},
+        needs_human_review=True,
+        execution_mode="external_real",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = _build_payload(
+        kind="webhook",
+        decision=decision,
+        report_path="C:/workspace/customer/logs/gate-report.md",
+        decision_path="C:/workspace/customer/logs/gate-decision.json",
+        report_mode="full",
+    )
+    serialized = json.dumps(payload, ensure_ascii=False)
+
+    for forbidden in [
+        "How does ACME reset payroll?",
+        "Use source_doc",
+        "expected_answer",
+        "expected_evidence",
+        "payroll.md",
+        "source_doc",
+        raw_case_id,
+        "raw fail_reason",
+        "https://rag.example.test",
+        "customer-owner@example.test",
+        "C:/workspace/customer/logs",
+    ]:
+        assert forbidden not in serialized
+
+    assert "case_id_hash" in payload
+    assert payload["case_id_hash"]
+    assert payload["reason_codes"] == ["retrieval_fail", "needs_human_review"]
+    assert payload["failure_type_code"] == "retrieval_fail"
+    assert payload["report_path"] == "gate-report.md"
+    assert payload["decision_path"] == "gate-decision.json"
+    assert payload["report_mode"] == "full"
+    assert payload["execution_mode"] == "external_real"
+
+
+def test_notification_payload_policy_default_denies_raw_fields() -> None:
+    from rqg.quality.artifact_exposure_policy import ArtifactType, FieldExposure
+    from rqg.quality.artifact_exposure_policy import resolve_artifact_exposure
+
+    policy = resolve_artifact_exposure(ArtifactType.NOTIFICATION_PAYLOAD, "full")
+
+    assert policy.exposure_for("case_id") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("question") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("answer") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("expected_answer") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("source_doc") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN

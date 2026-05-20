@@ -99,6 +99,7 @@ def test_notification_payload_sanitizes_free_text_fields() -> None:
     )
     payload_text = str(payload)
 
-    assert "[REDACTED]" in payload_text
     assert "abcdefghijklmnopqrstuvwxyz1234567890" not in payload_text
     assert r"C:\Users\someone\workspace" not in payload_text
+    assert "retrieval_fail" in payload_text
+    assert payload["report_path"] == "gate-report.json"
