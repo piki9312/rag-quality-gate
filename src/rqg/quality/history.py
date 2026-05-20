@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 from pydantic import ValidationError
 
 from ..domain import GateDecision
+from .artifact_exposure_policy import ArtifactType, resolve_artifact_exposure
+from .reason_taxonomy import canonical_reason
 from .staleness import CaseStalenessItem
 
 _TRACKED_HISTORY_METRICS: tuple[tuple[str, str, str], ...] = (
@@ -24,6 +29,8 @@ _TRACKED_HISTORY_METRICS: tuple[tuple[str, str, str], ...] = (
 )
 
 _DEFAULT_NEXT_ACTION_HINT = "Define next action in weekly review issue"
+_UNKNOWN_REASON_CODE = "unknown_failure"
+_SAFE_CODE_RE = re.compile(r"^[a-z0-9_]{1,80}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,18 +275,15 @@ def build_gate_history_summary_payload(
     trend = summarize_gate_history(decisions, trend_window=trend_window)
     coverage = summarize_failure_action_coverage(decisions, trend_window=trend_window)
     comparison = build_gate_history_comparison(decisions, compare_offset=compare_offset)
-    summary_lines = build_gate_history_summary_lines(
-        decisions,
-        compare_offset=compare_offset,
-        trend_window=trend_window,
-    )
-
     uncovered_categories = (
         []
         if coverage is None
-        else [_serialize_action_coverage_item(item) for item in coverage.uncovered_categories]
+        else [
+            _serialize_safe_action_coverage_item(item)
+            for item in coverage.uncovered_categories
+        ]
     )
-    stale_case_review = _build_stale_case_review_payload(
+    stale_case_review = _build_safe_stale_case_review_payload(
         stale_cases or [],
         stale_after_days=stale_after_days,
         fresh_case_review_rate=fresh_case_review_rate,
@@ -287,22 +291,31 @@ def build_gate_history_summary_payload(
         fresh_case_total=fresh_case_total,
     )
 
-    return {
+    raw_payload = {
         "entries": len(decisions),
         "status_mix": counts,
         "execution_mode": decisions[-1].execution_mode if decisions else None,
         "week_start": _week_start_iso(decisions[-1].created_at) if decisions else None,
         "compare_offset": compare_offset,
         "trend_window": trend_window,
-        "summary_lines": summary_lines,
+        "summary_lines": _build_safe_history_summary_lines(
+            entries=len(decisions),
+            status_mix=counts,
+            trend=trend,
+            coverage=coverage,
+            comparison=comparison,
+            latest_decision=decisions[-1] if decisions else None,
+        ),
         "trend": _serialize_history_trend(trend),
-        "comparison": _serialize_history_comparison(comparison),
-        "failure_action_coverage": _serialize_failure_action_coverage(coverage),
+        "comparison": _serialize_safe_history_comparison(comparison),
+        "failure_action_coverage": _serialize_safe_failure_action_coverage(coverage),
         "uncovered_categories": uncovered_categories,
         "stale_case_review": stale_case_review,
         "reliability": _serialize_reliability(decisions[-1]) if decisions else None,
-        "review_steward": (review_steward or "").strip() or None,
+        "provenance": _safe_history_provenance(decisions[-1].provenance if decisions else {}),
+        "review_steward": _safe_bounded_label(review_steward),
     }
+    return _project_history_payload(raw_payload)
 
 
 def build_gate_history_summary_lines(
@@ -601,6 +614,33 @@ def _serialize_history_comparison(
     }
 
 
+def _serialize_safe_history_comparison(
+    comparison: GateDecisionComparison | None,
+) -> dict[str, object] | None:
+    if comparison is None:
+        return None
+    return {
+        "current_run_id": comparison.current_run_id,
+        "previous_run_id": comparison.previous_run_id,
+        "current_status": comparison.current_status,
+        "previous_status": comparison.previous_status,
+        "metric_deltas": [_serialize_metric_delta(metric) for metric in comparison.metric_deltas],
+        "new_reason_codes": [
+            code
+            for code in (_safe_reason_code(reason) for reason in comparison.new_reasons)
+            if code
+        ],
+        "resolved_reason_codes": [
+            code
+            for code in (_safe_reason_code(reason) for reason in comparison.resolved_reasons)
+            if code
+        ],
+        "action_deltas": [
+            _serialize_action_delta(action_delta) for action_delta in comparison.action_deltas
+        ],
+    }
+
+
 def _serialize_history_trend(trend: GateHistoryTrend | None) -> dict[str, object] | None:
     if trend is None:
         return None
@@ -627,6 +667,16 @@ def _serialize_action_coverage_item(item: GateActionCoverageItem) -> dict[str, o
     }
 
 
+def _serialize_safe_action_coverage_item(item: GateActionCoverageItem) -> dict[str, object]:
+    return {
+        "failure_category": _safe_reason_code(item.failure_category),
+        "total_count": item.total_count,
+        "last_seen_run_id": item.last_seen_run_id,
+        "covered": item.covered,
+        "case_id_hashes": [_stable_history_hash(case_id) for case_id in item.affected_case_ids],
+    }
+
+
 def _serialize_failure_action_coverage(
     coverage: GateFailureActionCoverage | None,
 ) -> dict[str, object] | None:
@@ -638,6 +688,22 @@ def _serialize_failure_action_coverage(
         "coverage_rate": coverage.coverage_rate,
         "uncovered_categories": [
             _serialize_action_coverage_item(item) for item in coverage.uncovered_categories
+        ],
+        "window_size": coverage.window_size,
+    }
+
+
+def _serialize_safe_failure_action_coverage(
+    coverage: GateFailureActionCoverage | None,
+) -> dict[str, object] | None:
+    if coverage is None:
+        return None
+    return {
+        "total_categories": coverage.total_categories,
+        "covered_categories": coverage.covered_categories,
+        "coverage_rate": coverage.coverage_rate,
+        "uncovered_categories": [
+            _serialize_safe_action_coverage_item(item) for item in coverage.uncovered_categories
         ],
         "window_size": coverage.window_size,
     }
@@ -707,6 +773,41 @@ def _serialize_stale_case_item(item: CaseStalenessItem) -> dict[str, object]:
     }
 
 
+def _build_safe_stale_case_review_payload(
+    stale_cases: list[CaseStalenessItem],
+    *,
+    stale_after_days: int,
+    fresh_case_review_rate: float | None,
+    fresh_case_count: int,
+    fresh_case_total: int,
+) -> dict[str, object] | None:
+    if (
+        stale_after_days <= 0
+        and fresh_case_review_rate is None
+        and fresh_case_total <= 0
+        and not stale_cases
+    ):
+        return None
+
+    return {
+        "stale_after_days": stale_after_days,
+        "fresh_case_review_rate": fresh_case_review_rate,
+        "fresh_case_count": fresh_case_count,
+        "total_cases": fresh_case_total,
+        "stale_cases_count": len(stale_cases),
+        "stale_cases": [_serialize_safe_stale_case_item(item) for item in stale_cases],
+    }
+
+
+def _serialize_safe_stale_case_item(item: CaseStalenessItem) -> dict[str, object]:
+    return {
+        "case_id_hash": _stable_history_hash(item.case_id),
+        "severity": item.severity,
+        "age_days": item.age_days,
+        "reason_code": _safe_reason_code(item.issue),
+    }
+
+
 def _is_structured_action(action: str) -> bool:
     normalized = str(action).strip()
     return bool(normalized) and normalized.lower() != _DEFAULT_NEXT_ACTION_HINT.lower()
@@ -735,6 +836,120 @@ def _summarize_items(items: list[str], *, limit: int) -> str:
     if remaining > 0:
         summary += f" (+{remaining} more)"
     return summary or "-"
+
+
+def _build_safe_history_summary_lines(
+    *,
+    entries: int,
+    status_mix: dict[str, int],
+    trend: GateHistoryTrend | None,
+    coverage: GateFailureActionCoverage | None,
+    comparison: GateDecisionComparison | None,
+    latest_decision: GateDecision | None,
+) -> list[str]:
+    lines = [
+        f"- Entries: {entries}",
+        (
+            "- Status mix: "
+            f"pass={status_mix.get('pass', 0)} "
+            f"warn={status_mix.get('warn', 0)} "
+            f"fail={status_mix.get('fail', 0)}"
+        ),
+    ]
+    if latest_decision is not None:
+        lines.append(
+            f"- Latest status: {latest_decision.status.upper()} ({latest_decision.run_id})"
+        )
+        lines.append(f"- Execution mode: {latest_decision.execution_mode}")
+        lines.append(f"- Judge reliability: {latest_decision.judge_reliability.upper()}")
+        lines.append(f"- Retrieval reliability: {latest_decision.retrieval_reliability.upper()}")
+        lines.append(
+            f"- Needs human review: {'YES' if latest_decision.needs_human_review else 'NO'}"
+        )
+    if trend is not None:
+        lines.append(f"- Current streak: {trend.latest_status} x{trend.streak_count}")
+        lines.append(f"- Trend window: {trend.window_size}")
+    if coverage is not None:
+        lines.append(
+            "- Failure action coverage "
+            f"(last {coverage.window_size}): {coverage.covered_categories}/"
+            f"{coverage.total_categories} categories ({coverage.coverage_rate:.1f}%)"
+        )
+    if comparison is not None:
+        lines.append(
+            f"- Compared runs: {comparison.previous_run_id} -> {comparison.current_run_id}"
+        )
+        lines.append(
+            f"- Status change: {comparison.previous_status} -> {comparison.current_status}"
+        )
+    return lines
+
+
+def _project_history_payload(payload: dict[str, object]) -> dict[str, object]:
+    policy = resolve_artifact_exposure(ArtifactType.HISTORY_SUMMARY, "full")
+    projected: dict[str, object] = {}
+    for key, value in payload.items():
+        if policy.allows(key):
+            projected[key] = _project_history_value(value, policy=policy)
+        elif policy.hashes_only(key):
+            projected[f"{key}_hash"] = _stable_history_hash(value)
+    return projected
+
+
+def _project_history_value(value: Any, *, policy: Any) -> object:
+    if isinstance(value, dict):
+        projected: dict[str, object] = {}
+        for key, item in value.items():
+            field_name = str(key)
+            if policy.allows(field_name):
+                projected[field_name] = _project_history_value(item, policy=policy)
+            elif policy.hashes_only(field_name):
+                projected[f"{field_name}_hash"] = _stable_history_hash(item)
+        return projected
+    if isinstance(value, list):
+        return [_project_history_value(item, policy=policy) for item in value]
+    return value
+
+
+def _safe_history_provenance(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        return {}
+    allowed_keys = {
+        "case_set_version",
+        "execution_mode",
+        "index_version",
+        "prompt_hash",
+        "quality_pack_version",
+    }
+    return {
+        str(key): item
+        for key, item in value.items()
+        if str(key) in allowed_keys or str(key).endswith(("_hash", "_version"))
+    }
+
+
+def _safe_reason_code(value: object) -> str:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return _UNKNOWN_REASON_CODE
+    code = canonical_reason(normalized).strip().lower().replace("-", "_").replace(" ", "_")
+    if _SAFE_CODE_RE.fullmatch(code):
+        return code
+    return _UNKNOWN_REASON_CODE
+
+
+def _safe_bounded_label(value: object) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    normalized = text.replace("-", "_")
+    if _SAFE_CODE_RE.fullmatch(normalized.lower()):
+        return text[:80]
+    return None
+
+
+def _stable_history_hash(value: object) -> str:
+    return hashlib.sha256(str(value or "").encode("utf-8")).hexdigest()[:16]
 
 
 def _week_start_iso(value: datetime) -> str:
