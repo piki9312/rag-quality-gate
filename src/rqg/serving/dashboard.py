@@ -10,10 +10,11 @@ from typing import Any
 
 import yaml
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 
 from ..quality.history import load_gate_decision_history
 from ..quality.monthly_summary import build_monthly_summary_payload
+from ..quality.reporting import build_customer_review_markdown
 
 
 _DEFAULT_DASHBOARD_LANG = "ja"
@@ -1029,6 +1030,12 @@ def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
 def _render_report_preview_card(run: dict[str, Any], *, lang: str) -> str:
     packet = run.get("review_packet")
     sections = packet.get("report_sections") if isinstance(packet, dict) else {}
+    submission = (
+        packet.get("customer_submission_readiness", {})
+        if isinstance(packet, dict)
+        and isinstance(packet.get("customer_submission_readiness"), dict)
+        else {}
+    )
     available = isinstance(sections, dict) and bool(sections)
     description = _label_text(
         lang,
@@ -1037,11 +1044,19 @@ def _render_report_preview_card(run: dict[str, Any], *, lang: str) -> str:
     )
     if available:
         link_text = _label_text(lang, "顧客提出レポートを開く", "Open Report Preview")
-        body = (
-            f"<p>{_esc(_label_text(lang, 'レビュー済みの要約レポートを確認できます。', 'The reviewed summary is available for sharing.'))}</p>"
-            f"<p><a class='link-button' href='{_run_href(run['run_id'], lang, '/report-preview')}'>{_esc(link_text)}</a></p>"
+        readiness = str(submission.get("status") or "not_recommended")
+        readiness_note = (
+            "Formal submission is not recommended; treat this as a safe interim draft."
+            if readiness == "not_recommended"
+            else str(submission.get("recommendation") or "Customer report preview is available.")
         )
-        badge = _badge_html(_label_text(lang, "利用可能", "Available"), tone="success")
+        body = (
+            f"<p>{_esc(readiness_note)}</p>"
+            f"<p><a class='link-button' href='{_run_href(run['run_id'], lang, '/report-preview')}'>{_esc(link_text)}</a></p>"
+            f"<p><a class='link-button' href='{_run_href(run['run_id'], lang, '/customer-review.md')}'>Download Customer Review Markdown</a></p>"
+        )
+        badge_tone = "success" if readiness == "recommended" else "warning"
+        badge = _badge_html(readiness, tone=badge_tone)
         return _card_html("Report Preview", body, lang=lang, description=description, badge_html=badge)
     body = f"<p>{_esc(_label_text(lang, 'この run では顧客提出レポートを利用できません。', 'No customer-facing report is available for this run.'))}</p>"
     badge = _badge_html(_label_text(lang, "未作成", "Unavailable"), tone="neutral")
@@ -1338,6 +1353,15 @@ def create_dashboard_app(
             lang=lang,
             current_path=str(request.url.path),
         )
+
+    @app.get("/packs/{pack_name}/runs/{run_id}/customer-review.md", response_class=PlainTextResponse)
+    @app.get("/runs/{run_id}/customer-review.md", response_class=PlainTextResponse)
+    def customer_review_markdown(run_id: str, pack_name: str = "") -> str:
+        run = _find_run(_scan_runs(app.state.runs_dir), pack_name=pack_name, run_id=run_id)
+        review_packet = run.get("review_packet")
+        if not isinstance(review_packet, dict) or not review_packet:
+            raise HTTPException(status_code=404, detail="ReviewPacket not found")
+        return build_customer_review_markdown(review_packet)
 
     @app.get("/packs/{pack_name}/latest", response_class=HTMLResponse)
     def latest_gate(pack_name: str, request: Request) -> str:
@@ -1832,17 +1856,112 @@ def _render_review_packet_run_detail(run: dict[str, Any], *, lang: str) -> str:
         return ""
     return (
         "<div class='stack'>"
+        + _render_delivery_review_card(packet, lang=lang)
         + _render_decision_card(packet, lang=lang)
         + _render_production_readiness_card(packet, lang=lang)
+        + _render_blocking_items(packet, lang=lang)
+        + _render_major_failures(run, lang=lang)
         + _render_change_event_card(packet, lang=lang)
         + _render_document_corpus_card(packet, lang=lang)
-        + _render_major_failures(run, lang=lang)
         + _render_report_preview_card(run, lang=lang)
         + _render_summary_card(packet, lang=lang)
         + _render_scope_card(packet, lang=lang)
         + _render_count_card("Severity Summary", packet.get("severity_summary", {}), lang=lang)
         + _render_count_card("Risk Breakdown", packet.get("risk_breakdown", {}), lang=lang)
         + "</div>"
+    )
+
+
+def _render_delivery_review_card(packet: dict[str, Any], *, lang: str) -> str:
+    review = (
+        packet.get("delivery_review", {})
+        if isinstance(packet.get("delivery_review"), dict)
+        else {}
+    )
+    shareability = (
+        packet.get("customer_shareability", {})
+        if isinstance(packet.get("customer_shareability"), dict)
+        else {}
+    )
+    submission = (
+        packet.get("customer_submission_readiness", {})
+        if isinstance(packet.get("customer_submission_readiness"), dict)
+        else {}
+    )
+    actions = review.get("required_actions", [])
+    if not isinstance(actions, list):
+        actions = []
+    body = (
+        f"<p>{_esc(review.get('summary', '-') or '-')}</p>"
+        "<div class='meta-grid'>"
+        + _meta_item_html("Review stage", _esc(packet.get("review_stage", "unknown")))
+        + _meta_item_html("Unresolved S1", _esc(review.get("unresolved_s1_count", 0)))
+        + _meta_item_html("Unresolved S2", _esc(review.get("unresolved_s2_count", 0)))
+        + _meta_item_html(
+            "Customer shareability",
+            _badge_html(str(review.get("customer_submission_status", "needs_review")), tone="neutral", small=True),
+        )
+        + _meta_item_html(
+            "Formal submission readiness",
+            _badge_html(str(submission.get("status", "not_recommended")), tone="neutral", small=True),
+        )
+        + _meta_item_html(
+            "Shareability",
+            _badge_html(str(shareability.get("status", "needs_review")), tone="neutral", small=True),
+        )
+        + "</div>"
+        f"<p>{_esc(submission.get('recommendation', '') or '')}</p>"
+        f"<p class='section-label'>{_esc(_tr(lang, 'Required actions'))}</p>"
+        f"<ul>{''.join(f'<li>{_esc(item)}</li>' for item in actions) or _none_list_item(lang)}</ul>"
+        f"<p class='muted'>{_esc(review.get('reviewer_notes_placeholder', '') or '')}</p>"
+    )
+    return _card_html(
+        "Delivery Review Summary",
+        body,
+        lang=lang,
+        badge_html=_badge_html(str(review.get("status", "unknown")), tone="neutral", small=True),
+        tone=_delivery_tone(review.get("status", "unknown")),
+    )
+
+
+def _delivery_tone(value: object) -> str:
+    status = str(value or "").strip().lower()
+    if status in {"not_deliverable", "needs_fix"}:
+        return "danger"
+    if status in {"needs_approval", "unknown"}:
+        return "warning"
+    return "default"
+
+
+def _render_blocking_items(packet: dict[str, Any], *, lang: str) -> str:
+    items = packet.get("blocking_items", [])
+    if not isinstance(items, list):
+        items = []
+    rows = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        rows.append(
+            "<tr>"
+            f"<td>{_esc(item.get('severity', '-') or '-')}</td>"
+            f"<td>{_esc(item.get('issue', '-') or '-')}</td>"
+            f"<td>{_esc(item.get('category', '-') or '-')}</td>"
+            f"<td>{_value_badge(item.get('blocks_delivery', False), lang=lang, small=True)}</td>"
+            f"<td>{_esc(item.get('required_action', '-') or '-')}</td>"
+            f"<td>{_esc(item.get('status', '-') or '-')}</td>"
+            "</tr>"
+        )
+    body = (
+        "<table><tr><th>Severity</th><th>Issue</th><th>Category</th>"
+        "<th>Blocks delivery</th><th>Required action</th><th>Status</th></tr>"
+        f"{''.join(rows) or _none_table_row(lang, 6)}</table>"
+    )
+    return _card_html(
+        "S1/S2 Blocking List",
+        body,
+        lang=lang,
+        badge_html=_badge_html(str(len(rows)), tone="danger" if rows else "neutral", small=True),
+        tone="danger" if rows else "default",
     )
 
 
@@ -2295,19 +2414,25 @@ def _render_report_preview(run: dict[str, Any], *, lang: str) -> str:
     sections = packet.get("report_sections", {}) if isinstance(packet, dict) else {}
     if not isinstance(sections, dict):
         sections = {}
+    report_title = sections.get("report_title") or _tr(lang, "Report Preview")
     order = [
         ("Executive Summary", "executive_summary"),
         ("Decision", "decision"),
         ("Change Summary", "change_summary"),
         ("Scope", "scope"),
         ("Production Readiness", "production_readiness"),
+        ("Delivery Review", "delivery_review"),
+        ("Customer Submission", "customer_submission"),
         ("Major Risks", "major_risks"),
         ("Blocking Issues", "blocking_issues"),
         ("Required Actions", "required_actions"),
         ("Residual Risks", "residual_risks"),
         ("Disclaimer", "disclaimer"),
     ]
-    body = f"<p><a href='{_run_href(run['run_id'], lang)}'>{_esc(_tr(lang, 'Back to Run Detail'))}</a></p><div class='report-sections'>"
+    body = (
+        f"<p><a href='{_run_href(run['run_id'], lang)}'>{_esc(_tr(lang, 'Back to Run Detail'))}</a></p>"
+        f"<h2>{_esc(report_title)}</h2><div class='report-sections'>"
+    )
     for title, key in order:
         body += _render_report_preview_section(
             title,

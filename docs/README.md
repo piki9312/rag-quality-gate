@@ -39,6 +39,7 @@
 
 - [Proof Gate PoC guide](user-guide/proof-gate-poc.md)
 - [PoC / Monitor runbook](user-guide/poc-monitor-runbook.md)
+- [Review stages and customer reports](user-guide/review-stages-and-customer-reports.md)
 - [Quality Pack S1/S2 design guide](user-guide/quality-pack-s1-s2-design.md)
 - [Windows PowerShell command guide](user-guide/windows-powershell.md)
 

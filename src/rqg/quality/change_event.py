@@ -10,6 +10,7 @@ import yaml
 from pydantic import ValidationError
 
 from rqg.domain import ChangeEvent
+from rqg.quality.review_stage import normalize_review_stage
 
 
 def load_change_event_file(path: str | Path | None) -> ChangeEvent | None:
@@ -54,7 +55,10 @@ def _normalize_change_event_payload(payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "affected_business_categories": payload.get("affected_business_categories") or [],
         "retest_reason": payload.get("retest_reason") or "",
+        "review_stage": "",
     }
+    if str(payload.get("review_stage") or "").strip():
+        normalized["review_stage"] = normalize_review_stage(payload.get("review_stage"))
     normalized["changed_assets"] = [
         _normalize_changed_asset(item)
         for item in normalized.get("changed_assets", [])

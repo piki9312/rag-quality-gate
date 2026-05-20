@@ -17,6 +17,8 @@ import logging
 import sys
 from pathlib import Path
 
+from rqg.quality.review_stage import VALID_REVIEW_STAGES
+
 from .casegen import (
     cmd_build_poc_set,
     cmd_gen_cases,
@@ -316,6 +318,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional JSON/YAML file describing the docs/model/prompt/config change event for this run",
     )
     p_gate.add_argument(
+        "--review-stage",
+        choices=VALID_REVIEW_STAGES,
+        default=None,
+        help="Explicit review stage for ReviewPacket/customer reports",
+    )
+    p_gate.add_argument(
         "--manual-review-file",
         default=None,
         help="Optional JSON/YAML file containing manual review / approval trail records",
@@ -417,6 +425,12 @@ def build_parser() -> argparse.ArgumentParser:
         dest="change_event_file",
         default=None,
         help="Optional JSON/YAML file describing the docs/model/prompt/config change event for this run",
+    )
+    p_check.add_argument(
+        "--review-stage",
+        choices=VALID_REVIEW_STAGES,
+        default=None,
+        help="Explicit review stage for ReviewPacket/customer reports",
     )
     p_check.add_argument(
         "--manual-review-file",

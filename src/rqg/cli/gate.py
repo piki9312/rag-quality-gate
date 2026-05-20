@@ -111,6 +111,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             allow_simulation_output=getattr(args, "allow_simulation_output", False),
             strict_s1_governance=getattr(args, "strict_s1_governance", False),
             change_event_file=getattr(args, "change_event_file", None),
+            review_stage=getattr(args, "review_stage", None),
             manual_review_file=getattr(args, "manual_review_file", None),
             baseline_bundle=getattr(args, "baseline_bundle", None),
             warn_exit_code=args.warn_exit_code,

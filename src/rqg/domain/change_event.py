@@ -16,6 +16,7 @@ ChangeType = Literal[
     "config_change",
     "unknown",
 ]
+ReviewStage = Literal["pre_delivery", "post_delivery_change", "monthly_review", ""]
 
 
 class ChangedAsset(BaseModel):
@@ -41,5 +42,6 @@ class ChangeEvent(BaseModel):
     affected_documents: list[str] = Field(default_factory=list)
     affected_business_categories: list[str] = Field(default_factory=list)
     retest_reason: str = ""
+    review_stage: ReviewStage = ""
 
     model_config = ConfigDict(extra="forbid")

@@ -17,6 +17,7 @@ from rqg.domain import (
     ReviewPacket,
     map_customer_severity,
 )
+from rqg.quality.review_stage import normalize_review_stage
 from rqg.security import sanitize_payload, sanitize_text
 
 GATE_REPORT_SCHEMA_VERSION = "1.0"
@@ -242,6 +243,9 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
         }
     )
     payload["review_packet"] = build_review_packet(artifacts).model_dump(mode="json")
+    payload["customer_review_markdown"] = build_customer_review_markdown(
+        build_review_packet_safe(artifacts)
+    )
     return payload
 
 
@@ -283,6 +287,7 @@ def _build_review_packet(artifacts: GateReportArtifacts, *, packet_mode: str) ->
     decision_explanation = _build_decision_explanation(decision, failures)
     scope = _build_review_scope(artifacts, packet_mode=packet_mode, report_mode=report_mode)
     change_summary = _build_change_summary(artifacts, packet_mode=packet_mode)
+    review_stage = _infer_review_stage(decision, change_summary)
     document_corpus = _build_document_corpus(
         artifacts,
         packet_mode=packet_mode,
@@ -293,11 +298,31 @@ def _build_review_packet(artifacts: GateReportArtifacts, *, packet_mode: str) ->
         decision=decision,
         failures=failures,
         change_summary=change_summary,
+        review_stage=review_stage,
         document_corpus=document_corpus,
         evidence_policy=evidence_policy,
     )
+    blocking_items = _build_delivery_blocking_items(failures)
+    customer_shareability = _build_customer_shareability(packet_mode=packet_mode)
+    delivery_review = _build_delivery_review(
+        decision=decision,
+        failures=failures,
+        blocking_items=blocking_items,
+        production_readiness=production_readiness,
+        customer_shareability=customer_shareability,
+    )
+    customer_submission_readiness = _build_customer_submission_readiness(
+        delivery_review=delivery_review,
+        production_readiness=production_readiness,
+        customer_shareability=customer_shareability,
+    )
+    release_decision = _build_release_decision_stub(
+        delivery_review=delivery_review,
+        blocking_items=blocking_items,
+    )
     return ReviewPacket(
         packet_mode=packet_mode,  # type: ignore[arg-type]
+        review_stage=review_stage,  # type: ignore[arg-type]
         run_summary={
             "run_id": decision.run_id,
             "created_at": decision.created_at.isoformat(),
@@ -328,9 +353,17 @@ def _build_review_packet(artifacts: GateReportArtifacts, *, packet_mode: str) ->
             scope=scope,
             document_corpus=document_corpus,
             production_readiness=production_readiness,
+            delivery_review=delivery_review,
+            customer_submission_readiness=customer_submission_readiness,
+            review_stage=review_stage,
         ),
         evidence_policy=evidence_policy,
         production_readiness=production_readiness,
+        delivery_review=delivery_review,
+        blocking_items=blocking_items,
+        customer_shareability=customer_shareability,
+        customer_submission_readiness=customer_submission_readiness,
+        release_decision=release_decision,
     )
 
 
@@ -758,6 +791,39 @@ def _raw_change_event(decision: GateDecision, provenance: dict[str, object]) -> 
     return provenance.get("change_event") or _extract_change_event(decision)
 
 
+def _infer_review_stage(decision: GateDecision, change_summary: dict[str, object]) -> str:
+    provenance = decision.provenance or {}
+    explicit = _normalize_stage(
+        provenance.get("review_stage")
+        or provenance.get("usage_stage")
+        or provenance.get("review_context")
+    )
+    if explicit != "unknown":
+        return explicit
+    has_change = bool(
+        change_summary.get("change_id")
+        or change_summary.get("change_id_hash")
+        or int(change_summary.get("changed_assets_count") or 0) > 0
+        or int(change_summary.get("affected_documents_count") or 0) > 0
+        or str(change_summary.get("change_type") or "unknown") != "unknown"
+    )
+    return "post_delivery_change" if has_change else "pre_delivery"
+
+
+def _normalize_stage(value: object) -> str:
+    return normalize_review_stage(value, allow_unknown=True)
+
+
+def _customer_report_title(review_stage: str) -> str:
+    if review_stage == "pre_delivery":
+        return "AI Answer Quality Diagnostic Report"
+    if review_stage == "post_delivery_change":
+        return "Change Impact Quality Review"
+    if review_stage == "monthly_review":
+        return "Monthly Quality Review"
+    return "Customer Review"
+
+
 def _safe_change_type(value: object) -> str:
     item = str(value or "").strip().lower()
     return item if item in CHANGE_TYPES else "unknown"
@@ -1006,6 +1072,9 @@ def _build_report_sections(
     scope: dict[str, object],
     document_corpus: dict[str, object] | None = None,
     production_readiness: dict[str, object] | None = None,
+    delivery_review: dict[str, object] | None = None,
+    customer_submission_readiness: dict[str, object] | None = None,
+    review_stage: str = "unknown",
 ) -> dict[str, str]:
     customer_status = _customer_status(decision)
     critical_or_high = [
@@ -1021,6 +1090,8 @@ def _build_report_sections(
         f"stale_doc_policy={corpus.get('stale_doc_policy') or '-'}"
     )
     readiness = production_readiness or {}
+    delivery = delivery_review or {}
+    submission = customer_submission_readiness or {}
     change_section = (
         f"change_type={change_summary.get('change_type', 'unknown')}; "
         f"changed_assets={change_summary.get('changed_assets_count', 0)}; "
@@ -1028,6 +1099,7 @@ def _build_report_sections(
         f"retest_reason={change_summary.get('retest_reason') or '-'}"
     )
     return {
+        "report_title": _customer_report_title(review_stage),
         "executive_summary": _decision_headline(decision),
         "decision": f"{customer_status} ({decision.policy_status})",
         "change_summary": change_section,
@@ -1038,6 +1110,13 @@ def _build_report_sections(
         ),
         "production_readiness": str(
             readiness.get("readiness_summary") or "Production readiness is not available."
+        ),
+        "delivery_review": str(
+            delivery.get("summary") or "Delivery review summary is not available."
+        )
+        + f" Customer submission readiness={submission.get('status', 'not_recommended')}.",
+        "customer_submission": str(
+            submission.get("recommendation") or "Formal customer submission is not recommended."
         ),
         "major_risks": (
             f"{len(critical_or_high)} Critical/High issue(s); "
@@ -1056,6 +1135,345 @@ def _build_report_sections(
             "of AI answer quality."
         ),
     }
+
+
+def _build_delivery_blocking_items(failures: list[Failure]) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for failure in failures:
+        severity = str(failure.internal_severity or "").upper()
+        blocks_delivery = bool(
+            severity == "S1"
+            or failure.customer_severity in {"Critical", "High"}
+            or failure.go_no_go_impact in {"blocks_release", "requires_human_review"}
+        )
+        if severity not in {"S1", "S2"} and not blocks_delivery:
+            continue
+        rows.append(
+            {
+                "item_id": failure.failure_id or f"failure-{failure.case_id_hash}",
+                "severity": severity or failure.customer_severity,
+                "issue": failure.safe_reason_code or CI_UNKNOWN_REASON_CODE,
+                "category": failure.safe_reason_code or CI_UNKNOWN_REASON_CODE,
+                "blocks_delivery": blocks_delivery,
+                "required_action": failure.next_action
+                or "Review the unresolved item before customer submission.",
+                "owner": "",
+                "due_date": "",
+                "status": "open",
+            }
+        )
+    return rows
+
+
+def _build_customer_shareability(*, packet_mode: str) -> dict[str, object]:
+    if packet_mode == "safe":
+        return {
+            "status": "shareable",
+            "reasons": ["safe_review_packet"],
+            "forbidden_fields_detected": [],
+            "safe_mode_required": True,
+        }
+    return {
+        "status": "needs_review",
+        "reasons": ["full_packet_requires_safe_export_before_customer_submission"],
+        "forbidden_fields_detected": ["full_evidence_mode"],
+        "safe_mode_required": True,
+    }
+
+
+def _build_delivery_review(
+    *,
+    decision: GateDecision,
+    failures: list[Failure],
+    blocking_items: list[dict[str, object]],
+    production_readiness: dict[str, object],
+    customer_shareability: dict[str, object],
+) -> dict[str, object]:
+    unresolved_s1_count = sum(
+        1 for item in blocking_items if str(item.get("severity", "")).upper() == "S1"
+    )
+    unresolved_s2_count = sum(
+        1 for item in blocking_items if str(item.get("severity", "")).upper() == "S2"
+    )
+    blocking_delivery_count = sum(1 for item in blocking_items if item.get("blocks_delivery"))
+    readiness_status = str(production_readiness.get("status") or "unknown")
+    shareability_status = str(customer_shareability.get("status") or "needs_review")
+
+    if _customer_status(decision) == "No-Go" or blocking_delivery_count:
+        status = "not_deliverable"
+    elif readiness_status == "not_ready":
+        status = "needs_fix"
+    elif decision.needs_human_review or readiness_status == "conditional":
+        status = "needs_approval"
+    elif shareability_status != "shareable":
+        status = "needs_approval"
+    elif failures:
+        status = "needs_approval"
+    else:
+        status = "deliverable"
+
+    if shareability_status == "shareable":
+        customer_submission_status = "safe_to_share"
+    elif shareability_status == "not_shareable":
+        customer_submission_status = "not_safe"
+    else:
+        customer_submission_status = "needs_review"
+
+    required_actions = [
+        str(item.get("required_action") or "").strip()
+        for item in blocking_items
+        if str(item.get("required_action") or "").strip()
+    ]
+    required_actions.extend(
+        str(action).strip()
+        for action in production_readiness.get("required_actions", [])
+        if str(action).strip()
+    )
+    required_actions = _unique_non_empty(required_actions)
+    if customer_submission_status != "safe_to_share":
+        required_actions.append("Review customer-facing export before submission.")
+
+    return {
+        "status": status,
+        "summary": _delivery_review_summary(
+            status=status,
+            unresolved_s1_count=unresolved_s1_count,
+            unresolved_s2_count=unresolved_s2_count,
+            customer_submission_status=customer_submission_status,
+        ),
+        "unresolved_s1_count": unresolved_s1_count,
+        "unresolved_s2_count": unresolved_s2_count,
+        "blockers": blocking_items,
+        "customer_submission_status": customer_submission_status,
+        "required_actions": required_actions,
+        "reviewer_notes_placeholder": (
+            "Reviewer notes: record approval, rejection, accepted risk, or required fixes here."
+        ),
+    }
+
+
+def _build_customer_submission_readiness(
+    *,
+    delivery_review: dict[str, object],
+    production_readiness: dict[str, object],
+    customer_shareability: dict[str, object],
+) -> dict[str, object]:
+    reasons: list[str] = []
+    shareability_status = str(customer_shareability.get("status") or "needs_review")
+    delivery_status = str(delivery_review.get("status") or "unknown")
+    readiness_status = str(production_readiness.get("status") or "unknown")
+    unresolved_s1 = int(delivery_review.get("unresolved_s1_count") or 0)
+
+    if shareability_status != "shareable":
+        reasons.append("safe_export_not_confirmed")
+        return {
+            "status": "not_recommended",
+            "reasons": reasons,
+            "recommendation": (
+                "Do not submit this as a formal customer report until the safe export is reviewed."
+            ),
+        }
+
+    if delivery_status == "not_deliverable" or readiness_status == "not_ready" or unresolved_s1:
+        reasons.append("unresolved_blockers_or_no_go")
+        return {
+            "status": "not_recommended",
+            "reasons": reasons,
+            "recommendation": (
+                "Formal customer submission is not recommended. Use this only as an interim "
+                "safe draft if the PoC agreement requires shared findings."
+            ),
+        }
+
+    if delivery_status in {"needs_approval", "needs_fix"} or readiness_status == "conditional":
+        reasons.append("conditional_or_pm_approval_required")
+        return {
+            "status": "conditional",
+            "reasons": reasons,
+            "recommendation": (
+                "Formal customer submission is conditional on PM approval and documented residual risk."
+            ),
+        }
+
+    reasons.append("no_unresolved_blockers_detected")
+    return {
+        "status": "recommended",
+        "reasons": reasons,
+        "recommendation": (
+            "Formal customer submission is recommended for the scoped quality review."
+        ),
+    }
+
+
+def _delivery_review_summary(
+    *,
+    status: str,
+    unresolved_s1_count: int,
+    unresolved_s2_count: int,
+    customer_submission_status: str,
+) -> str:
+    if status == "deliverable":
+        return "Delivery review indicates this safe packet is ready for customer submission."
+    if status == "not_deliverable":
+        return (
+            "Delivery is not recommended until unresolved blocking items are fixed or formally "
+            f"accepted. S1={unresolved_s1_count}, S2={unresolved_s2_count}."
+        )
+    if status == "needs_fix":
+        return "Fix production readiness blockers before treating this run as deliverable."
+    if status == "needs_approval":
+        return (
+            "Delivery may proceed only after PM/customer approval of remaining warnings and "
+            f"customer submission status={customer_submission_status}."
+        )
+    return "Delivery review status is unknown."
+
+
+def _build_release_decision_stub(
+    *,
+    delivery_review: dict[str, object],
+    blocking_items: list[dict[str, object]],
+) -> dict[str, object]:
+    status = str(delivery_review.get("status") or "unknown")
+    if status == "deliverable":
+        decision = "approved"
+    elif status == "not_deliverable":
+        decision = "rejected"
+    elif status in {"needs_approval", "needs_fix"}:
+        decision = "needs_review"
+    else:
+        decision = "needs_review"
+    unresolved = [
+        str(item.get("item_id") or "")
+        for item in blocking_items
+        if str(item.get("status") or "open") == "open"
+    ]
+    return {
+        "decision": decision,
+        "decided_by": "",
+        "decided_at": "",
+        "reviewer_role": "",
+        "accepted_risks": [],
+        "unresolved_blockers": _unique_non_empty(unresolved),
+        "required_actions": list(delivery_review.get("required_actions", []) or []),
+        "evidence_refs": [],
+        "notes": "",
+    }
+
+
+def build_customer_review_markdown(packet: ReviewPacket | dict[str, object]) -> str:
+    """Build a safe customer-facing Markdown review from a ReviewPacket."""
+    payload = packet.model_dump(mode="json") if isinstance(packet, ReviewPacket) else packet
+    decision = payload.get("decision", {}) if isinstance(payload.get("decision"), dict) else {}
+    run_summary = (
+        payload.get("run_summary", {}) if isinstance(payload.get("run_summary"), dict) else {}
+    )
+    delivery = (
+        payload.get("delivery_review", {})
+        if isinstance(payload.get("delivery_review"), dict)
+        else {}
+    )
+    readiness = (
+        payload.get("production_readiness", {})
+        if isinstance(payload.get("production_readiness"), dict)
+        else {}
+    )
+    change = (
+        payload.get("change_summary", {})
+        if isinstance(payload.get("change_summary"), dict)
+        else {}
+    )
+    corpus = (
+        payload.get("document_corpus", {})
+        if isinstance(payload.get("document_corpus"), dict)
+        else {}
+    )
+    shareability = (
+        payload.get("customer_shareability", {})
+        if isinstance(payload.get("customer_shareability"), dict)
+        else {}
+    )
+    submission = (
+        payload.get("customer_submission_readiness", {})
+        if isinstance(payload.get("customer_submission_readiness"), dict)
+        else {}
+    )
+    report_sections = (
+        payload.get("report_sections", {})
+        if isinstance(payload.get("report_sections"), dict)
+        else {}
+    )
+    review_stage = str(payload.get("review_stage") or "unknown")
+    title = str(
+        report_sections.get("report_title")
+        or _customer_report_title(review_stage)
+    )
+    blocking_items = payload.get("blocking_items", [])
+    if not isinstance(blocking_items, list):
+        blocking_items = []
+    actions = delivery.get("required_actions", [])
+    if not isinstance(actions, list):
+        actions = []
+    lines = [
+        f"# {title}",
+        "",
+        "## Summary",
+        f"- Review stage: {review_stage}",
+        f"- Delivery status: {delivery.get('status', 'unknown')}",
+        f"- Customer shareability status: {delivery.get('customer_submission_status', 'needs_review')}",
+        f"- Customer submission readiness: {submission.get('status', 'not_recommended')}",
+        f"- Submission recommendation: {submission.get('recommendation', '-') or '-'}",
+        f"- Gate decision: {decision.get('customer_status', decision.get('status', 'unknown'))}",
+        f"- Production readiness: {readiness.get('status', 'unknown')}",
+        f"- Shareability: {shareability.get('status', 'needs_review')}",
+        "",
+        "## Scope",
+        f"- Run ID: {run_summary.get('run_id', '')}",
+        f"- Total cases: {run_summary.get('total_cases', 0)}",
+        f"- Passed cases: {run_summary.get('passed_cases', 0)}",
+        f"- Failed cases: {run_summary.get('failed_cases', 0)}",
+        f"- Report mode: {run_summary.get('report_mode', '')}",
+        "",
+        "## Change",
+        f"- Change type: {change.get('change_type', 'unknown')}",
+        f"- Changed assets count: {change.get('changed_assets_count', 0)}",
+        f"- Affected documents count: {change.get('affected_documents_count', 0)}",
+        f"- Retest reason: {change.get('retest_reason', '-') or '-'}",
+        "",
+        "## Document Corpus",
+        f"- Document count: {corpus.get('document_count', 0)}",
+        f"- Source of truth type: {corpus.get('source_of_truth_type', 'unknown')}",
+        f"- Has document versions: {corpus.get('has_document_versions', False)}",
+        f"- Stale document policy: {corpus.get('stale_doc_policy', '') or '-'}",
+        "",
+        "## Unresolved Blockers",
+    ]
+    if blocking_items:
+        lines.extend(
+            (
+                f"- {item.get('severity', '-')}: {item.get('issue', '-')} "
+                f"({item.get('required_action', '-')})"
+            )
+            for item in blocking_items
+            if isinstance(item, dict)
+        )
+    else:
+        lines.append("- None")
+    lines.extend(["", "## Required Actions"])
+    if actions:
+        lines.extend(f"- {action}" for action in actions)
+    else:
+        lines.append("- None")
+    lines.extend(
+        [
+            "",
+            "## Notes",
+            "- This review is scoped to configured cases, documents, and evaluation settings.",
+            "- It does not guarantee all AI answers are correct.",
+            "- Raw questions, answers, evidence text, source paths, and owners are excluded.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
 
 
 def _build_evidence_policy(*, packet_mode: str) -> dict[str, object]:
@@ -1085,6 +1503,7 @@ def _build_production_readiness(
     decision: GateDecision,
     failures: list[Failure],
     change_summary: dict[str, object],
+    review_stage: str,
     document_corpus: dict[str, object],
     evidence_policy: dict[str, object],
 ) -> dict[str, object]:
@@ -1177,7 +1596,8 @@ def _build_production_readiness(
                 action="Attach document corpus evidence before production migration.",
             )
         )
-    warnings.extend(_change_event_readiness_warnings(change_summary))
+    if review_stage == "post_delivery_change":
+        warnings.extend(_change_event_readiness_warnings(change_summary))
 
     if blockers:
         status = "not_ready"
