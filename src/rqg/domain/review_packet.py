@@ -10,6 +10,18 @@ from pydantic import BaseModel, ConfigDict, Field
 CustomerSeverity = Literal["Critical", "High", "Medium", "Low"]
 ReviewPacketMode = Literal["safe", "full"]
 ProductionReadinessStatus = Literal["ready", "conditional", "not_ready", "unknown"]
+ReviewStage = Literal["pre_delivery", "post_delivery_change", "monthly_review", "unknown"]
+DeliveryReviewStatus = Literal[
+    "deliverable",
+    "needs_fix",
+    "needs_approval",
+    "not_deliverable",
+    "unknown",
+]
+CustomerSubmissionStatus = Literal["safe_to_share", "needs_review", "not_safe"]
+CustomerShareabilityStatus = Literal["shareable", "needs_review", "not_shareable"]
+CustomerSubmissionReadinessStatus = Literal["recommended", "conditional", "not_recommended"]
+ReleaseDecisionValue = Literal["approved", "rejected", "conditional", "needs_review"]
 
 
 class BlockingReason(BaseModel):
@@ -164,11 +176,14 @@ class RiskBreakdown(BaseModel):
 
 
 class ReportSections(BaseModel):
+    report_title: str = ""
     executive_summary: str = ""
     decision: str = ""
     change_summary: str = ""
     scope: str = ""
     production_readiness: str = ""
+    delivery_review: str = ""
+    customer_submission: str = ""
     major_risks: str = ""
     blocking_issues: str = ""
     required_actions: str = ""
@@ -211,11 +226,80 @@ class ProductionReadiness(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class BlockingItem(BaseModel):
+    """Unresolved S1/S2 item used by PM delivery review."""
+
+    item_id: str = Field(min_length=1)
+    severity: str = ""
+    issue: str = ""
+    category: str = ""
+    blocks_delivery: bool = False
+    required_action: str = ""
+    owner: str = ""
+    due_date: str = ""
+    status: str = "open"
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CustomerShareability(BaseModel):
+    """Safe export readiness for customer-facing review artifacts."""
+
+    status: CustomerShareabilityStatus = "needs_review"
+    reasons: list[str] = Field(default_factory=list)
+    forbidden_fields_detected: list[str] = Field(default_factory=list)
+    safe_mode_required: bool = True
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class CustomerSubmissionReadiness(BaseModel):
+    """Whether the safe artifact is appropriate as a formal customer submission."""
+
+    status: CustomerSubmissionReadinessStatus = "not_recommended"
+    reasons: list[str] = Field(default_factory=list)
+    recommendation: str = ""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class DeliveryReview(BaseModel):
+    """PM-facing delivery decision summary."""
+
+    status: DeliveryReviewStatus = "unknown"
+    summary: str = ""
+    unresolved_s1_count: int = Field(default=0, ge=0)
+    unresolved_s2_count: int = Field(default=0, ge=0)
+    blockers: list[BlockingItem] = Field(default_factory=list)
+    customer_submission_status: CustomerSubmissionStatus = "needs_review"
+    required_actions: list[str] = Field(default_factory=list)
+    reviewer_notes_placeholder: str = ""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ReleaseDecision(BaseModel):
+    """Minimal human decision record for later approval workflows."""
+
+    decision: ReleaseDecisionValue = "needs_review"
+    decided_by: str = ""
+    decided_at: str = ""
+    reviewer_role: str = ""
+    accepted_risks: list[str] = Field(default_factory=list)
+    unresolved_blockers: list[str] = Field(default_factory=list)
+    required_actions: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    notes: str = ""
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ReviewPacket(BaseModel):
     """Intermediate payload for Run Detail, Failure Detail, and Report Preview."""
 
     schema_version: str = "1.0"
     packet_mode: ReviewPacketMode = "safe"
+    review_stage: ReviewStage = "unknown"
     run_summary: RunSummary
     decision: ReviewDecision
     decision_explanation: DecisionExplanation
@@ -228,6 +312,13 @@ class ReviewPacket(BaseModel):
     report_sections: ReportSections = Field(default_factory=ReportSections)
     evidence_policy: EvidencePolicySummary
     production_readiness: ProductionReadiness = Field(default_factory=ProductionReadiness)
+    delivery_review: DeliveryReview = Field(default_factory=DeliveryReview)
+    blocking_items: list[BlockingItem] = Field(default_factory=list)
+    customer_shareability: CustomerShareability = Field(default_factory=CustomerShareability)
+    customer_submission_readiness: CustomerSubmissionReadiness = Field(
+        default_factory=CustomerSubmissionReadiness
+    )
+    release_decision: ReleaseDecision = Field(default_factory=ReleaseDecision)
 
     model_config = ConfigDict(extra="forbid")
 

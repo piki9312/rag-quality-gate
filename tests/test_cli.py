@@ -37,6 +37,11 @@ def test_gate_and_check_accept_change_event_alias() -> None:
     assert "--change-event-file" in _subparser_option_strings("check")
 
 
+def test_gate_and_check_accept_review_stage_option() -> None:
+    assert "--review-stage" in _subparser_option_strings("gate")
+    assert "--review-stage" in _subparser_option_strings("check")
+
+
 def _create_pack_dir(
     base_dir: Path,
     *,
@@ -171,6 +176,7 @@ class TestCLIParserContract:
             "--decision-file",
             "--bundle-file",
             "--report-mode",
+            "--review-stage",
             "--dry-run",
             "--warn-exit-code",
         }.issubset(options)
@@ -196,6 +202,7 @@ class TestCLIParserContract:
             "--decision-file",
             "--bundle-file",
             "--report-mode",
+            "--review-stage",
             "--warn-exit-code",
         }.issubset(options)
 

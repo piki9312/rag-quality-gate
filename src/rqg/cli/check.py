@@ -52,9 +52,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         SIMULATION_WARNING_JA,
         is_simulation_execution_mode,
         load_change_event,
+        load_yaml_or_json,
         load_manual_review_records,
     )
     from ..quality.report_mode_policy import ReportModeContext, resolve_report_mode_policy
+    from ..quality.review_stage import resolve_review_stage
     from ..quality.reporting import (
         BundleJsonReportAdapter,
         DecisionHistoryJsonlReportAdapter,
@@ -204,13 +206,31 @@ def cmd_check(args: argparse.Namespace) -> int:
     failure_actions: dict[str, str] = {}
     review_steward: str | None = None
     pack_metadata: dict[str, object] | None = None
+    quality_pack_payload: dict[str, object] = {}
     if quality_pack_path:
         failure_actions = load_failure_actions_from_quality_pack(quality_pack_path)
         review_steward = load_review_steward_from_quality_pack(quality_pack_path)
         pack_payload = load_quality_pack_payload(quality_pack_path)
+        quality_pack_payload = pack_payload
         raw_pack_metadata = pack_payload.get("pack", {}) if isinstance(pack_payload, dict) else {}
         if isinstance(raw_pack_metadata, dict):
             pack_metadata = raw_pack_metadata
+
+    try:
+        review_stage = resolve_review_stage(
+            cli_value=getattr(args, "review_stage", None),
+            quality_pack_payload=quality_pack_payload,
+            gate_payload=load_yaml_or_json(args.config),
+            change_event=change_event,
+        )
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+    if review_stage:
+        result.run_provenance = {
+            **result.run_provenance,
+            "review_stage": review_stage,
+        }
 
     decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
     append_history = getattr(args, "append_history", True)
