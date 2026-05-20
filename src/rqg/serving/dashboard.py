@@ -1919,6 +1919,7 @@ def _render_review_packet_run_detail(run: dict[str, Any], *, lang: str) -> str:
 
 
 def _render_delivery_review_card(packet: dict[str, Any], *, lang: str) -> str:
+    display_lang = "ja"
     review = (
         packet.get("delivery_review", {})
         if isinstance(packet.get("delivery_review"), dict)
@@ -1938,37 +1939,55 @@ def _render_delivery_review_card(packet: dict[str, Any], *, lang: str) -> str:
     if not isinstance(actions, list):
         actions = []
     body = (
-        f"<p>{_esc(_translate_message(lang, review.get('summary', '-') or '-'))}</p>"
+        f"<p>{_esc(_translate_message(display_lang, review.get('summary', '-') or '-'))}</p>"
         "<div class='meta-grid'>"
         + _meta_item_html(
-            _tr(lang, "Review stage"),
-            _value_badge(packet.get("review_stage", "unknown"), lang=lang, small=True),
-        )
-        + _meta_item_html(_tr(lang, "Unresolved S1"), _esc(review.get("unresolved_s1_count", 0)))
-        + _meta_item_html(_tr(lang, "Unresolved S2"), _esc(review.get("unresolved_s2_count", 0)))
-        + _meta_item_html(
-            _tr(lang, "Customer shareability"),
-            _value_badge(review.get("customer_submission_status", "needs_review"), lang=lang, small=True),
+            _tr(display_lang, "Review stage"),
+            _value_badge(packet.get("review_stage", "unknown"), lang=display_lang, small=True),
         )
         + _meta_item_html(
-            _tr(lang, "Formal submission readiness"),
-            _value_badge(submission.get("status", "not_recommended"), lang=lang, small=True),
+            _tr(display_lang, "Unresolved S1"),
+            _esc(review.get("unresolved_s1_count", 0)),
         )
         + _meta_item_html(
-            _tr(lang, "Shareability"),
-            _value_badge(shareability.get("status", "needs_review"), lang=lang, small=True),
+            _tr(display_lang, "Unresolved S2"),
+            _esc(review.get("unresolved_s2_count", 0)),
+        )
+        + _meta_item_html(
+            _tr(display_lang, "Customer shareability"),
+            _value_badge(
+                review.get("customer_submission_status", "needs_review"),
+                lang=display_lang,
+                small=True,
+            ),
+        )
+        + _meta_item_html(
+            _tr(display_lang, "Formal submission readiness"),
+            _value_badge(
+                submission.get("status", "not_recommended"),
+                lang=display_lang,
+                small=True,
+            ),
+        )
+        + _meta_item_html(
+            _tr(display_lang, "Shareability"),
+            _value_badge(
+                shareability.get("status", "needs_review"),
+                lang=display_lang,
+                small=True,
+            ),
         )
         + "</div>"
-        f"<p>{_esc(_translate_message(lang, submission.get('recommendation', '') or ''))}</p>"
-        f"<p class='section-label'>{_esc(_tr(lang, 'Required actions'))}</p>"
-        f"<ul>{''.join(f'<li>{_esc(_translate_message(lang, item))}</li>' for item in actions) or _none_list_item(lang)}</ul>"
-        f"<p class='muted'>{_esc(_translate_message(lang, review.get('reviewer_notes_placeholder', '') or ''))}</p>"
+        f"<p>{_esc(_translate_message(display_lang, submission.get('recommendation', '') or ''))}</p>"
+        f"<p class='section-label'>{_esc(_tr(display_lang, 'Required actions'))}</p>"
+        f"<ul>{''.join(f'<li>{_esc(_translate_message(display_lang, item))}</li>' for item in actions) or _none_list_item(display_lang)}</ul>"
+        f"<p class='muted'>{_esc(_translate_message(display_lang, review.get('reviewer_notes_placeholder', '') or ''))}</p>"
     )
     return _card_html(
         "Delivery Review Summary",
         body,
-        lang=lang,
-        badge_html=_value_badge(review.get("status", "unknown"), lang=lang, small=True),
+        lang=display_lang,
+        badge_html=_value_badge(review.get("status", "unknown"), lang=display_lang, small=True),
         tone=_delivery_tone(review.get("status", "unknown")),
     )
 
@@ -1983,6 +2002,7 @@ def _delivery_tone(value: object) -> str:
 
 
 def _render_blocking_items(packet: dict[str, Any], *, lang: str) -> str:
+    display_lang = "ja"
     items = packet.get("blocking_items", [])
     if not isinstance(items, list):
         items = []
@@ -1992,23 +2012,23 @@ def _render_blocking_items(packet: dict[str, Any], *, lang: str) -> str:
             continue
         rows.append(
             "<tr>"
-            f"<td>{_esc(_translate_value(lang, item.get('severity', '-') or '-', show_raw=True))}</td>"
-            f"<td>{_esc(_translate_issue_label(item.get('issue'), item.get('issue', '-'), lang=lang, show_raw=True))}</td>"
-            f"<td>{_esc(_translate_issue_label(item.get('category'), item.get('category', '-'), lang=lang, show_raw=True))}</td>"
-            f"<td>{_value_badge(item.get('blocks_delivery', False), lang=lang, small=True)}</td>"
-            f"<td>{_esc(_translate_message(lang, item.get('required_action', '-') or '-'))}</td>"
-            f"<td>{_esc(_translate_value(lang, item.get('status', '-') or '-'))}</td>"
+            f"<td>{_esc(_translate_value(display_lang, item.get('severity', '-') or '-', show_raw=True))}</td>"
+            f"<td>{_esc(_translate_issue_label(item.get('issue'), item.get('issue', '-'), lang=display_lang, show_raw=True))}</td>"
+            f"<td>{_esc(_translate_issue_label(item.get('category'), item.get('category', '-'), lang=display_lang, show_raw=True))}</td>"
+            f"<td>{_value_badge(item.get('blocks_delivery', False), lang=display_lang, small=True)}</td>"
+            f"<td>{_esc(_translate_message(display_lang, item.get('required_action', '-') or '-'))}</td>"
+            f"<td>{_esc(_translate_value(display_lang, item.get('status', '-') or '-'))}</td>"
             "</tr>"
         )
     body = (
-        f"<table><tr><th>{_esc(_tr(lang, 'Severity'))}</th><th>{_esc(_tr(lang, 'Issue'))}</th><th>{_esc(_tr(lang, 'Category'))}</th>"
-        f"<th>{_esc(_tr(lang, 'Blocks delivery'))}</th><th>{_esc(_tr(lang, 'Required actions'))}</th><th>{_esc(_tr(lang, 'Status'))}</th></tr>"
-        f"{''.join(rows) or _none_table_row(lang, 6)}</table>"
+        f"<table><tr><th>{_esc(_tr(display_lang, 'Severity'))}</th><th>{_esc(_tr(display_lang, 'Issue'))}</th><th>{_esc(_tr(display_lang, 'Category'))}</th>"
+        f"<th>{_esc(_tr(display_lang, 'Blocks delivery'))}</th><th>{_esc(_tr(display_lang, 'Required actions'))}</th><th>{_esc(_tr(display_lang, 'Status'))}</th></tr>"
+        f"{''.join(rows) or _none_table_row(display_lang, 6)}</table>"
     )
     return _card_html(
         "S1/S2 Blocking List",
         body,
-        lang=lang,
+        lang=display_lang,
         badge_html=_badge_html(str(len(rows)), tone="danger" if rows else "neutral", small=True),
         tone="danger" if rows else "default",
     )
