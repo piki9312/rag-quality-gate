@@ -7,9 +7,11 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from rqg.cli.check import cmd_check
 from rqg.domain import GateDecision, GateNextAction
 from rqg.quality.check import (
     CheckResult,
@@ -77,9 +79,165 @@ def log_dir_with_records(tmp_path):
     return str(log_dir)
 
 
+def _write_single_pass_log(log_dir: Path, *, run_id: str = "run-stage") -> None:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    record = QARunRecord(
+        timestamp=datetime.now(timezone.utc),
+        run_id=run_id,
+        case_id="QA001",
+        severity="S1",
+        passed=True,
+    )
+    (log_dir / f"{today}.jsonl").write_text(record.model_dump_json() + "\n", encoding="utf-8")
+
+
+def _run_cmd_check_for_stage(
+    tmp_path: Path,
+    *,
+    review_stage: str | None = None,
+    quality_pack_text: str | None = None,
+    gate_text: str | None = None,
+    change_event_text: str | None = None,
+) -> tuple[int, dict[str, object], Path]:
+    log_dir = tmp_path / f"logs-{uuid.uuid4().hex[:8]}"
+    _write_single_pass_log(log_dir)
+    quality_pack_path = tmp_path / f"quality-pack-{uuid.uuid4().hex[:8]}.yml"
+    quality_pack_path.write_text(
+        quality_pack_text or "pack:\n  pack_name: stage-test\n",
+        encoding="utf-8",
+    )
+    gate_path = tmp_path / f"gate-{uuid.uuid4().hex[:8]}.yml"
+    gate_path.write_text(
+        gate_text or "thresholds:\n  s1_pass_rate: 100.0\n  overall_pass_rate: 80.0\n",
+        encoding="utf-8",
+    )
+    change_event_path = None
+    if change_event_text is not None:
+        change_event_path = tmp_path / f"change-event-{uuid.uuid4().hex[:8]}.yml"
+        change_event_path.write_text(change_event_text, encoding="utf-8")
+
+    exit_code = cmd_check(
+        SimpleNamespace(
+            log_dir=str(log_dir),
+            config=str(gate_path),
+            days=1,
+            baseline_dir=None,
+            baseline_days=7,
+            cases_file=None,
+            quality_pack=str(quality_pack_path),
+            s1_threshold=100.0,
+            overall_threshold=80.0,
+            max_overall_drop_pct=None,
+            max_s1_drop_pct=None,
+            aggregation_policy=None,
+            output_file=None,
+            decision_file=None,
+            bundle_file=None,
+            report_mode="ci",
+            customer_facing=False,
+            allow_simulation_output=False,
+            strict_s1_governance=False,
+            change_event_file=str(change_event_path) if change_event_path else None,
+            review_stage=review_stage,
+            manual_review_file=None,
+            baseline_bundle=None,
+            warn_exit_code=0,
+            append_history=False,
+            notifications_enabled=False,
+        )
+    )
+    bundle_path = log_dir / "gate-report-ci.json"
+    payload = json.loads(bundle_path.read_text(encoding="utf-8")) if bundle_path.exists() else {}
+    return exit_code, payload, log_dir
+
+
 # ------------------------------------------------------------------
 # Tests
 # ------------------------------------------------------------------
+
+
+class TestReviewStageInputs:
+    def test_cli_review_stage_pre_delivery_is_written_to_review_packet(self, tmp_path, capsys):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            review_stage="pre_delivery",
+        )
+
+        assert exit_code == 0
+        assert payload["review_packet"]["review_stage"] == "pre_delivery"
+        assert payload["customer_review_markdown"].startswith(
+            "# AI Answer Quality Diagnostic Report"
+        )
+
+    def test_cli_review_stage_post_delivery_change_is_written_to_review_packet(
+        self, tmp_path, capsys
+    ):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            review_stage="post_delivery_change",
+        )
+
+        assert exit_code == 0
+        assert payload["review_packet"]["review_stage"] == "post_delivery_change"
+        assert payload["customer_review_markdown"].startswith("# Change Impact Quality Review")
+
+    def test_pack_metadata_review_stage_is_used(self, tmp_path, capsys):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            quality_pack_text="pack:\n  pack_name: stage-test\n  review_stage: monthly_review\n",
+        )
+
+        assert exit_code == 0
+        assert payload["review_packet"]["review_stage"] == "monthly_review"
+        assert payload["customer_review_markdown"].startswith("# Monthly Quality Review")
+
+    def test_cli_review_stage_overrides_pack_metadata(self, tmp_path, capsys):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            review_stage="pre_delivery",
+            quality_pack_text="pack:\n  pack_name: stage-test\n  review_stage: monthly_review\n",
+        )
+
+        assert exit_code == 0
+        assert payload["review_packet"]["review_stage"] == "pre_delivery"
+
+    def test_gate_yml_review_stage_is_used_after_quality_pack(self, tmp_path, capsys):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            gate_text=(
+                "review_stage: monthly_review\n"
+                "thresholds:\n  s1_pass_rate: 100.0\n  overall_pass_rate: 80.0\n"
+            ),
+        )
+
+        assert exit_code == 0
+        assert payload["review_packet"]["review_stage"] == "monthly_review"
+
+    def test_change_event_review_stage_is_used_after_pack_and_gate(self, tmp_path, capsys):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            change_event_text=(
+                "change_id: change-stage\n"
+                "change_type: document_update\n"
+                "review_stage: post_delivery_change\n"
+            ),
+        )
+
+        assert exit_code == 0
+        assert payload["review_packet"]["review_stage"] == "post_delivery_change"
+
+    def test_invalid_review_stage_fails_without_traceback(self, tmp_path, capsys):
+        exit_code, payload, _ = _run_cmd_check_for_stage(
+            tmp_path,
+            quality_pack_text="pack:\n  pack_name: stage-test\n  review_stage: shipment\n",
+        )
+        captured = capsys.readouterr()
+
+        assert exit_code == 1
+        assert payload == {}
+        assert "Invalid review_stage 'shipment'" in captured.err
+        assert "Traceback" not in captured.err
 
 
 class TestGateConfig:

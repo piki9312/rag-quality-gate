@@ -4,12 +4,13 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from rqg.domain import map_customer_severity
+from rqg.domain import ReleaseDecision, map_customer_severity
 from rqg.quality.check import CheckResult, ThresholdResult, build_gate_decision
 from rqg.quality.models import QARunRecord, QATestCase
 from rqg.quality.reporting import (
     GateReportArtifacts,
     build_gate_report_bundle_payload,
+    build_customer_review_markdown,
     build_review_packet_full,
     build_review_packet_safe,
 )
@@ -112,6 +113,7 @@ def _ready_review_packet_artifacts(
     change_type: str = "document_update",
     include_changed_assets: bool = True,
     include_affected_documents: bool = True,
+    review_stage: str | None = None,
 ) -> GateReportArtifacts:
     record = QARunRecord(
         timestamp=datetime(2026, 5, 19, 0, 0, tzinfo=timezone.utc),
@@ -144,6 +146,8 @@ def _ready_review_packet_artifacts(
         "source_of_truth": "approved refund policy" if include_source_of_truth else "",
         "stale_doc_policy": "reject_docs_older_than_30_days" if include_stale_policy else "",
     }
+    if review_stage is not None:
+        provenance["review_stage"] = review_stage
     if include_versions:
         provenance["doc_snapshot_ids"] = ["snapshot-ready-v1"]
     if include_change_event:
@@ -208,6 +212,12 @@ def test_review_packet_has_required_sections() -> None:
     assert packet.report_sections.scope
     assert packet.report_sections.major_risks
     assert packet.production_readiness.status == "not_ready"
+    assert packet.delivery_review.status == "not_deliverable"
+    assert packet.delivery_review.unresolved_s1_count == 1
+    assert packet.blocking_items
+    assert packet.customer_shareability.status == "shareable"
+    assert packet.customer_submission_readiness.status == "not_recommended"
+    assert packet.review_stage == "post_delivery_change"
     assert packet.document_corpus.document_count == 1
     assert packet.document_corpus.has_document_versions is True
     assert packet.change_summary.change_type == "document_update"
@@ -226,6 +236,7 @@ def test_safe_review_packet_excludes_raw_question_answer_and_evidence() -> None:
     assert "ACME policy owner" not in payload
     assert "ACME May release" not in payload
     assert "C:\\customer\\docs" not in payload
+    assert packet.customer_shareability.forbidden_fields_detected == []
     assert packet.major_failures[0].case_id == ""
     assert packet.major_failures[0].case_id_hash
     assert packet.major_failures[0].safe_reason_code == "evidence_mismatch"
@@ -255,6 +266,8 @@ def test_full_review_packet_keeps_detail_references() -> None:
     )
     assert packet.change_summary.changed_assets == [r"C:\customer\docs\VIP refund policy.md"]
     assert packet.change_summary.affected_documents == [r"C:\customer\docs\VIP refund policy.md"]
+    assert packet.customer_shareability.status == "needs_review"
+    assert "full_evidence_mode" in packet.customer_shareability.forbidden_fields_detected
 
 
 def test_customer_severity_mapping_is_conservative() -> None:
@@ -310,6 +323,11 @@ def test_gate_report_bundle_includes_review_packet_without_breaking_contract() -
     assert payload["schema_version"] == "1.0"
     assert review_packet["packet_mode"] == "safe"
     assert review_packet["report_sections"]["executive_summary"]
+    assert review_packet["report_sections"]["delivery_review"]
+    assert payload["customer_review_markdown"].startswith("# Change Impact Quality Review")
+    assert "Raw answer" not in payload["customer_review_markdown"]
+    assert "Can a VIP customer" not in payload["customer_review_markdown"]
+    assert "C:\\customer\\docs" not in payload["customer_review_markdown"]
     assert "corpus=(" in review_packet["report_sections"]["scope"]
     assert "change_type=document_update" in review_packet["report_sections"]["change_summary"]
     assert "Raw answer" not in serialized
@@ -318,6 +336,41 @@ def test_gate_report_bundle_includes_review_packet_without_breaking_contract() -
     assert "VIP refund policy" not in serialized
     assert "ACME policy owner" not in serialized
     assert "ACME May release" not in serialized
+
+
+def test_customer_review_markdown_contains_only_safe_delivery_information() -> None:
+    packet = build_review_packet_safe(_review_packet_artifacts(report_mode="ci"))
+    markdown = build_customer_review_markdown(packet)
+
+    assert "Review stage: post_delivery_change" in markdown
+    assert "Delivery status: not_deliverable" in markdown
+    assert "Customer shareability status: safe_to_share" in markdown
+    assert "Customer submission readiness: not_recommended" in markdown
+    assert "S1: evidence_mismatch" in markdown
+    assert "Raw answer" not in markdown
+    assert "Can a VIP customer" not in markdown
+    assert "refund_policy.md#sec-1" not in markdown
+    assert "C:\\customer\\docs" not in markdown
+    assert "ACME policy owner" not in markdown
+
+
+def test_customer_review_markdown_keeps_old_unknown_stage_title_fallback() -> None:
+    markdown = build_customer_review_markdown({"review_stage": "unknown"})
+
+    assert markdown.startswith("# Customer Review")
+
+
+def test_release_decision_schema_validates_minimal_record() -> None:
+    decision = ReleaseDecision(
+        decision="conditional",
+        decided_by="",
+        reviewer_role="partner_pm",
+        unresolved_blockers=["failure-abc123"],
+        required_actions=["Fix and rerun."],
+    )
+
+    assert decision.decision == "conditional"
+    assert decision.unresolved_blockers == ["failure-abc123"]
 
 
 def test_production_readiness_not_ready_for_critical_failure_and_no_go() -> None:
@@ -337,19 +390,39 @@ def test_production_readiness_warns_when_document_versions_are_missing() -> None
 
     assert packet.production_readiness.status == "conditional"
     assert "document_versions_missing" in warning_codes
+    assert packet.customer_submission_readiness.status == "conditional"
+    assert packet.delivery_review.status == "needs_approval"
 
 
 def test_production_readiness_ready_when_required_inputs_are_present() -> None:
     packet = build_review_packet_safe(_ready_review_packet_artifacts(report_mode="ci"))
 
+    assert packet.review_stage == "post_delivery_change"
     assert packet.production_readiness.status == "ready"
     assert packet.production_readiness.blockers == []
     assert packet.production_readiness.warnings == []
+    assert packet.delivery_review.status == "deliverable"
+    assert packet.customer_submission_readiness.status == "recommended"
 
 
-def test_production_readiness_warns_when_change_event_is_missing() -> None:
+def test_pre_delivery_accepts_missing_change_event_without_change_warning() -> None:
     packet = build_review_packet_safe(
         _ready_review_packet_artifacts(report_mode="ci", include_change_event=False)
+    )
+    warning_codes = {item.code for item in packet.production_readiness.warnings}
+
+    assert packet.review_stage == "pre_delivery"
+    assert "change_event_missing" not in warning_codes
+    assert "change_type_unknown" not in warning_codes
+
+
+def test_post_delivery_change_warns_when_change_event_is_missing() -> None:
+    packet = build_review_packet_safe(
+        _ready_review_packet_artifacts(
+            report_mode="ci",
+            include_change_event=False,
+            review_stage="post_delivery_change",
+        )
     )
     warning_codes = {item.code for item in packet.production_readiness.warnings}
 

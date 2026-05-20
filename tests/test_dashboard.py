@@ -10,7 +10,9 @@ pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient
 
 
-def test_dashboard_routes_render_pack_runs_and_monthly_summary(tmp_path: Path) -> None:
+def test_dashboard_routes_render_old_report_fallback_and_monthly_summary(
+    tmp_path: Path,
+) -> None:
     workspace = tmp_path / "workspace"
     pack_dir = workspace / "packs" / "sample-pack"
     runs_dir = workspace / "runs" / "sample-pack"
@@ -111,6 +113,9 @@ def test_dashboard_routes_render_pack_runs_and_monthly_summary(tmp_path: Path) -
     run_detail = client.get("/packs/sample-pack/runs/run-001?lang=ja")
     assert run_detail.status_code == 200
     assert "hero hero--danger" in run_detail.text
+    assert "Delivery Review Summary" not in run_detail.text
+    assert "S1/S2 Blocking List" not in run_detail.text
+    assert "Download Customer Review Markdown" not in run_detail.text
     assert "本番反映不可" in run_detail.text
     assert "この run にはレビュー情報がありません。" in run_detail.text
     assert "判定器信頼度" in run_detail.text
@@ -126,6 +131,13 @@ def test_dashboard_routes_render_pack_runs_and_monthly_summary(tmp_path: Path) -
     monthly = client.get("/packs/sample-pack/monthly?lang=ja")
     assert monthly.status_code == 200
     assert "ブロックrun数" in monthly.text
+
+    english_run_detail = client.get("/packs/sample-pack/runs/run-001?lang=en")
+    assert english_run_detail.status_code == 200
+    assert "ReviewPacket is not available for this run." in english_run_detail.text
+    assert "Delivery Review Summary" not in english_run_detail.text
+    assert "Review stage" not in english_run_detail.text
+    assert "Production Readiness Card" not in english_run_detail.text
 
 
 def test_dashboard_global_failures_include_demo_block_and_review() -> None:
@@ -172,6 +184,7 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
                 },
                 "review_packet": {
                     "packet_mode": "safe",
+                    "review_stage": "post_delivery_change",
                     "run_summary": {
                         "run_id": "run-review",
                         "created_at": "2026-05-19T00:00:00Z",
@@ -311,6 +324,63 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
                         "required_actions": ["Fix and rerun.", "Complete human review."],
                         "readiness_summary": "Not ready for production.",
                     },
+                    "delivery_review": {
+                        "status": "not_deliverable",
+                        "summary": "Delivery is not recommended until blockers are fixed.",
+                        "unresolved_s1_count": 1,
+                        "unresolved_s2_count": 0,
+                        "blockers": [
+                            {
+                                "item_id": "failure-abc123",
+                                "severity": "S1",
+                                "issue": "evidence_mismatch",
+                                "category": "evidence_mismatch",
+                                "blocks_delivery": True,
+                                "required_action": "Review the evidence alignment.",
+                                "owner": "",
+                                "due_date": "",
+                                "status": "open",
+                            }
+                        ],
+                        "customer_submission_status": "safe_to_share",
+                        "required_actions": ["Review the evidence alignment."],
+                        "reviewer_notes_placeholder": "Reviewer notes placeholder.",
+                    },
+                    "blocking_items": [
+                        {
+                            "item_id": "failure-abc123",
+                            "severity": "S1",
+                            "issue": "evidence_mismatch",
+                            "category": "evidence_mismatch",
+                            "blocks_delivery": True,
+                            "required_action": "Review the evidence alignment.",
+                            "owner": "",
+                            "due_date": "",
+                            "status": "open",
+                        }
+                    ],
+                    "customer_shareability": {
+                        "status": "shareable",
+                        "reasons": ["safe_review_packet"],
+                        "forbidden_fields_detected": [],
+                        "safe_mode_required": True,
+                    },
+                    "customer_submission_readiness": {
+                        "status": "not_recommended",
+                        "reasons": ["unresolved_blockers_or_no_go"],
+                        "recommendation": "Formal customer submission is not recommended.",
+                    },
+                    "release_decision": {
+                        "decision": "needs_review",
+                        "decided_by": "",
+                        "decided_at": "",
+                        "reviewer_role": "",
+                        "accepted_risks": [],
+                        "unresolved_blockers": ["failure-abc123"],
+                        "required_actions": ["Review the evidence alignment."],
+                        "evidence_refs": [],
+                        "notes": "",
+                    },
                 },
             }
         ),
@@ -363,6 +433,15 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "RAW QUESTION SHOULD NOT RENDER" not in run_detail.text
     assert "RAW ANSWER SHOULD NOT RENDER" not in run_detail.text
 
+    customer_review = client.get("/runs/run-review/customer-review.md")
+    assert customer_review.status_code == 200
+    assert "# Change Impact Quality Review" in customer_review.text
+    assert "Review stage: post_delivery_change" in customer_review.text
+    assert "Delivery status: not_deliverable" in customer_review.text
+    assert "S1: evidence_mismatch" in customer_review.text
+    assert "RAW QUESTION SHOULD NOT RENDER" not in customer_review.text
+    assert "RAW ANSWER SHOULD NOT RENDER" not in customer_review.text
+
     failure_detail = client.get("/runs/run-review/failures/failure-abc123?lang=ja")
     assert failure_detail.status_code == 200
     assert "safe版では raw question、answer、evidence はここに表示しません。" in failure_detail.text
@@ -392,8 +471,14 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert english_run_detail.status_code == 200
     assert "hero hero--danger" in english_run_detail.text
     assert "No-Go" in english_run_detail.text
+    assert "ReviewPacket is not available for this run." not in english_run_detail.text
+    assert "Delivery Review Summary" in english_run_detail.text
+    assert "Review stage" in english_run_detail.text
+    assert "post_delivery_change" in english_run_detail.text
     assert "Decision Card" in english_run_detail.text
     assert "Production Readiness Card" in english_run_detail.text
+    assert "Formal submission readiness" in english_run_detail.text
+    assert "not_recommended" in english_run_detail.text
     assert "Critical case failed." in english_run_detail.text
     assert "Review the evidence alignment." in english_run_detail.text
     assert "Failure" in english_run_detail.text
