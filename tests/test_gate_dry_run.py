@@ -54,4 +54,5 @@ def test_check_command_skips_history_append_and_notifications_when_disabled(tmp_
     assert (log_dir / "gate-decision.json").exists()
     assert (log_dir / "gate-history-summary.json").exists()
     assert not (log_dir / "gate-decisions.jsonl").exists()
+    assert not (log_dir / "gate-decisions-safe.jsonl").exists()
     notifications_mock.assert_not_called()
