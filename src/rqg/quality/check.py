@@ -13,8 +13,8 @@ from pydantic import ValidationError
 
 from rqg.domain import GateDecision, GateNextAction, GatePackMetadata
 
-from .artifact_exposure_policy import ArtifactType, FieldExposure, resolve_artifact_exposure
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
+from .artifact_exposure_policy import ArtifactType, FieldExposure, resolve_artifact_exposure
 from .models import QARunRecord, QATestCase
 from .provenance import (
     SIMULATION_WARNING_EN,

@@ -52,11 +52,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         SIMULATION_WARNING_JA,
         is_simulation_execution_mode,
         load_change_event,
-        load_yaml_or_json,
         load_manual_review_records,
+        load_yaml_or_json,
     )
     from ..quality.report_mode_policy import ReportModeContext, resolve_report_mode_policy
-    from ..quality.review_stage import resolve_review_stage
     from ..quality.reporting import (
         BundleJsonReportAdapter,
         DecisionHistoryJsonlReportAdapter,
@@ -67,6 +66,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         SafeDecisionHistoryJsonlReportAdapter,
         safe_relative_artifact_path,
     )
+    from ..quality.review_stage import resolve_review_stage
 
     try:
         github_actions = github_actions_enabled()
