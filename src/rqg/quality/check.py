@@ -13,6 +13,7 @@ from pydantic import ValidationError
 
 from rqg.domain import GateDecision, GateNextAction, GatePackMetadata
 
+from .artifact_exposure_policy import ArtifactType, FieldExposure, resolve_artifact_exposure
 from .aggregate import case_pass_rates, failure_category_breakdown, failure_category_case_ids
 from .models import QARunRecord, QATestCase
 from .provenance import (
@@ -853,9 +854,14 @@ def collect_target_docs(result: CheckResult) -> list[str]:
 def collect_target_docs_if_report_mode_allows(
     result: CheckResult, report_mode: object
 ) -> list[str]:
-    # Only full reports may include target_docs so redacted/ci/customer-facing artifacts
-    # do not leak customer document names or private source paths.
-    return collect_target_docs(result) if report_mode_exposes_sensitive_fields(report_mode) else []
+    policy = resolve_artifact_exposure(ArtifactType.GATE_REPORT_JSON, report_mode)
+    exposure = policy.exposure_for("target_docs")
+    target_docs = collect_target_docs(result)
+    if exposure == FieldExposure.ALLOWED:
+        return target_docs
+    if exposure == FieldExposure.HASHED_ONLY:
+        return [_stable_text_hash(value) for value in target_docs]
+    return []
 
 
 def build_customer_report_summary(result: CheckResult) -> dict[str, object]:
@@ -896,15 +902,16 @@ def build_case_report_rows(
     failure_actions: dict[str, str] | None = None,
     *,
     report_mode: str = "full",
+    artifact_type: ArtifactType | str = ArtifactType.GATE_REPORT_JSON,
 ) -> list[dict[str, object]]:
     case_by_id = {case.case_id: case for case in result.active_cases}
     rows: list[dict[str, object]] = []
-    expose_sensitive_fields = report_mode_exposes_sensitive_fields(report_mode)
+    policy = resolve_artifact_exposure(artifact_type, report_mode)
 
     for record in sorted(result.current_records, key=_case_report_sort_key):
         case = case_by_id.get(record.case_id)
         needs_human_review = _case_needs_human_review(record)
-        row: dict[str, object] = {
+        raw_fields: dict[str, object] = {
             "case_id": record.case_id,
             "name": case.name if case else record.case_id,
             "severity": case.severity if case else record.severity,
@@ -914,10 +921,10 @@ def build_case_report_rows(
             ),
             "decision": _case_decision(record, needs_human_review),
             "pass_fail": "pass" if record.passed else "fail",
-            "fail_reason": (
-                _case_fail_reason(record)
-                if expose_sensitive_fields
-                else _safe_case_fail_reason(record)
+            "fail_reason": _case_fail_reason(record),
+            "safe_reason": _safe_case_fail_reason(record),
+            "failure_type_code": _safe_case_code(
+                record.failure_category or record.failure_type or ""
             ),
             "next_actions": _case_next_actions(
                 record,
@@ -928,17 +935,24 @@ def build_case_report_rows(
             "judge_fallback_reason": record.judge_fallback_reason,
             "judge_reliability": result.judge_reliability,
             "needs_human_review": needs_human_review,
+            "answer_hash": record.answer_hash or _stable_text_hash(record.answer),
+            "question": case.question if case else "",
+            "ai_answer": record.answer,
+            "expected_answer": case.expected_answer if case else "",
+            "expected_evidence": list(case.expected_evidence) if case else [],
+            "retrieved_evidence": list(record.retrieved_ids),
+            "source_doc": case.source_doc if case else "",
         }
-        if expose_sensitive_fields:
-            row.update(
-                {
-                    "question": case.question if case else "",
-                    "ai_answer": record.answer,
-                    "expected_answer": case.expected_answer if case else "",
-                    "expected_evidence": list(case.expected_evidence) if case else [],
-                    "retrieved_evidence": list(record.retrieved_ids),
-                }
-            )
+        row: dict[str, object] = {}
+        for field_name, value in raw_fields.items():
+            exposure = policy.exposure_for(field_name)
+            if exposure == FieldExposure.ALLOWED:
+                row[field_name] = value
+            elif exposure == FieldExposure.HASHED_ONLY:
+                hashed_value = _stable_text_hash(value)
+                row[f"{field_name}_hash"] = hashed_value
+                if field_name == "case_id":
+                    row[field_name] = f"case:{hashed_value}"
         rows.append(row)
 
     return rows
@@ -947,10 +961,11 @@ def build_case_report_rows(
 def build_ci_case_report_rows(result: CheckResult) -> list[dict[str, object]]:
     """Build CI-safe per-case rows without customer-authored identifiers or text."""
     rows: list[dict[str, object]] = []
+    policy = resolve_artifact_exposure(ArtifactType.CI_CASE_ROW, "ci")
     for record in sorted(result.current_records, key=_case_report_sort_key):
         needs_human_review = _case_needs_human_review(record)
-        row: dict[str, object] = {
-            "case_id_hash": _stable_case_id_hash(record.case_id),
+        raw_fields: dict[str, object] = {
+            "case_id": record.case_id,
             "severity": record.severity,
             "decision": _case_decision(record, needs_human_review),
             "pass_fail": "pass" if record.passed else "fail",
@@ -969,13 +984,24 @@ def build_ci_case_report_rows(result: CheckResult) -> list[dict[str, object]]:
         ):
             value = getattr(record, key, None)
             if value is not None:
-                row[key] = value
+                raw_fields[key] = value
+        row: dict[str, object] = {}
+        for field_name, value in raw_fields.items():
+            exposure = policy.exposure_for(field_name)
+            if exposure == FieldExposure.ALLOWED:
+                row[field_name] = value
+            elif exposure == FieldExposure.HASHED_ONLY:
+                row[f"{field_name}_hash"] = _stable_text_hash(value)
         rows.append(row)
     return rows
 
 
 def _stable_case_id_hash(case_id: object) -> str:
-    return hashlib.sha256(str(case_id or "").encode("utf-8")).hexdigest()[:16]
+    return _stable_text_hash(case_id)
+
+
+def _stable_text_hash(value: object) -> str:
+    return hashlib.sha256(str(value or "").encode("utf-8")).hexdigest()[:16]
 
 
 def _safe_case_code(value: object) -> str:
@@ -1299,7 +1325,11 @@ def _render_customer_report_markdown(
         str(pack_metadata.get("app_name") or pack_metadata.get("pack_name") or "未設定").strip()
         or "未設定"
     )
-    change_event = pack_metadata.get("change_event")
+    change_event = (
+        pack_metadata.get("change_event")
+        if report_mode_exposes_sensitive_fields(report_mode)
+        else None
+    )
     s1_failures = [
         row
         for row in case_rows
@@ -1355,7 +1385,7 @@ def _render_customer_report_markdown(
         lines.append("| Case ID | Name | Fail Reason | Next Actions |")
         lines.append("|---------|------|-------------|--------------|")
         for row in s1_failures:
-            next_actions = row["next_actions"] or []
+            next_actions = row.get("next_actions") or []
             action_text = (
                 "; ".join(_customer_action_label(item) for item in next_actions)
                 if next_actions
@@ -1364,8 +1394,10 @@ def _render_customer_report_markdown(
             lines.append(
                 "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
                     case_id=row["case_id"],
-                    name=str(row["name"] or "-").replace("|", "\\|"),
-                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                    name=str(row.get("name") or "-").replace("|", "\\|"),
+                    fail_reason=str(
+                        row.get("fail_reason") or row.get("safe_reason") or "-"
+                    ).replace("|", "\\|"),
                     next_actions=action_text.replace("|", "\\|"),
                 )
             )
@@ -1381,11 +1413,13 @@ def _render_customer_report_markdown(
             lines.append(
                 "| {case_id} | {name} | {severity} | {decision} | {pass_fail} | {fail_reason} |".format(
                     case_id=row["case_id"],
-                    name=str(row["name"] or "-").replace("|", "\\|"),
+                    name=str(row.get("name") or "-").replace("|", "\\|"),
                     severity=row["severity"],
                     decision=row["decision"],
                     pass_fail=row["pass_fail"],
-                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                    fail_reason=str(
+                        row.get("fail_reason") or row.get("safe_reason") or "-"
+                    ).replace("|", "\\|"),
                 )
             )
     else:
@@ -1396,7 +1430,7 @@ def _render_customer_report_markdown(
     action_lines: list[str] = []
     seen_actions: set[str] = set()
     for row in case_rows:
-        for action in row["next_actions"] or []:
+        for action in row.get("next_actions") or []:
             normalized = _customer_action_label(action).strip()
             if not normalized or normalized in seen_actions:
                 continue
@@ -1645,7 +1679,12 @@ def _render_customer_report_markdown_clean(
 ) -> str:
     overall_decision = map_overall_decision(result)
     summary = build_customer_report_summary(result)
-    case_rows = build_case_report_rows(result, failure_actions, report_mode=report_mode)
+    case_rows = build_case_report_rows(
+        result,
+        failure_actions,
+        report_mode=report_mode,
+        artifact_type=ArtifactType.CUSTOMER_SUMMARY,
+    )
     target_docs = collect_target_docs_if_report_mode_allows(result, report_mode)
     pack_metadata = pack_metadata or {}
     client_name = str(pack_metadata.get("client_name") or "未設定").strip() or "未設定"
@@ -1706,7 +1745,7 @@ def _render_customer_report_markdown_clean(
         lines.append("| Case ID | Name | Fail Reason | Next Actions |")
         lines.append("|---------|------|-------------|--------------|")
         for row in s1_failures:
-            next_actions = row["next_actions"] or []
+            next_actions = row.get("next_actions") or []
             action_text = (
                 "; ".join(_customer_action_label(item) for item in next_actions)
                 if next_actions
@@ -1715,8 +1754,10 @@ def _render_customer_report_markdown_clean(
             lines.append(
                 "| {case_id} | {name} | {fail_reason} | {next_actions} |".format(
                     case_id=row["case_id"],
-                    name=str(row["name"] or "-").replace("|", "\\|"),
-                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                    name=str(row.get("name") or "-").replace("|", "\\|"),
+                    fail_reason=str(
+                        row.get("fail_reason") or row.get("safe_reason") or "-"
+                    ).replace("|", "\\|"),
                     next_actions=action_text.replace("|", "\\|"),
                 )
             )
@@ -1732,11 +1773,13 @@ def _render_customer_report_markdown_clean(
             lines.append(
                 "| {case_id} | {name} | {severity} | {decision} | {pass_fail} | {fail_reason} |".format(
                     case_id=row["case_id"],
-                    name=str(row["name"] or "-").replace("|", "\\|"),
+                    name=str(row.get("name") or "-").replace("|", "\\|"),
                     severity=row["severity"],
                     decision=row["decision"],
                     pass_fail=row["pass_fail"],
-                    fail_reason=str(row["fail_reason"] or "-").replace("|", "\\|"),
+                    fail_reason=str(
+                        row.get("fail_reason") or row.get("safe_reason") or "-"
+                    ).replace("|", "\\|"),
                 )
             )
     else:
@@ -1747,7 +1790,7 @@ def _render_customer_report_markdown_clean(
     action_lines: list[str] = []
     seen_actions: set[str] = set()
     for row in case_rows:
-        for action in row["next_actions"] or []:
+        for action in row.get("next_actions") or []:
             normalized = _customer_action_label(action).strip()
             if not normalized or normalized in seen_actions:
                 continue
