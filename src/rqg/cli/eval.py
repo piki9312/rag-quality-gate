@@ -12,7 +12,6 @@ from typing import Any
 
 from .helpers import (
     github_actions_enabled,
-    github_actions_fail_fast_message,
     reset_eval_log_dir,
     validate_index_dir,
     write_json_output,
@@ -99,7 +98,6 @@ def cmd_ingest(args: argparse.Namespace) -> int:
 
 def cmd_eval(args: argparse.Namespace) -> int:
     """テストケースを実行して品質評価する。"""
-    from ..quality.check import normalize_report_mode
     from ..quality.evaluators.llm_judge import JUDGE_PROMPT_VERSION, judge_prompt_hash
     from ..quality.loader import filter_cases_by_status, load_cases
     from ..quality.provenance import (
@@ -113,6 +111,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
         quality_pack_version,
         write_run_provenance,
     )
+    from ..quality.report_mode_policy import ReportModeContext, resolve_report_mode_policy
     from ..quality.runner import RAGQualityRunner
     from ..serving.llm_client import ANSWER_PROMPT_VERSION, OPENAI_MODEL, answer_prompt_hash
 
@@ -121,31 +120,27 @@ def cmd_eval(args: argparse.Namespace) -> int:
     adapter_config_path = getattr(args, "adapter_config", None)
     adapter_config = None
     requested_report_mode = getattr(args, "report_mode", None)
-    requested_report_mode = (
-        str(requested_report_mode).strip().lower() if requested_report_mode is not None else None
-    )
-    execution_mode = determine_execution_mode(
-        mock=bool(getattr(args, "mock", False)),
-        rag_endpoint=rag_endpoint,
-        adapter_config_path=adapter_config_path,
-    )
-
-    if github_actions_enabled() and requested_report_mode == "full":
-        print(
-            github_actions_fail_fast_message(
-                "--report-mode full is not allowed when GITHUB_ACTIONS=true."
-            ),
-            file=sys.stderr,
+    github_actions = github_actions_enabled()
+    try:
+        early_report_policy = resolve_report_mode_policy(
+            ReportModeContext(
+                requested_report_mode=requested_report_mode,
+                github_actions=github_actions,
+                customer_facing=bool(getattr(args, "customer_facing", False)),
+                mock=bool(getattr(args, "mock", False)),
+                rag_endpoint=rag_endpoint,
+                adapter_config=adapter_config_path,
+                allow_simulation_output=bool(
+                    getattr(args, "allow_simulation_output", False)
+                ),
+            )
         )
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
         return 1
-    default_report_mode = requested_report_mode
-    if github_actions_enabled() and requested_report_mode is None:
-        default_report_mode = "ci"
-    elif requested_report_mode is None and (
-        execution_mode == "external_real" or getattr(args, "customer_facing", False)
-    ):
-        default_report_mode = "redacted"
-    report_mode = normalize_report_mode(default_report_mode)
+    if early_report_policy.blocked:
+        print(early_report_policy.error_message, file=sys.stderr)
+        return 1
     try:
         change_event = load_change_event(getattr(args, "change_event_file", None))
     except ValueError as exc:
@@ -170,11 +165,39 @@ def cmd_eval(args: argparse.Namespace) -> int:
             rag_endpoint = cfg["endpoint"]
             rag_api_key_env = rag_api_key_env or cfg.get("api_key_env")
 
-    if github_actions_enabled() and rag_endpoint:
+    execution_mode = determine_execution_mode(
+        mock=bool(getattr(args, "mock", False)),
+        rag_endpoint=rag_endpoint,
+        adapter_config_path=adapter_config_path,
+    )
+    try:
+        report_policy = resolve_report_mode_policy(
+            ReportModeContext(
+                requested_report_mode=requested_report_mode,
+                github_actions=github_actions,
+                customer_facing=bool(getattr(args, "customer_facing", False)),
+                execution_mode=execution_mode,
+                mock=bool(getattr(args, "mock", False)),
+                rag_endpoint=rag_endpoint,
+                adapter_config=adapter_config_path,
+                allow_simulation_output=bool(
+                    getattr(args, "allow_simulation_output", False)
+                ),
+            )
+        )
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+    if report_policy.blocked:
+        print(report_policy.error_message, file=sys.stderr)
+        return 1
+    report_mode = report_policy.report_mode
+
+    if github_actions and rag_endpoint:
         print(
-            github_actions_fail_fast_message(
-                "External/customer RAG execution is not allowed when GITHUB_ACTIONS=true."
-            ),
+            "[ERROR] External/customer RAG execution is not allowed when GITHUB_ACTIONS=true. "
+            "GitHub Actions may handle sample/mock/dummy data only; customer/full/external runs "
+            "must be executed in a local/private runner or customer-controlled environment.",
             file=sys.stderr,
         )
         return 1

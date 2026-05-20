@@ -29,12 +29,12 @@ from .reason_taxonomy import (
     REASON_NEEDS_HUMAN_REVIEW,
     canonical_reason,
 )
+from .report_mode_policy import VALID_REPORT_MODES, normalize_report_mode_value
 from .staleness import CaseStalenessItem, summarize_case_staleness
 
 logger = logging.getLogger(__name__)
 
 VALID_AGGREGATION_POLICIES = {"latest_run", "window"}
-VALID_REPORT_MODES = {"ci", "redacted", "full"}
 CI_SAFE_FAILURE_CODES = {
     "answer_mismatch",
     "bad_reference",
@@ -81,18 +81,12 @@ def normalize_aggregation_policy(value: object) -> str:
 
 
 def normalize_report_mode(value: object) -> str:
-    """Normalize additive report mode names."""
-    if value is None:
-        return "full"
+    """Normalize additive report mode names.
 
-    normalized = str(value).strip().lower().replace("-", "_")
-    if normalized == "":
-        return "full"
-    if normalized in VALID_REPORT_MODES:
-        return normalized
-
-    allowed = ", ".join(sorted(VALID_REPORT_MODES))
-    raise ValueError(f"Invalid report_mode '{value}' (allowed: {allowed})")
+    Kept as a compatibility wrapper for existing imports. New command-level
+    mode selection should use ReportModePolicy.
+    """
+    return normalize_report_mode_value(value)
 
 
 def report_mode_exposes_sensitive_fields(report_mode: object) -> bool:
