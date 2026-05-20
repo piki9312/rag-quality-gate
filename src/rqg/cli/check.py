@@ -77,9 +77,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 github_actions=github_actions,
                 customer_facing=bool(getattr(args, "customer_facing", False)),
                 mock=bool(getattr(args, "mock", False)),
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
         if early_report_policy.blocked:
@@ -145,9 +143,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                 customer_facing=bool(getattr(args, "customer_facing", False)),
                 execution_mode=result.execution_mode,
                 mock=bool(getattr(args, "mock", False)),
-                allow_simulation_output=bool(
-                    getattr(args, "allow_simulation_output", False)
-                ),
+                allow_simulation_output=bool(getattr(args, "allow_simulation_output", False)),
             )
         )
     except ValueError as exc:

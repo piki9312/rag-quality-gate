@@ -16,7 +16,6 @@ from ..quality.history import load_gate_decision_history
 from ..quality.monthly_summary import build_monthly_summary_payload
 from ..quality.reporting import build_customer_review_markdown
 
-
 _DEFAULT_DASHBOARD_LANG = "ja"
 _DASHBOARD_JA_TEXT = {
     "Packs": "パック一覧",
@@ -558,7 +557,9 @@ def _translate_message(lang: str, text: object | None) -> str:
         return f"S1合格率: {match.group(1)}"
     if match := re.fullmatch(r"Overall pass rate: (.+)", raw):
         return f"全体合格率: {match.group(1)}"
-    if match := re.fullmatch(r"Document corpus: (\d+) document(?:s)?; has versions=(True|False)", raw):
+    if match := re.fullmatch(
+        r"Document corpus: (\d+) document(?:s)?; has versions=(True|False)", raw
+    ):
         return (
             f"根拠文書は {match.group(1)} 件で、"
             f"バージョン情報あり={_translate_value(lang, match.group(2))} です。"
@@ -661,9 +662,7 @@ def _decision_action_items(
             continue
         action = item.get("required_action")
         if action:
-            actions.append(
-                _translate_issue_action(item.get("reason_code"), action, lang=lang)
-            )
+            actions.append(_translate_issue_action(item.get("reason_code"), action, lang=lang))
     for action in explanation.get("required_actions", []):
         actions.append(_translate_message(lang, action))
     return _unique_texts(actions)
@@ -703,13 +702,17 @@ def _translate_readiness_summary(readiness: dict[str, Any], *, lang: str) -> str
             f"{len(warnings)} 件の注意事項への対応が必要です。"
         )
     if status == "conditional":
-        return f"条件付きです。{len(warnings)} 件の注意事項を確認してから本番移行を判断してください。"
+        return (
+            f"条件付きです。{len(warnings)} 件の注意事項を確認してから本番移行を判断してください。"
+        )
     if status == "ready":
         return "この検査範囲では本番移行レビューに進める状態です。"
     return _translate_message(lang, fallback) or fallback or "-"
 
 
-def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object, *, lang: str) -> str:
+def _report_preview_section_text(
+    run: dict[str, Any], key: str, fallback: object, *, lang: str
+) -> str:
     raw = str(fallback or "").strip() or "-"
     if lang != "ja":
         return raw
@@ -734,7 +737,11 @@ def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object
         )
         return " ".join(parts) or (_translate_message(lang, raw) or raw)
     if key == "change_summary":
-        change = packet.get("change_summary", {}) if isinstance(packet.get("change_summary"), dict) else {}
+        change = (
+            packet.get("change_summary", {})
+            if isinstance(packet.get("change_summary"), dict)
+            else {}
+        )
         parts = [
             f"変更種別は {_translate_value(lang, change.get('change_type', 'unknown'), show_raw=True)} です。",
         ]
@@ -747,7 +754,9 @@ def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object
         return " ".join(_unique_texts(parts)) or (_translate_message(lang, raw) or raw)
     if key == "scope":
         corpus = (
-            packet.get("document_corpus", {}) if isinstance(packet.get("document_corpus"), dict) else {}
+            packet.get("document_corpus", {})
+            if isinstance(packet.get("document_corpus"), dict)
+            else {}
         )
         return (
             f"根拠文書は {int(corpus.get('document_count') or 0)} 件で、"
@@ -765,7 +774,11 @@ def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object
         ]
         return " ".join(_unique_texts(parts)) or (_translate_message(lang, raw) or raw)
     if key == "major_risks":
-        failures = packet.get("major_failures", []) if isinstance(packet.get("major_failures"), list) else []
+        failures = (
+            packet.get("major_failures", [])
+            if isinstance(packet.get("major_failures"), list)
+            else []
+        )
         labels = _unique_texts(
             [
                 _translate_failure_pattern(
@@ -786,10 +799,14 @@ def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object
             if isinstance(packet.get("production_readiness"), dict)
             else {}
         )
-        blockers = readiness.get("blockers", []) if isinstance(readiness.get("blockers"), list) else []
+        blockers = (
+            readiness.get("blockers", []) if isinstance(readiness.get("blockers"), list) else []
+        )
         labels = _unique_texts(
             [
-                _translate_issue_label(item.get("code"), item.get("label"), lang=lang, show_raw=True)
+                _translate_issue_label(
+                    item.get("code"), item.get("label"), lang=lang, show_raw=True
+                )
                 for item in blockers
                 if isinstance(item, dict)
             ]
@@ -803,7 +820,11 @@ def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object
             if isinstance(packet.get("decision_explanation"), dict)
             else {}
         )
-        blocking = explanation.get("blocking_reasons", []) if isinstance(explanation.get("blocking_reasons"), list) else []
+        blocking = (
+            explanation.get("blocking_reasons", [])
+            if isinstance(explanation.get("blocking_reasons"), list)
+            else []
+        )
         readiness = (
             packet.get("production_readiness", {})
             if isinstance(packet.get("production_readiness"), dict)
@@ -817,7 +838,11 @@ def _report_preview_section_text(run: dict[str, Any], key: str, fallback: object
             return " / ".join(actions)
         return _translate_message(lang, raw) or raw
     if key == "residual_risks":
-        failures = packet.get("major_failures", []) if isinstance(packet.get("major_failures"), list) else []
+        failures = (
+            packet.get("major_failures", [])
+            if isinstance(packet.get("major_failures"), list)
+            else []
+        )
         labels = _unique_texts(
             [
                 _translate_failure_pattern(
@@ -961,7 +986,10 @@ def _run_customer_status(run: dict[str, Any]) -> str:
     if isinstance(packet, dict) and packet:
         decision = packet.get("decision") if isinstance(packet.get("decision"), dict) else {}
         status = str(
-            decision.get("customer_status") or decision.get("status") or run.get("policy_status") or ""
+            decision.get("customer_status")
+            or decision.get("status")
+            or run.get("policy_status")
+            or ""
         ).strip()
         if status:
             return status
@@ -1021,7 +1049,11 @@ def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
     else:
         decision = run.get("decision") if isinstance(run.get("decision"), dict) else {}
         reasons = decision.get("reasons", []) if isinstance(decision.get("reasons"), list) else []
-        next_actions = decision.get("next_actions", []) if isinstance(decision.get("next_actions"), list) else []
+        next_actions = (
+            decision.get("next_actions", [])
+            if isinstance(decision.get("next_actions"), list)
+            else []
+        )
         primary_reason = _translate_reason_item(reasons[0], lang=lang) if reasons else "-"
         headline = primary_reason
         actions = _unique_texts(
@@ -1042,13 +1074,15 @@ def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
     report_sections = packet.get("report_sections") if isinstance(packet, dict) else {}
     report_available = isinstance(report_sections, dict) and bool(report_sections)
     report_badge = _badge_html(
-        _label_text(lang, "利用可能", "Available") if report_available else _label_text(lang, "未作成", "Unavailable"),
+        (
+            _label_text(lang, "利用可能", "Available")
+            if report_available
+            else _label_text(lang, "未作成", "Unavailable")
+        ),
         tone="success" if report_available else "neutral",
     )
     action_html = (
-        "<ul class='hero__list'>"
-        + "".join(f"<li>{_esc(item)}</li>" for item in actions)
-        + "</ul>"
+        "<ul class='hero__list'>" + "".join(f"<li>{_esc(item)}</li>" for item in actions) + "</ul>"
         if actions
         else f"<p class='muted'>{_esc(_tr(lang, 'None'))}</p>"
     )
@@ -1068,7 +1102,9 @@ def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
             f"<p>{_esc(headline)}</p>",
         )
         + _hero_panel_html(_label_text(lang, "次にやること", "Next Steps"), action_html)
-        + _hero_panel_html(_label_text(lang, "根拠とレポート", "Evidence and Report"), evidence_html)
+        + _hero_panel_html(
+            _label_text(lang, "根拠とレポート", "Evidence and Report"), evidence_html
+        )
         + "</div></section>"
     )
 
@@ -1103,7 +1139,9 @@ def _render_report_preview_card(run: dict[str, Any], *, lang: str) -> str:
         )
         badge_tone = "success" if readiness == "recommended" else "warning"
         badge = _badge_html(readiness, tone=badge_tone)
-        return _card_html("Report Preview", body, lang=lang, description=description, badge_html=badge)
+        return _card_html(
+            "Report Preview", body, lang=lang, description=description, badge_html=badge
+        )
     body = f"<p>{_esc(_label_text(lang, 'この run では顧客提出レポートを利用できません。', 'No customer-facing report is available for this run.'))}</p>"
     badge = _badge_html(_label_text(lang, "未作成", "Unavailable"), tone="neutral")
     return _card_html("Report Preview", body, lang=lang, description=description, badge_html=badge)
@@ -1113,7 +1151,11 @@ def _render_gate_details_card(run: dict[str, Any], *, lang: str) -> str:
     reliability = run.get("decision") if isinstance(run.get("decision"), dict) else {}
     comparison = run.get("history_summary", {}).get("comparison") or {}
     reasons = reliability.get("reasons", []) if isinstance(reliability.get("reasons"), list) else []
-    next_actions = reliability.get("next_actions", []) if isinstance(reliability.get("next_actions"), list) else []
+    next_actions = (
+        reliability.get("next_actions", [])
+        if isinstance(reliability.get("next_actions"), list)
+        else []
+    )
     reason_list = "".join(
         f"<li>{_esc(_translate_reason_item(item, lang=lang))}</li>" for item in reasons
     ) or _none_list_item(lang)
@@ -1124,14 +1166,42 @@ def _render_gate_details_card(run: dict[str, Any], *, lang: str) -> str:
     ) or _none_list_item(lang)
     metrics = "".join(
         [
-            _meta_item_html(_tr(lang, "Status"), _badge_html(str(run.get("status", "-")), tone=_badge_tone(run.get("status")))),
-            _meta_item_html(_tr(lang, "Policy status"), _badge_html(str(run.get("policy_status", "-")), tone=_badge_tone(_run_customer_status(run)))),
-            _meta_item_html(_tr(lang, "Overall pass rate"), _esc('{:.1f}%'.format(run.get("overall_pass_rate", 0.0)))),
-            _meta_item_html(_tr(lang, "S1 pass rate"), _esc('{:.1f}%'.format(run.get("s1_pass_rate", 0.0)))),
-            _meta_item_html(_tr(lang, "S1 fail count"), _esc('{:.0f}'.format(run.get("s1_fail_count", 0.0)))),
-            _meta_item_html(_tr(lang, "Judge reliability"), _value_badge(reliability.get("judge_reliability", "unknown"), lang=lang, small=True)),
-            _meta_item_html(_tr(lang, "Needs human review"), _value_badge(reliability.get("needs_human_review", False), lang=lang, small=True)),
-            _meta_item_html(_tr(lang, "Previous diff"), _esc(f"{comparison.get('previous_run_id', '-')} -> {comparison.get('current_run_id', '-')}")),
+            _meta_item_html(
+                _tr(lang, "Status"),
+                _badge_html(str(run.get("status", "-")), tone=_badge_tone(run.get("status"))),
+            ),
+            _meta_item_html(
+                _tr(lang, "Policy status"),
+                _badge_html(
+                    str(run.get("policy_status", "-")), tone=_badge_tone(_run_customer_status(run))
+                ),
+            ),
+            _meta_item_html(
+                _tr(lang, "Overall pass rate"),
+                _esc("{:.1f}%".format(run.get("overall_pass_rate", 0.0))),
+            ),
+            _meta_item_html(
+                _tr(lang, "S1 pass rate"), _esc("{:.1f}%".format(run.get("s1_pass_rate", 0.0)))
+            ),
+            _meta_item_html(
+                _tr(lang, "S1 fail count"), _esc("{:.0f}".format(run.get("s1_fail_count", 0.0)))
+            ),
+            _meta_item_html(
+                _tr(lang, "Judge reliability"),
+                _value_badge(
+                    reliability.get("judge_reliability", "unknown"), lang=lang, small=True
+                ),
+            ),
+            _meta_item_html(
+                _tr(lang, "Needs human review"),
+                _value_badge(reliability.get("needs_human_review", False), lang=lang, small=True),
+            ),
+            _meta_item_html(
+                _tr(lang, "Previous diff"),
+                _esc(
+                    f"{comparison.get('previous_run_id', '-')} -> {comparison.get('current_run_id', '-')}"
+                ),
+            ),
         ]
     )
     body = (
@@ -1155,7 +1225,9 @@ def _split_report_preview_lines(text: str, *, lang: str) -> list[str]:
     return [f"{item}." for item in items]
 
 
-def _render_report_preview_section(title: str, text: str, *, lang: str, list_first: bool = False) -> str:
+def _render_report_preview_section(
+    title: str, text: str, *, lang: str, list_first: bool = False
+) -> str:
     lines = _split_report_preview_lines(text, lang=lang)
     summary = ""
     points: list[str] = []
@@ -1249,9 +1321,7 @@ def create_dashboard_app(
             f"<th>{_esc(_tr(lang, 'Latest Gate'))}</th>"
             f"<th>{_esc(_tr(lang, 'Latest Run'))}</th>"
             f"<th>{_esc(_tr(lang, 'S1 Fails'))}</th>"
-            f"<th>{_esc(_tr(lang, 'Fallback'))}</th></tr>"
-            + "".join(rows)
-            + "</table>",
+            f"<th>{_esc(_tr(lang, 'Fallback'))}</th></tr>" + "".join(rows) + "</table>",
             lang=lang,
             current_path=str(request.url.path),
         )
@@ -1270,11 +1340,16 @@ def create_dashboard_app(
             for key, value in sorted(pack.items())
             if key not in {"path"}
         )
-        latest_html = (
-            f"<p>{_esc(_tr(lang, 'Latest gate'))}: <a href='{_href(f'/packs/{_esc(pack_name)}/runs/{_esc(latest['run_id'])}', lang)}'>{_esc(latest['status'])}</a></p>"
-            if latest
-            else f"<p>{_esc(_tr(lang, 'No runs found.'))}</p>"
-        )
+        if latest:
+            latest_run_id = _esc(latest["run_id"])
+            latest_status = _esc(latest["status"])
+            latest_href = _href(f"/packs/{_esc(pack_name)}/runs/{latest_run_id}", lang)
+            latest_html = (
+                f"<p>{_esc(_tr(lang, 'Latest gate'))}: "
+                f"<a href='{latest_href}'>{latest_status}</a></p>"
+            )
+        else:
+            latest_html = f"<p>{_esc(_tr(lang, 'No runs found.'))}</p>"
         nav = (
             f"<p><a href='{_href(f'/packs/{_esc(pack_name)}/runs', lang)}'>{_esc(_tr(lang, 'Runs'))}</a> | "
             f"<a href='{_href(f'/packs/{_esc(pack_name)}/latest', lang)}'>{_esc(_tr(lang, 'Latest gate'))}</a> | "
@@ -1319,10 +1394,14 @@ def create_dashboard_app(
             )
         return _page(
             (
-                f"{_tr(lang, 'Runs')} {pack_name}" if lang == "ja" and pack_name else f"Runs for {pack_name}"
-            )
-            if pack_name
-            else _tr(lang, "Runs"),
+                (
+                    f"{_tr(lang, 'Runs')} {pack_name}"
+                    if lang == "ja" and pack_name
+                    else f"Runs for {pack_name}"
+                )
+                if pack_name
+                else _tr(lang, "Runs")
+            ),
             "<table><tr>"
             f"<th>{_esc(_tr(lang, 'Run'))}</th>"
             f"<th>{_esc(_tr(lang, 'Pack'))}</th>"
@@ -1330,9 +1409,7 @@ def create_dashboard_app(
             f"<th>{_esc('Overall' if lang == 'en' else '全体')}</th>"
             f"<th>{_esc('S1')}</th>"
             f"<th>{_esc(_tr(lang, 'S1 Fails'))}</th>"
-            f"<th>{_esc(_tr(lang, 'Judge reliability'))}</th></tr>"
-            + "".join(rows)
-            + "</table>",
+            f"<th>{_esc(_tr(lang, 'Judge reliability'))}</th></tr>" + "".join(rows) + "</table>",
             lang=lang,
             current_path=str(request.url.path),
         )
@@ -1352,7 +1429,9 @@ def create_dashboard_app(
                     f"<p>{_esc(_tr(lang, 'ReviewPacket is not available for this run.'))}</p>",
                     lang=lang,
                     tone="warning",
-                    badge_html=_badge_html(_label_text(lang, "未搭載", "Unavailable"), tone="neutral"),
+                    badge_html=_badge_html(
+                        _label_text(lang, "未搭載", "Unavailable"), tone="neutral"
+                    ),
                 )
                 + _render_report_preview_card(run, lang=lang)
             )
@@ -1400,7 +1479,9 @@ def create_dashboard_app(
             current_path=str(request.url.path),
         )
 
-    @app.get("/packs/{pack_name}/runs/{run_id}/customer-review.md", response_class=PlainTextResponse)
+    @app.get(
+        "/packs/{pack_name}/runs/{run_id}/customer-review.md", response_class=PlainTextResponse
+    )
     @app.get("/runs/{run_id}/customer-review.md", response_class=PlainTextResponse)
     def customer_review_markdown(run_id: str, pack_name: str = "") -> str:
         run = _find_run(_scan_runs(app.state.runs_dir), pack_name=pack_name, run_id=run_id)
@@ -1464,10 +1545,14 @@ def create_dashboard_app(
             )
         return _page(
             (
-                f"{_tr(lang, 'Major Failures')} {pack_name}" if lang == "ja" and pack_name else f"Fail cases for {pack_name}"
-            )
-            if pack_name
-            else _tr(lang, "Major Failures"),
+                (
+                    f"{_tr(lang, 'Major Failures')} {pack_name}"
+                    if lang == "ja" and pack_name
+                    else f"Fail cases for {pack_name}"
+                )
+                if pack_name
+                else _tr(lang, "Major Failures")
+            ),
             "<table><tr>"
             f"<th>{_esc(_tr(lang, 'Run'))}</th>"
             f"<th>{_esc(_tr(lang, 'Policy Status'))}</th>"
@@ -1540,8 +1625,7 @@ def _scan_packs(workspace_dir: Path) -> list[dict[str, Any]]:
 def _scan_runs(runs_dir: Path) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     report_files = sorted(
-        list(runs_dir.glob("**/gate-report.json"))
-        + list(runs_dir.glob("**/gate-report-ci.json"))
+        list(runs_dir.glob("**/gate-report.json")) + list(runs_dir.glob("**/gate-report-ci.json"))
     )
     for report_file in report_files:
         payload = _load_json(report_file)
@@ -1921,9 +2005,7 @@ def _render_review_packet_run_detail(run: dict[str, Any], *, lang: str) -> str:
 def _render_delivery_review_card(packet: dict[str, Any], *, lang: str) -> str:
     display_lang = "ja"
     review = (
-        packet.get("delivery_review", {})
-        if isinstance(packet.get("delivery_review"), dict)
-        else {}
+        packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
     )
     shareability = (
         packet.get("customer_shareability", {})
@@ -2107,11 +2189,14 @@ def _render_summary_card(packet: dict[str, Any], *, lang: str) -> str:
         pass_rate_text = str(pass_rate)
     body = (
         "<div class='meta-grid'>"
-        + _meta_item_html(_tr(lang, 'Total'), _esc(summary.get('total_cases', 0)))
-        + _meta_item_html(_tr(lang, 'Passed'), _esc(summary.get('passed_cases', 0)))
-        + _meta_item_html(_tr(lang, 'Failed'), _esc(summary.get('failed_cases', 0)))
-        + _meta_item_html(_tr(lang, 'Pass Rate'), _esc(pass_rate_text))
-        + _meta_item_html(_tr(lang, 'Report Mode'), _badge_html(str(summary.get('report_mode', '-')), tone='neutral', small=True))
+        + _meta_item_html(_tr(lang, "Total"), _esc(summary.get("total_cases", 0)))
+        + _meta_item_html(_tr(lang, "Passed"), _esc(summary.get("passed_cases", 0)))
+        + _meta_item_html(_tr(lang, "Failed"), _esc(summary.get("failed_cases", 0)))
+        + _meta_item_html(_tr(lang, "Pass Rate"), _esc(pass_rate_text))
+        + _meta_item_html(
+            _tr(lang, "Report Mode"),
+            _badge_html(str(summary.get("report_mode", "-")), tone="neutral", small=True),
+        )
         + "</div>"
     )
     return _card_html("Summary Card", body, lang=lang)
@@ -2133,11 +2218,11 @@ def _render_scope_card(packet: dict[str, Any], *, lang: str) -> str:
 
     body = (
         "<div class='meta-grid'>"
-        + _meta_item_html(_tr(lang, 'Target'), available(scope.get('target_name')))
-        + _meta_item_html(_tr(lang, 'Type'), available(scope.get('target_type')))
-        + _meta_item_html(_tr(lang, 'Documents'), available(scope.get('target_documents')))
-        + _meta_item_html(_tr(lang, 'Versions'), available(scope.get('document_versions')))
-        + _meta_item_html(_tr(lang, 'Change Event'), available(scope.get('change_event')))
+        + _meta_item_html(_tr(lang, "Target"), available(scope.get("target_name")))
+        + _meta_item_html(_tr(lang, "Type"), available(scope.get("target_type")))
+        + _meta_item_html(_tr(lang, "Documents"), available(scope.get("target_documents")))
+        + _meta_item_html(_tr(lang, "Versions"), available(scope.get("document_versions")))
+        + _meta_item_html(_tr(lang, "Change Event"), available(scope.get("change_event")))
         + "</div>"
     )
     return _card_html("Scope Card", body, lang=lang)
@@ -2145,9 +2230,7 @@ def _render_scope_card(packet: dict[str, Any], *, lang: str) -> str:
 
 def _render_document_corpus_card(packet: dict[str, Any], *, lang: str) -> str:
     corpus = (
-        packet.get("document_corpus", {})
-        if isinstance(packet.get("document_corpus"), dict)
-        else {}
+        packet.get("document_corpus", {}) if isinstance(packet.get("document_corpus"), dict) else {}
     )
     mode = str(packet.get("packet_mode", "") or "")
     safe_note = _tr(lang, "Not available in safe mode") if mode == "safe" else "-"
@@ -2161,17 +2244,23 @@ def _render_document_corpus_card(packet: dict[str, Any], *, lang: str) -> str:
 
     summary = (
         "<div class='meta-grid'>"
-        + _meta_item_html(_tr(lang, 'Document Count'), _esc(corpus.get('document_count', 0)))
+        + _meta_item_html(_tr(lang, "Document Count"), _esc(corpus.get("document_count", 0)))
         + _meta_item_html(
-            _tr(lang, 'Source of Truth Type'),
-            _badge_html(_translate_value(lang, corpus.get('source_of_truth_type', 'unknown'), show_raw=True), tone='accent', small=True),
+            _tr(lang, "Source of Truth Type"),
+            _badge_html(
+                _translate_value(
+                    lang, corpus.get("source_of_truth_type", "unknown"), show_raw=True
+                ),
+                tone="accent",
+                small=True,
+            ),
         )
         + _meta_item_html(
-            _tr(lang, 'Has Versions'),
-            _value_badge(corpus.get('has_document_versions', False), lang=lang, small=True),
+            _tr(lang, "Has Versions"),
+            _value_badge(corpus.get("has_document_versions", False), lang=lang, small=True),
         )
-        + _meta_item_html(_tr(lang, 'Stale Doc Policy'), available(corpus.get('stale_doc_policy')))
-        + _meta_item_html(_tr(lang, 'Version Hashes'), available(corpus.get('version_hashes')))
+        + _meta_item_html(_tr(lang, "Stale Doc Policy"), available(corpus.get("stale_doc_policy")))
+        + _meta_item_html(_tr(lang, "Version Hashes"), available(corpus.get("version_hashes")))
         + "</div>"
     )
     documents = corpus.get("target_documents", [])
@@ -2205,7 +2294,7 @@ def _render_document_corpus_card(packet: dict[str, Any], *, lang: str) -> str:
                 f"{int(corpus.get('document_count', 0) or 0)} 件",
                 f"{int(corpus.get('document_count', 0) or 0)} docs",
             ),
-            tone='neutral',
+            tone="neutral",
             small=True,
         ),
     )
@@ -2213,9 +2302,7 @@ def _render_document_corpus_card(packet: dict[str, Any], *, lang: str) -> str:
 
 def _render_change_event_card(packet: dict[str, Any], *, lang: str) -> str:
     change = (
-        packet.get("change_summary", {})
-        if isinstance(packet.get("change_summary"), dict)
-        else {}
+        packet.get("change_summary", {}) if isinstance(packet.get("change_summary"), dict) else {}
     )
     mode = str(packet.get("packet_mode", "") or "")
     safe_note = _tr(lang, "Not available in safe mode") if mode == "safe" else "-"
@@ -2232,13 +2319,21 @@ def _render_change_event_card(packet: dict[str, Any], *, lang: str) -> str:
     summary = (
         "<div class='meta-grid'>"
         + _meta_item_html(
-            _tr(lang, 'Change Type'),
-            _badge_html(_translate_value(lang, change.get('change_type', 'unknown'), show_raw=True), tone='accent', small=True),
+            _tr(lang, "Change Type"),
+            _badge_html(
+                _translate_value(lang, change.get("change_type", "unknown"), show_raw=True),
+                tone="accent",
+                small=True,
+            ),
         )
-        + _meta_item_html(_tr(lang, 'Changed Assets'), _esc(change.get('changed_assets_count', 0)))
-        + _meta_item_html(_tr(lang, 'Affected Documents'), _esc(change.get('affected_documents_count', 0)))
-        + _meta_item_html(_tr(lang, 'Affected Categories'), available(change.get('affected_business_categories')))
-        + _meta_item_html(_tr(lang, 'Target Release'), available(change.get('target_release')))
+        + _meta_item_html(_tr(lang, "Changed Assets"), _esc(change.get("changed_assets_count", 0)))
+        + _meta_item_html(
+            _tr(lang, "Affected Documents"), _esc(change.get("affected_documents_count", 0))
+        )
+        + _meta_item_html(
+            _tr(lang, "Affected Categories"), available(change.get("affected_business_categories"))
+        )
+        + _meta_item_html(_tr(lang, "Target Release"), available(change.get("target_release")))
         + "</div>"
         f"<p><strong>{_esc(_tr(lang, 'Summary'))}:</strong> {available(change.get('change_summary'), translate_text=True)}</p>"
         f"<p><strong>{_esc(_tr(lang, 'Retest reason:'))}</strong> {available(change.get('retest_reason'), translate_text=True)}</p>"
@@ -2282,8 +2377,8 @@ def _render_production_readiness_card(packet: dict[str, Any], *, lang: str) -> s
         "Production Readiness Card",
         body,
         lang=lang,
-        badge_html=_value_badge(readiness.get('status', 'unknown'), lang=lang, show_raw=True),
-        tone=_badge_tone(readiness.get('status', 'unknown')),
+        badge_html=_value_badge(readiness.get("status", "unknown"), lang=lang, show_raw=True),
+        tone=_badge_tone(readiness.get("status", "unknown")),
     )
 
 
@@ -2345,7 +2440,9 @@ def _render_major_failures(run: dict[str, Any], *, lang: str) -> str:
             show_raw=True,
         )
         summary_meta = []
-        if failure.get("failure_pattern") and failure.get("failure_pattern") != failure.get("failure_category"):
+        if failure.get("failure_pattern") and failure.get("failure_pattern") != failure.get(
+            "failure_category"
+        ):
             summary_meta.append(
                 _translate_failure_pattern(failure.get("failure_pattern"), lang=lang, show_raw=True)
             )
@@ -2356,8 +2453,8 @@ def _render_major_failures(run: dict[str, Any], *, lang: str) -> str:
         summary_html = f"<div><strong>{_esc(summary_label)}</strong></div>"
         if summary_meta:
             summary_html += f"<div class='micro'>{_esc(' / '.join(summary_meta))}</div>"
-        impact_html = _value_badge(failure.get('go_no_go_impact', '-'), lang=lang, small=True)
-        if failure.get('safe_reason_code'):
+        impact_html = _value_badge(failure.get("go_no_go_impact", "-"), lang=lang, small=True)
+        if failure.get("safe_reason_code"):
             impact_html += f"<div class='micro'>{_esc(failure.get('safe_reason_code'))}</div>"
         rows.append(
             "<tr>"
@@ -2378,8 +2475,8 @@ def _render_major_failures(run: dict[str, Any], *, lang: str) -> str:
         "Major Failures",
         body,
         lang=lang,
-        badge_html=_badge_html(str(len(rows)), tone='danger' if rows else 'neutral', small=True),
-        tone='danger' if rows else 'default',
+        badge_html=_badge_html(str(len(rows)), tone="danger" if rows else "neutral", small=True),
+        tone="danger" if rows else "default",
     )
 
 
@@ -2436,18 +2533,24 @@ def _render_failure_detail(*, run: dict[str, Any], failure: dict[str, Any], lang
         ("Internal Severity", str(failure.get("internal_severity", "-") or "-")),
         (
             "Failure Pattern",
-            _translate_failure_pattern(failure.get("failure_pattern", "-") or "-", lang=lang, show_raw=True),
+            _translate_failure_pattern(
+                failure.get("failure_pattern", "-") or "-", lang=lang, show_raw=True
+            ),
         ),
         (
             "Failure Category",
-            _translate_failure_pattern(failure.get("failure_category", "-") or "-", lang=lang, show_raw=True),
+            _translate_failure_pattern(
+                failure.get("failure_category", "-") or "-", lang=lang, show_raw=True
+            ),
         ),
         ("Evidence Status", _translate_value(lang, failure.get("evidence_status", "-") or "-")),
         ("Safe Reason Code", str(failure.get("safe_reason_code", "-") or "-")),
         ("Go/No-Go Impact", _translate_value(lang, failure.get("go_no_go_impact", "-") or "-")),
         (
             "Next Action",
-            _translate_issue_action(failure_code, failure.get("next_action", "-") or "-", lang=lang),
+            _translate_issue_action(
+                failure_code, failure.get("next_action", "-") or "-", lang=lang
+            ),
         ),
         ("Full Detail Ref", str(failure.get("full_detail_ref", "-") or "-")),
     ]
@@ -2472,8 +2575,8 @@ def _render_failure_detail(*, run: dict[str, Any], failure: dict[str, Any], lang
             "Failure",
             body,
             lang=lang,
-            badge_html=_value_badge(failure.get('customer_severity', '-'), lang=lang, small=True),
-            tone=_badge_tone(failure.get('customer_severity', '-')),
+            badge_html=_value_badge(failure.get("customer_severity", "-"), lang=lang, small=True),
+            tone=_badge_tone(failure.get("customer_severity", "-")),
         )
     )
 
@@ -2505,8 +2608,9 @@ def _render_report_preview(run: dict[str, Any], *, lang: str) -> str:
     for title, key in order:
         body += _render_report_preview_section(
             title,
-            _report_preview_section_text(run, key, sections.get(key, '-') or '-', lang=lang),
+            _report_preview_section_text(run, key, sections.get(key, "-") or "-", lang=lang),
             lang=lang,
-            list_first=key in {"required_actions", "major_risks", "blocking_issues", "residual_risks"},
+            list_first=key
+            in {"required_actions", "major_risks", "blocking_issues", "residual_risks"},
         )
     return body + "</div>"
