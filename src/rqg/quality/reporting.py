@@ -816,11 +816,11 @@ def _normalize_stage(value: object) -> str:
 
 def _customer_report_title(review_stage: str) -> str:
     if review_stage == "pre_delivery":
-        return "AI Answer Quality Diagnostic Report"
+        return "AI回答品質診断レポート"
     if review_stage == "post_delivery_change":
-        return "Change Impact Quality Review"
+        return "変更後品質確認レポート"
     if review_stage == "monthly_review":
-        return "Monthly Quality Review"
+        return "月次AI回答品質レビュー"
     return "Customer Review"
 
 
@@ -1361,6 +1361,68 @@ def _build_release_decision_stub(
     }
 
 
+def _customer_action_text(action: object) -> str:
+    raw = str(action or "").strip()
+    translations = {
+        "Route for human review before release approval.": "リリース承認前に担当者レビューへ回してください。",
+        "Route this run for human review before release approval.": "リリース承認前にこの実行結果を担当者レビューへ回してください。",
+        "Fix the Critical failure(s) and rerun before production release.": "本番リリース前にCriticalの失敗を修正し、再実行してください。",
+        "Resolve blocking issues and rerun the gate.": "ブロッカーを解消し、gateを再実行してください。",
+        "Define the source of truth for the document corpus.": "文書コーパスの正本となる文書を定義してください。",
+        "Define how stale documents are rejected, flagged, or reviewed.": "古い文書を拒否、警告、レビュー対象のいずれで扱うか定義してください。",
+        "Complete human review before treating this run as release evidence.": "この実行結果をリリース判断の証跡として扱う前に、人間レビューを完了してください。",
+        "Record affected documents or document count for the ChangeEvent.": "ChangeEventに影響文書または文書件数を記録してください。",
+        "Review customer-facing export before submission.": "顧客提出前に、顧客向けエクスポート内容を確認してください。",
+        "Review the evidence alignment.": "根拠文書との整合を確認してください。",
+        "Fix and rerun.": "修正して再検査してください。",
+        "Complete human review.": "人間レビューを完了してください。",
+        "Add document snapshot IDs, index version, or document version metadata.": (
+            "document snapshot ID、index version、または文書バージョン情報を追加してください。"
+        ),
+        "Attach document corpus evidence before production migration.": (
+            "本番移行前に文書コーパスの証跡を添付してください。"
+        ),
+        "Attach a ChangeEvent before using this packet for release review.": (
+            "このpacketをリリースレビューに使う前にChangeEventを添付してください。"
+        ),
+        "Set a bounded change_type for this review.": (
+            "このレビューに限定されたchange_typeを設定してください。"
+        ),
+        "Record changed assets as bounded metadata.": (
+            "変更対象を限定されたmetadataとして記録してください。"
+        ),
+        "Record the retest reason for this ChangeEvent.": (
+            "このChangeEventの再検査理由を記録してください。"
+        ),
+    }
+    return translations.get(raw, raw)
+
+
+def _customer_sentence_text(text: object) -> str:
+    raw = str(text or "").strip()
+    translations = {
+        "Formal customer submission is not recommended. Use this only as an interim safe draft if the PoC agreement requires shared findings.": (
+            "正式な顧客提出は推奨されません。PoC契約上共有が必要な場合のみ、暫定のsafeドラフトとして扱ってください。"
+        ),
+        "Formal customer submission is not recommended.": (
+            "正式な顧客提出は推奨されません。"
+        ),
+        "Formal customer submission is recommended for the scoped quality review.": (
+            "今回の検査範囲では、正式な顧客提出レポートとして利用できます。"
+        ),
+        "Formal customer submission is conditional on PM approval and documented residual risk.": (
+            "正式提出には、PM承認と残留リスクの明記が必要です。"
+        ),
+        "Document update can change retrieval evidence and answer behavior.": (
+            "文書更新により、検索される根拠や回答内容が変わる可能性があります。"
+        ),
+        "Document update can change retrieval evidence.": (
+            "文書更新により、検索される根拠が変わる可能性があります。"
+        ),
+    }
+    return translations.get(raw, raw)
+
+
 def build_customer_review_markdown(packet: ReviewPacket | dict[str, object]) -> str:
     """Build a safe customer-facing Markdown review from a ReviewPacket."""
     payload = packet.model_dump(mode="json") if isinstance(packet, ReviewPacket) else packet
@@ -1414,63 +1476,87 @@ def build_customer_review_markdown(packet: ReviewPacket | dict[str, object]) -> 
     actions = delivery.get("required_actions", [])
     if not isinstance(actions, list):
         actions = []
+    decision_status = str(decision.get("customer_status", decision.get("status", "unknown")))
+    submission_status = str(submission.get("status", "not_recommended"))
+    shareability_status = str(shareability.get("status", delivery.get("customer_submission_status", "needs_review")))
+    stage_label = {
+        "pre_delivery": "納品前品質診断",
+        "post_delivery_change": "納品後変更レビュー",
+        "monthly_review": "月次品質レビュー",
+    }.get(review_stage, review_stage)
+    one_line = "今回の検査結果は本番反映不可です。社内で修正・再検査してください。"
+    if decision_status == "Go":
+        one_line = "今回の検査範囲では、本番反映および顧客提出に進められる状態です。"
+    elif decision_status == "Conditional":
+        one_line = "今回の検査結果は条件付きです。残留リスクと承認条件を明記してください。"
+    no_go_notice = []
+    if decision_status == "No-Go" or submission_status == "not_recommended":
+        no_go_notice = [
+            "",
+            "> このレポートは正式な顧客提出レポートとしては推奨されません。",
+            "> 社内で修正・再検査した後、正式提出用レポートを生成してください。",
+        ]
     lines = [
         f"# {title}",
         "",
-        "## Summary",
-        f"- Review stage: {review_stage}",
-        f"- Delivery status: {delivery.get('status', 'unknown')}",
-        f"- Customer shareability status: {delivery.get('customer_submission_status', 'needs_review')}",
-        f"- Customer submission readiness: {submission.get('status', 'not_recommended')}",
-        f"- Submission recommendation: {submission.get('recommendation', '-') or '-'}",
-        f"- Gate decision: {decision.get('customer_status', decision.get('status', 'unknown'))}",
-        f"- Production readiness: {readiness.get('status', 'unknown')}",
-        f"- Shareability: {shareability.get('status', 'needs_review')}",
+        "## 1行要約",
+        one_line,
+        *no_go_notice,
         "",
-        "## Scope",
+        "## 判定",
+        f"- レビュー種別: {stage_label} (`{review_stage}`)",
+        f"- 判定: {decision_status}",
+        f"- 本番移行準備度: {readiness.get('status', 'unknown')}",
+        f"- 情報として共有可能か: {shareability_status}",
+        f"- 正式提出として推奨されるか: {submission_status}",
+        f"- 推奨コメント: {_customer_sentence_text(submission.get('recommendation', '-') or '-')}",
+        "",
+        "## 検査範囲",
         f"- Run ID: {run_summary.get('run_id', '')}",
-        f"- Total cases: {run_summary.get('total_cases', 0)}",
-        f"- Passed cases: {run_summary.get('passed_cases', 0)}",
-        f"- Failed cases: {run_summary.get('failed_cases', 0)}",
-        f"- Report mode: {run_summary.get('report_mode', '')}",
+        f"- 総ケース数: {run_summary.get('total_cases', 0)}",
+        f"- 合格ケース数: {run_summary.get('passed_cases', 0)}",
+        f"- 失敗ケース数: {run_summary.get('failed_cases', 0)}",
+        f"- レポートモード: {run_summary.get('report_mode', '')}",
         "",
-        "## Change",
-        f"- Change type: {change.get('change_type', 'unknown')}",
-        f"- Changed assets count: {change.get('changed_assets_count', 0)}",
-        f"- Affected documents count: {change.get('affected_documents_count', 0)}",
-        f"- Retest reason: {change.get('retest_reason', '-') or '-'}",
+        "## 変更・文書コーパス",
+        f"- 変更種別: {change.get('change_type', 'unknown')}",
+        f"- 変更対象数: {change.get('changed_assets_count', 0)}",
+        f"- 影響文書数: {change.get('affected_documents_count', 0)}",
+        f"- 再検査理由: {_customer_sentence_text(change.get('retest_reason', '-') or '-')}",
+        f"- 文書数: {corpus.get('document_count', 0)}",
+        f"- 正本種別: {corpus.get('source_of_truth_type', 'unknown')}",
+        f"- 文書バージョンあり: {corpus.get('has_document_versions', False)}",
+        f"- 古い文書の扱い: {corpus.get('stale_doc_policy', '') or '-'}",
         "",
-        "## Document Corpus",
-        f"- Document count: {corpus.get('document_count', 0)}",
-        f"- Source of truth type: {corpus.get('source_of_truth_type', 'unknown')}",
-        f"- Has document versions: {corpus.get('has_document_versions', False)}",
-        f"- Stale document policy: {corpus.get('stale_doc_policy', '') or '-'}",
-        "",
-        "## Unresolved Blockers",
+        "## 未解決ブロッカー",
     ]
     if blocking_items:
         lines.extend(
             (
                 f"- {item.get('severity', '-')}: {item.get('issue', '-')} "
-                f"({item.get('required_action', '-')})"
+                f"({_customer_action_text(item.get('required_action', '-'))})"
             )
             for item in blocking_items
             if isinstance(item, dict)
         )
     else:
         lines.append("- None")
-    lines.extend(["", "## Required Actions"])
+    lines.extend(["", "## 必要な対応"])
     if actions:
-        lines.extend(f"- {action}" for action in actions)
+        lines.extend(f"- {_customer_action_text(action)}" for action in actions)
     else:
         lines.append("- None")
     lines.extend(
         [
             "",
-            "## Notes",
-            "- This review is scoped to configured cases, documents, and evaluation settings.",
-            "- It does not guarantee all AI answers are correct.",
-            "- Raw questions, answers, evidence text, source paths, and owners are excluded.",
+            "## 残留リスク",
+            "- このレビューは設定されたケース、文書、評価条件に基づく範囲限定の確認です。",
+            "- PASSやGoであっても、すべてのAI回答の正しさを保証するものではありません。",
+            "",
+            "## 検査範囲と注意事項",
+            "- 顧客共有向けのsafe情報のみで構成しています。",
+            "- raw question、answer、evidence text、source path、ownerは含めていません。",
+            "- No-Goまたは正式提出非推奨の場合は、社内で修正・再検査してから正式提出してください。",
         ]
     )
     return "\n".join(lines) + "\n"

@@ -399,6 +399,33 @@ _DASHBOARD_JA_MESSAGES = {
     "Fix and rerun.": "修正して再検査してください。",
     "Complete human review": "担当者が人間レビューを完了してください。",
     "Complete human review.": "担当者が人間レビューを完了してください。",
+    "Route for human review before release approval.": (
+        "リリース承認前に担当者レビューへ回してください。"
+    ),
+    "Route this run for human review before release approval.": (
+        "リリース承認前にこの実行結果を担当者レビューへ回してください。"
+    ),
+    "Fix the Critical failure(s) and rerun before production release.": (
+        "本番リリース前にCriticalの失敗を修正し、再実行してください。"
+    ),
+    "Resolve blocking issues and rerun the gate.": (
+        "ブロッカーを解消し、gateを再実行してください。"
+    ),
+    "Define the source of truth for the document corpus.": (
+        "文書コーパスの正本となる文書を定義してください。"
+    ),
+    "Define how stale documents are rejected, flagged, or reviewed.": (
+        "古い文書を拒否、警告、レビュー対象のいずれで扱うか定義してください。"
+    ),
+    "Complete human review before treating this run as release evidence.": (
+        "この実行結果をリリース判断の証跡として扱う前に、人間レビューを完了してください。"
+    ),
+    "Record affected documents or document count for the ChangeEvent.": (
+        "ChangeEventに影響文書または文書件数を記録してください。"
+    ),
+    "Review customer-facing export before submission.": (
+        "顧客提出前に、顧客向けエクスポート内容を確認してください。"
+    ),
     "Review the evidence alignment.": "根拠文書との整合を確認してください。",
     "Align with approved evidence.": "承認済み根拠に沿って回答を修正してください。",
     "Not ready for production.": "本番移行の準備は未完了です。",
@@ -427,6 +454,96 @@ _DASHBOARD_JA_MESSAGES = {
         "レビュー担当者メモ: 承認、差し戻し、許容リスク、必要な修正をここに記録してください。"
     ),
 }
+
+_DASHBOARD_JA_TEXT.update(
+    {
+        "Review Overview": "レビュー全体像",
+        "Internal Review": "社内レビュー",
+        "Customer Submission": "顧客提出",
+        "Customer Submission Status": "顧客提出状態",
+        "Improvement Actions": "優先度付き改善アクション",
+        "Prioritized Improvement Actions": "次にやるべき改善アクション",
+        "Improvement Order": "推奨される改善順序",
+        "Priority": "優先度",
+        "Owner": "推奨担当",
+        "Next State": "次の状態",
+        "Top blockers": "最重要ブロッカー",
+        "Next priority actions": "次にやるべき対応",
+        "Customer report": "顧客提出レポート",
+        "Why this status": "この状態の理由",
+        "Report title": "レポート名",
+        "One-line summary": "1行要約",
+        "Review scope": "検査範囲",
+        "Cautions": "注意事項",
+        "Internal Review Notes": "社内レビューの見方",
+        "Customer Submission Notes": "顧客提出の見方",
+    }
+)
+
+_DASHBOARD_JA_VALUES.update(
+    {
+        "Go": "本番反映可",
+        "Conditional": "条件付き",
+        "No-Go": "本番反映不可",
+        "ready": "準備完了",
+        "conditional": "条件付き",
+        "not_ready": "未準備",
+        "pre_delivery": "納品前品質診断",
+        "post_delivery_change": "納品後変更レビュー",
+        "monthly_review": "月次品質レビュー",
+        "not_deliverable": "納品不可",
+        "needs_fix": "修正が必要",
+        "needs_approval": "承認が必要",
+        "deliverable": "納品可能",
+        "shareable": "情報共有可能",
+        "safe_to_share": "情報共有可能",
+        "needs_review": "要レビュー",
+        "not_shareable": "共有不可",
+        "not_safe": "共有不可",
+        "recommended": "正式提出推奨",
+        "not_recommended": "正式提出非推奨",
+        "evidence_mismatch": "根拠不一致",
+        "stale_reference": "古い情報参照",
+        "major_misguidance": "重大な誤案内",
+        "business_rule_violation": "業務ルール違反",
+        "human_review_required": "人間レビューが必要",
+        "document_update": "文書更新",
+        "approved_policy": "承認済みポリシー",
+        "blocks_release": "本番反映を止める",
+        "requires_human_review": "人間レビューが必要",
+        "needs_fix_or_review": "修正またはレビューが必要",
+        "Critical": "重大",
+        "High": "高",
+        "Medium": "中",
+        "Low": "低",
+        "True": "あり",
+        "False": "なし",
+    }
+)
+
+_DASHBOARD_JA_MESSAGES.update(
+    {
+        "Delivery is not recommended until blockers are fixed.": (
+            "未解決ブロッカーが残っているため、現時点での納品は推奨されません。"
+        ),
+        "Formal customer submission is not recommended.": (
+            "正式な顧客提出は推奨されません。社内で修正・再検査してください。"
+        ),
+        "Formal customer submission is recommended for the scoped quality review.": (
+            "今回の検査範囲では、正式な顧客提出レポートとして利用できます。"
+        ),
+        "Formal customer submission is conditional on PM approval and documented residual risk.": (
+            "正式提出には、PM承認と残留リスクの明記が必要です。"
+        ),
+        "Change event metadata is available.": "変更イベント情報は記録されています。",
+        "Document update can change retrieval evidence.": (
+            "文書更新により、検索される根拠や回答内容が変わる可能性があります。"
+        ),
+        "Critical case failed.": "重大ケースが失敗しています。",
+        "Fix the critical case and rerun.": "重大ケースを修正し、再検査してください。",
+        "Review the evidence alignment.": "根拠文書との整合を確認してください。",
+    }
+)
 
 
 def _dashboard_lang(request: Request | None) -> str:
@@ -989,6 +1106,197 @@ def _run_readiness_status(run: dict[str, Any]) -> str:
     return "unknown"
 
 
+def _review_stage_display(stage: object, *, lang: str) -> str:
+    return _translate_value(lang, stage or "unknown")
+
+
+def _review_stage_description(stage: object, *, lang: str) -> str:
+    normalized = _normalize_code(stage)
+    if lang != "ja":
+        if normalized == "pre_delivery":
+            return "This review checks AI answer quality before delivery."
+        if normalized == "post_delivery_change":
+            return "This review checks whether changes broke AI answers after delivery."
+        if normalized == "monthly_review":
+            return "This review summarizes AI answer quality for monthly operations."
+        return "This review summarizes the scoped quality gate result."
+    if normalized == "pre_delivery":
+        return "このレビューは、納品前にAI回答品質を確認するためのものです。No-Goの場合は、顧客提出ではなく社内で改善・再検査してください。"
+    if normalized == "post_delivery_change":
+        return "このレビューは、FAQ・料金表・規約・プロンプトなどの変更後に、AI回答が壊れていないか確認するためのものです。"
+    if normalized == "monthly_review":
+        return "このレビューは、保守契約や月次報告でAI回答品質の状態を確認するためのものです。"
+    return "このレビューは、設定された検査範囲に対する品質ゲート結果です。"
+
+
+def _customer_report_title_for_stage(stage: object, *, lang: str) -> str:
+    normalized = _normalize_code(stage)
+    if lang != "ja":
+        if normalized == "pre_delivery":
+            return "AI Answer Quality Diagnostic Report"
+        if normalized == "post_delivery_change":
+            return "Change Impact Quality Review"
+        if normalized == "monthly_review":
+            return "Monthly Quality Review"
+        return "Customer Review"
+    if normalized == "pre_delivery":
+        return "AI回答品質診断レポート"
+    if normalized == "post_delivery_change":
+        return "変更後品質確認レポート"
+    if normalized == "monthly_review":
+        return "月次AI回答品質レビュー"
+    return "顧客向けレビュー"
+
+
+def _submission_status_reason(packet: dict[str, Any], *, lang: str) -> list[str]:
+    decision = packet.get("decision", {}) if isinstance(packet.get("decision"), dict) else {}
+    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    submission = (
+        packet.get("customer_submission_readiness", {})
+        if isinstance(packet.get("customer_submission_readiness"), dict)
+        else {}
+    )
+    blocking_items = packet.get("blocking_items", [])
+    if not isinstance(blocking_items, list):
+        blocking_items = []
+    status = _normalize_code(submission.get("status"))
+    decision_status = _normalize_code(decision.get("customer_status") or decision.get("status"))
+    unresolved_s1 = int(delivery.get("unresolved_s1_count") or 0)
+    unresolved_s2 = int(delivery.get("unresolved_s2_count") or 0)
+    if lang != "ja":
+        reasons: list[str] = []
+        if decision_status == "no_go":
+            reasons.append("The gate decision is No-Go.")
+        if unresolved_s1:
+            reasons.append(f"{unresolved_s1} unresolved S1 blocker(s) remain.")
+        if unresolved_s2:
+            reasons.append(f"{unresolved_s2} unresolved S2 item(s) remain.")
+        if status == "conditional":
+            reasons.append("Conditional submission requires documented residual risk.")
+        if not reasons:
+            reasons.append("The customer-facing output uses safe information only.")
+        return reasons
+    reasons = []
+    if decision_status == "no_go":
+        reasons.append("判定が本番反映不可です。")
+    if unresolved_s1:
+        reasons.append(f"未解決S1が {unresolved_s1} 件残っています。")
+    if unresolved_s2:
+        reasons.append(f"未解決S2が {unresolved_s2} 件残っています。")
+    if status == "conditional":
+        reasons.append("条件付きのため、残留リスクの明記が必要です。")
+    if not reasons:
+        reasons.append("顧客向けにはsafe情報のみで構成されています。")
+    return reasons
+
+
+def _stage_improvement_steps(stage: object, *, lang: str) -> list[str]:
+    normalized = _normalize_code(stage)
+    if lang != "ja":
+        base = [
+            "Review unresolved S1/S2 blockers.",
+            "Fix failures in refund, cancellation, pricing, and document-corpus categories.",
+            "Check evidence documents and document versions.",
+            "Update the RAG index, retriever, prompt, or source documents.",
+            "Rerun the gate with the same review_stage.",
+        ]
+        if normalized == "pre_delivery":
+            return base + ["For No-Go, keep this internal and rerun before customer submission."]
+        if normalized == "post_delivery_change":
+            return base + ["Prioritize mismatch between the change event and document corpus."]
+        if normalized == "monthly_review":
+            return base + ["Compare residual risk and quality trend against the previous review."]
+        return base
+    base = [
+        "未解決S1/S2ブロッカーを確認する",
+        "返金・解約・料金・文書コーパスに関する失敗を修正する",
+        "根拠文書と文書バージョンを確認する",
+        "RAGのindex / retriever / prompt / 文書を修正する",
+        "同じreview_stageで再検査する",
+    ]
+    if normalized == "pre_delivery":
+        return base + ["納品前診断のNo-Goは顧客提出せず、社内で修正・再検査する"]
+    if normalized == "post_delivery_change":
+        return base + ["変更内容と文書コーパスの不一致を優先確認する"]
+    if normalized == "monthly_review":
+        return base + ["残留リスクと前回からの変化を確認する"]
+    return base
+
+
+def _action_priority(index: int, action: str) -> str:
+    normalized = action.lower()
+    if index == 0 or any(token in normalized for token in ("critical", "blocking", "blocker", "s1", "no-go")):
+        return "最優先"
+    if index <= 2 or any(token in normalized for token in ("source of truth", "stale", "human review", "changeevent")):
+        return "高"
+    return "中"
+
+
+def _action_category(action: str, blocker: dict[str, Any] | None = None) -> str:
+    if blocker and blocker.get("category"):
+        return str(blocker.get("category"))
+    normalized = action.lower()
+    if "refund" in normalized:
+        return "refund"
+    if "cancellation" in normalized:
+        return "cancellation"
+    if "pricing" in normalized:
+        return "pricing"
+    if any(token in normalized for token in ("document", "source of truth", "stale", "changeevent")):
+        return "document_corpus"
+    if "human review" in normalized:
+        return "human_review"
+    return "quality_gate"
+
+
+def _action_owner(category: str, action: str, *, lang: str) -> str:
+    normalized = f"{category} {action}".lower()
+    if lang != "ja":
+        if "human_review" in normalized or "customer" in normalized:
+            return "PM / Customer reviewer"
+        if "document" in normalized or "source" in normalized:
+            return "PM / QA"
+        return "Engineer / QA"
+    if "human_review" in normalized or "customer" in normalized:
+        return "PM / 顧客確認"
+    if "document" in normalized or "source" in normalized:
+        return "PM / QA"
+    return "エンジニア / QA"
+
+
+def _action_next_state(category: str, action: str, *, lang: str) -> str:
+    normalized = f"{category} {action}".lower()
+    if lang != "ja":
+        if "human_review" in normalized or "customer" in normalized:
+            return "Waiting for review"
+        if "document" in normalized or "source" in normalized:
+            return "Document update required"
+        return "Rerun after fix"
+    if "human_review" in normalized or "customer" in normalized:
+        return "顧客確認待ち"
+    if "document" in normalized or "source" in normalized:
+        return "文書更新が必要"
+    return "修正後に再検査"
+
+
+def _action_reason(action: str, blocker: dict[str, Any] | None = None, *, lang: str) -> str:
+    if blocker:
+        issue = blocker.get("issue") or blocker.get("category")
+        return _translate_issue_reason(issue, issue, lang=lang)
+    category = _action_category(action)
+    if lang != "ja":
+        if category == "document_corpus":
+            return "The source documents or change metadata are not sufficiently controlled."
+        if category == "human_review":
+            return "A human decision is required before this run can be used as release evidence."
+        return "This action reduces release or customer-submission risk."
+    if category == "document_corpus":
+        return "正本・文書鮮度・変更影響が曖昧だと、回答品質の判断根拠が弱くなります。"
+    if category == "human_review":
+        return "自動判定だけではリリース証跡として扱えないため、担当者確認が必要です。"
+    return "本番反映または顧客提出のリスクを下げるために必要です。"
+
+
 def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
     packet = run.get("review_packet")
     decision_status = _run_customer_status(run)
@@ -1041,6 +1349,33 @@ def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
     document_count = int(corpus.get("document_count") or 0)
     report_sections = packet.get("report_sections") if isinstance(packet, dict) else {}
     report_available = isinstance(report_sections, dict) and bool(report_sections)
+    delivery = packet.get("delivery_review") if isinstance(packet, dict) else {}
+    if not isinstance(delivery, dict):
+        delivery = {}
+    submission = packet.get("customer_submission_readiness") if isinstance(packet, dict) else {}
+    if not isinstance(submission, dict):
+        submission = {}
+    review_stage = packet.get("review_stage", "unknown") if isinstance(packet, dict) else "unknown"
+    blocking_items = packet.get("blocking_items", []) if isinstance(packet, dict) else []
+    if not isinstance(blocking_items, list):
+        blocking_items = []
+    top_blockers = [
+        _translate_issue_label(
+            item.get("issue") or item.get("category"),
+            item.get("issue") or item.get("category") or "-",
+            lang=lang,
+            show_raw=True,
+        )
+        for item in blocking_items
+        if isinstance(item, dict)
+    ][:2]
+    blocker_html = (
+        "<ul class='hero__list'>"
+        + "".join(f"<li>{_esc(item)}</li>" for item in top_blockers)
+        + "</ul>"
+        if top_blockers
+        else f"<p class='muted'>{_esc(_tr(lang, 'None'))}</p>"
+    )
     report_badge = _badge_html(
         _label_text(lang, "利用可能", "Available") if report_available else _label_text(lang, "未作成", "Unavailable"),
         tone="success" if report_available else "neutral",
@@ -1055,6 +1390,28 @@ def _render_summary_hero(run: dict[str, Any], *, lang: str) -> str:
     evidence_html = (
         f"<p>{_esc(_label_text(lang, f'根拠文書 {document_count} 件', f'{document_count} evidence document(s)'))}</p>"
         f"<div class='badge-row'>{report_badge}</div>"
+    )
+    overview_html = (
+        "<div class='meta-grid hero__meta'>"
+        + _meta_item_html(
+            _tr(lang, "Review stage"),
+            _value_badge(review_stage, lang=lang, show_raw=True),
+        )
+        + _meta_item_html(
+            _tr(lang, "Decision"),
+            _value_badge(decision_status, lang=lang, show_raw=True),
+        )
+        + _meta_item_html(
+            _tr(lang, "Formal submission readiness"),
+            _value_badge(submission.get("status", "not_recommended"), lang=lang, show_raw=True),
+        )
+        + _meta_item_html(
+            _tr(lang, "Production Readiness"),
+            _value_badge(readiness_status, lang=lang, show_raw=True),
+        )
+        + _meta_item_html(_tr(lang, "Unresolved S1"), _esc(delivery.get("unresolved_s1_count", 0)))
+        + _meta_item_html(_tr(lang, "Unresolved S2"), _esc(delivery.get("unresolved_s2_count", 0)))
+        + "</div>"
     )
     return (
         f"<section class='hero hero--{tone}'>"
@@ -1360,11 +1717,15 @@ def create_dashboard_app(
         return _page(
             _page_title_run(lang, run_id),
             (
-                f"{_render_summary_hero(run, lang=lang)}"
-                "<div class='stack'>"
-                f"{review_html}"
-                f"{_render_gate_details_card(run, lang=lang)}"
-                "</div>"
+                (
+                    ""
+                    if isinstance(review_packet, dict) and review_packet
+                    else f"{_render_summary_hero(run, lang=lang)}"
+                )
+                + "<div class='stack'>"
+                + review_html
+                + _render_gate_details_card(run, lang=lang)
+                + "</div>"
             ),
             lang=lang,
             current_path=str(request.url.path),
@@ -1702,6 +2063,7 @@ def _page(
         gap: 14px;
         margin-top: 16px;
     }
+    .hero__meta { margin-top: 18px; }
     .hero__panel {
         padding: 14px 16px;
         background: rgba(255, 255, 255, 0.75);
@@ -1719,7 +2081,7 @@ def _page(
         margin: 0;
         padding-left: 18px;
     }
-    .stack { display: grid; gap: 18px; }
+    .stack { display: grid; gap: 24px; }
     .card {
         background: var(--paper-strong);
         border: 1px solid var(--line);
@@ -1799,7 +2161,7 @@ def _page(
         margin-top: 8px;
     }
     th, td {
-        padding: 12px 14px;
+        padding: 14px 16px;
         text-align: left;
         vertical-align: top;
         border-bottom: 1px solid #ece5d9;
@@ -1813,8 +2175,9 @@ def _page(
     }
     tbody tr:hover, tr:hover td { background: #fffcf7; }
     p { margin: 0 0 12px; }
-    ul { margin: 0; padding-left: 18px; }
-    li + li { margin-top: 6px; }
+    ul, ol { margin: 0; padding-left: 20px; }
+    li + li { margin-top: 8px; }
+    .ordered-list li { padding-left: 4px; }
     .muted { color: var(--muted); }
     .micro { color: var(--muted); font-size: 0.82rem; }
     .report-sections { display: grid; gap: 16px; }
@@ -1896,19 +2259,268 @@ def _run_href(run_id: object, lang: str, suffix: str = "") -> str:
     return _href(f"/runs/{_esc(run_id)}{suffix}", lang)
 
 
+def _render_review_overview_card(packet: dict[str, Any], *, lang: str) -> str:
+    decision = packet.get("decision", {}) if isinstance(packet.get("decision"), dict) else {}
+    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    readiness = (
+        packet.get("production_readiness", {})
+        if isinstance(packet.get("production_readiness"), dict)
+        else {}
+    )
+    submission = (
+        packet.get("customer_submission_readiness", {})
+        if isinstance(packet.get("customer_submission_readiness"), dict)
+        else {}
+    )
+    review_stage = packet.get("review_stage", "unknown")
+    blocking_items = packet.get("blocking_items", [])
+    if not isinstance(blocking_items, list):
+        blocking_items = []
+    top_blockers = [
+        _translate_issue_label(
+            item.get("issue") or item.get("category"),
+            item.get("issue") or item.get("category") or "-",
+            lang=lang,
+            show_raw=True,
+        )
+        for item in blocking_items
+        if isinstance(item, dict)
+    ][:2]
+    next_actions = [
+        _translate_message(lang, str(action or ""))
+        for action in delivery.get("required_actions", [])
+        if str(action or "").strip()
+    ][:2]
+    blockers_html = (
+        "".join(f"<li>{_esc(item)}</li>" for item in top_blockers)
+        or _none_list_item(lang)
+    )
+    actions_html = (
+        "".join(f"<li>{_esc(item)}</li>" for item in next_actions)
+        or f"<li>{_esc(_label_text(lang, '顧客提出レポートを確認してください。', 'Review the customer-facing report.'))}</li>"
+    )
+    body = (
+        f"<p>{_esc(_review_stage_description(review_stage, lang=lang))}</p>"
+        "<div class='meta-grid'>"
+        + _meta_item_html(_tr(lang, "Review stage"), _value_badge(review_stage, lang=lang, show_raw=True))
+        + _meta_item_html(
+            _tr(lang, "Decision"),
+            _value_badge(decision.get("customer_status", decision.get("status", "unknown")), lang=lang, show_raw=True),
+        )
+        + _meta_item_html(
+            _tr(lang, "Formal submission readiness"),
+            _value_badge(submission.get("status", "not_recommended"), lang=lang, show_raw=True),
+        )
+        + _meta_item_html(
+            _tr(lang, "Production Readiness"),
+            _value_badge(readiness.get("status", "unknown"), lang=lang, show_raw=True),
+        )
+        + _meta_item_html(_tr(lang, "Unresolved S1"), _esc(delivery.get("unresolved_s1_count", 0)))
+        + _meta_item_html(_tr(lang, "Unresolved S2"), _esc(delivery.get("unresolved_s2_count", 0)))
+        + "</div>"
+        f"<p class='section-label'>{_esc(_tr(lang, 'Top blockers'))}</p>"
+        f"<ul>{blockers_html}</ul>"
+        f"<p class='section-label'>{_esc(_tr(lang, 'Next priority actions'))}</p>"
+        f"<ul>{actions_html}</ul>"
+    )
+    return _card_html(
+        "Review Overview",
+        body,
+        lang=lang,
+        badge_html=_value_badge(
+            decision.get("customer_status", decision.get("status", "unknown")),
+            lang=lang,
+            show_raw=True,
+        ),
+        tone=_badge_tone(decision.get("customer_status", decision.get("status", "unknown"))),
+    )
+
+
+def _action_guidance_rows(packet: dict[str, Any], *, lang: str) -> list[str]:
+    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    actions = delivery.get("required_actions", [])
+    if not isinstance(actions, list):
+        actions = []
+    blockers = packet.get("blocking_items", [])
+    if not isinstance(blockers, list):
+        blockers = []
+    rows: list[str] = []
+    for index, action in enumerate(actions[:8]):
+        action_text = str(action or "").strip()
+        if not action_text:
+            continue
+        blocker = blockers[index] if index < len(blockers) and isinstance(blockers[index], dict) else None
+        category = _action_category(action_text, blocker)
+        translated_action = _translate_message(lang, action_text)
+        rows.append(
+            "<tr>"
+            f"<td>{_badge_html(_action_priority(index, action_text), tone='danger' if index == 0 else 'warning', small=True)}</td>"
+            f"<td><strong>{_esc(translated_action)}</strong><div class='micro'>code: {_esc(category)}</div></td>"
+            f"<td>{_esc(_action_reason(action_text, blocker, lang=lang))}</td>"
+            f"<td>{_esc(category)}</td>"
+            f"<td>{_esc(_action_owner(category, action_text, lang=lang))}</td>"
+            f"<td>{_esc(_action_next_state(category, action_text, lang=lang))}</td>"
+            "</tr>"
+        )
+    return rows
+
+
+def _render_action_guidance_card(packet: dict[str, Any], *, lang: str) -> str:
+    rows = _action_guidance_rows(packet, lang=lang)
+    empty_row = (
+        f"<tr><td colspan='6'>{_esc(_label_text(lang, '現時点で追加対応は検出されていません。', 'No additional action is detected at this point.'))}</td></tr>"
+    )
+    body = (
+        f"<table><tr><th>{_esc(_tr(lang, 'Priority'))}</th><th>{_esc(_tr(lang, 'Action'))}</th>"
+        f"<th>{_esc(_tr(lang, 'Reason'))}</th><th>{_esc(_tr(lang, 'Category'))}</th>"
+        f"<th>{_esc(_tr(lang, 'Owner'))}</th><th>{_esc(_tr(lang, 'Next State'))}</th></tr>"
+        f"{''.join(rows) or empty_row}</table>"
+    )
+    return _card_html(
+        "Prioritized Improvement Actions",
+        body,
+        lang=lang,
+        description=_label_text(
+            lang,
+            "必要な対応を、改善優先度・理由・担当・次の状態で整理します。",
+            "Required actions are grouped by priority, reason, owner, and next state.",
+        ),
+        badge_html=_badge_html(str(len(rows)), tone="danger" if rows else "neutral", small=True),
+        tone="danger" if rows else "default",
+    )
+
+
+def _render_improvement_order_card(packet: dict[str, Any], *, lang: str) -> str:
+    steps = _stage_improvement_steps(packet.get("review_stage", "unknown"), lang=lang)
+    body = "<ol class='ordered-list'>" + "".join(f"<li>{_esc(step)}</li>" for step in steps) + "</ol>"
+    return _card_html(
+        "Improvement Order",
+        body,
+        lang=lang,
+        description=_label_text(
+            lang,
+            "PM・営業・QAが次に進める順序を固定手順として表示します。",
+            "A fixed sequence for PM, sales, and QA to move the review forward.",
+        ),
+    )
+
+
+def _render_internal_review_notes_card(*, lang: str) -> str:
+    body = (
+        f"<p>{_esc(_label_text(lang, 'これはベンダー社内で改善・納品判断に使う情報です。', 'This information is for internal vendor review and delivery decisions.'))}</p>"
+        "<div class='badge-row'>"
+        + _badge_html(_tr(lang, "Delivery Review Summary"), tone="accent", small=True)
+        + _badge_html(_tr(lang, "S1/S2 Blocking List"), tone="danger", small=True)
+        + _badge_html(_tr(lang, "Major Failures"), tone="warning", small=True)
+        + _badge_html(_tr(lang, "Improvement Actions"), tone="accent", small=True)
+        + _badge_html(_tr(lang, "Gate Details"), tone="neutral", small=True)
+        + "</div>"
+    )
+    return _card_html("Internal Review Notes", body, lang=lang)
+
+
+def _render_customer_submission_card(run: dict[str, Any], *, lang: str) -> str:
+    packet = run.get("review_packet")
+    if not isinstance(packet, dict):
+        return ""
+    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    shareability = (
+        packet.get("customer_shareability", {})
+        if isinstance(packet.get("customer_shareability"), dict)
+        else {}
+    )
+    submission = (
+        packet.get("customer_submission_readiness", {})
+        if isinstance(packet.get("customer_submission_readiness"), dict)
+        else {}
+    )
+    reasons = _submission_status_reason(packet, lang=lang)
+    status = str(submission.get("status") or "not_recommended")
+    if _normalize_code(status) == "not_recommended":
+        next_text = _label_text(
+            lang,
+            "社内で修正・再検査してください。GoまたはConditionalになったら正式レポートを生成してください。",
+            "Fix internally, rerun, and generate the formal report after Go or Conditional.",
+        )
+    elif _normalize_code(status) == "conditional":
+        next_text = _label_text(
+            lang,
+            "条件付き提出として、残留リスクと承認条件を明記してください。",
+            "Use as conditional submission and document residual risks.",
+        )
+    else:
+        next_text = _label_text(lang, "正式提出レポートとして利用できます。", "Ready for formal customer submission.")
+    body = (
+        f"<p>{_esc(_label_text(lang, 'これはsafe情報のみで構成される顧客共有向けの成果物です。', 'This customer-facing artifact is built from safe information only.'))}</p>"
+        "<div class='meta-grid'>"
+        + _meta_item_html(_tr(lang, "Report title"), _esc(_customer_report_title_for_stage(packet.get("review_stage"), lang=lang)))
+        + _meta_item_html(
+            _tr(lang, "Customer shareability"),
+            _value_badge(shareability.get("status", delivery.get("customer_submission_status", "needs_review")), lang=lang, show_raw=True),
+        )
+        + _meta_item_html(
+            _tr(lang, "Formal submission readiness"),
+            _value_badge(status, lang=lang, show_raw=True),
+        )
+        + "</div>"
+        f"<p class='section-label'>{_esc(_tr(lang, 'Why this status'))}</p>"
+        f"<ul>{''.join(f'<li>{_esc(reason)}</li>' for reason in reasons)}</ul>"
+        f"<p class='section-label'>{_esc(_tr(lang, 'Next Action'))}</p>"
+        f"<p>{_esc(next_text)}</p>"
+        f"<p><a class='link-button' href='{_run_href(run['run_id'], lang, '/report-preview')}'>{_esc(_label_text(lang, '顧客提出レポートを確認', 'Open Customer Report'))}</a></p>"
+    )
+    share_status = shareability.get(
+        "status",
+        delivery.get("customer_submission_status", "needs_review"),
+    )
+    share_reason = _label_text(
+        lang,
+        "顧客向け表示はsafe情報のみで構成されています。",
+        "The customer-facing view uses safe information only.",
+    )
+    body = (
+        f"<p>{_esc(_label_text(lang, '顧客に共有できる情報か、正式提出として推奨できる状態かを分けて確認します。', 'This separates information shareability from formal submission readiness.'))}</p>"
+        f"<p><strong>{_esc(_tr(lang, 'Report title'))}:</strong> {_esc(_customer_report_title_for_stage(packet.get('review_stage'), lang=lang))}</p>"
+        "<table>"
+        f"<tr><th>{_esc(_tr(lang, 'Item'))}</th><th>{_esc(_tr(lang, 'Status'))}</th><th>{_esc(_tr(lang, 'Reason'))}</th><th>{_esc(_tr(lang, 'Next Action'))}</th></tr>"
+        "<tr>"
+        f"<td>{_esc(_tr(lang, 'Customer shareability'))}</td>"
+        f"<td>{_value_badge(share_status, lang=lang, show_raw=True)}</td>"
+        f"<td>{_esc(share_reason)}</td>"
+        f"<td>{_esc(_label_text(lang, '正式提出可否は別途確認してください。', 'Check formal submission readiness separately.'))}</td>"
+        "</tr>"
+        "<tr>"
+        f"<td>{_esc(_tr(lang, 'Formal submission readiness'))}</td>"
+        f"<td>{_value_badge(status, lang=lang, show_raw=True)}</td>"
+        f"<td><ul>{''.join(f'<li>{_esc(reason)}</li>' for reason in reasons)}</ul></td>"
+        f"<td>{_esc(next_text)}</td>"
+        "</tr>"
+        "</table>"
+        f"<p><a class='link-button' href='{_run_href(run['run_id'], lang, '/report-preview')}'>{_esc(_label_text(lang, '顧客提出レポートを確認', 'Open Customer Report'))}</a></p>"
+    )
+    return _card_html(
+        "Customer Submission Status",
+        body,
+        lang=lang,
+        badge_html=_value_badge(status, lang=lang, show_raw=True),
+        tone=_badge_tone(status),
+    )
+
+
 def _render_review_packet_run_detail(run: dict[str, Any], *, lang: str) -> str:
     packet = run.get("review_packet")
     if not isinstance(packet, dict):
         return ""
     return (
         "<div class='stack'>"
-        + _render_delivery_review_card(packet, lang=lang)
-        + _render_decision_card(packet, lang=lang)
-        + _render_production_readiness_card(packet, lang=lang)
+        + _render_review_overview_card(packet, lang=lang)
+        + _render_action_guidance_card(packet, lang=lang)
+        + _render_customer_submission_card(run, lang=lang)
         + _render_blocking_items(packet, lang=lang)
         + _render_major_failures(run, lang=lang)
-        + _render_change_event_card(packet, lang=lang)
+        + _render_production_readiness_card(packet, lang=lang)
         + _render_document_corpus_card(packet, lang=lang)
+        + _render_change_event_card(packet, lang=lang)
         + _render_report_preview_card(run, lang=lang)
         + _render_summary_card(packet, lang=lang)
         + _render_scope_card(packet, lang=lang)
@@ -2014,15 +2626,15 @@ def _render_blocking_items(packet: dict[str, Any], *, lang: str) -> str:
             "<tr>"
             f"<td>{_esc(_translate_value(display_lang, item.get('severity', '-') or '-', show_raw=True))}</td>"
             f"<td>{_esc(_translate_issue_label(item.get('issue'), item.get('issue', '-'), lang=display_lang, show_raw=True))}</td>"
-            f"<td>{_esc(_translate_issue_label(item.get('category'), item.get('category', '-'), lang=display_lang, show_raw=True))}</td>"
-            f"<td>{_value_badge(item.get('blocks_delivery', False), lang=display_lang, small=True)}</td>"
+            f"<td>{_esc(_translate_issue_reason(item.get('issue'), item.get('issue', '-'), lang=display_lang))}</td>"
             f"<td>{_esc(_translate_message(display_lang, item.get('required_action', '-') or '-'))}</td>"
+            f"<td>{_esc(_action_owner(str(item.get('category') or item.get('issue') or ''), str(item.get('required_action') or ''), lang=display_lang))}</td>"
             f"<td>{_esc(_translate_value(display_lang, item.get('status', '-') or '-'))}</td>"
             "</tr>"
         )
     body = (
-        f"<table><tr><th>{_esc(_tr(display_lang, 'Severity'))}</th><th>{_esc(_tr(display_lang, 'Issue'))}</th><th>{_esc(_tr(display_lang, 'Category'))}</th>"
-        f"<th>{_esc(_tr(display_lang, 'Blocks delivery'))}</th><th>{_esc(_tr(display_lang, 'Required actions'))}</th><th>{_esc(_tr(display_lang, 'Status'))}</th></tr>"
+        f"<table><tr><th>{_esc(_tr(display_lang, 'Severity'))}</th><th>{_esc(_tr(display_lang, 'Issue'))}</th><th>{_esc(_tr(display_lang, 'Why it matters'))}</th>"
+        f"<th>{_esc(_tr(display_lang, 'Required actions'))}</th><th>{_esc(_tr(display_lang, 'Owner'))}</th><th>{_esc(_tr(display_lang, 'Detail'))}</th></tr>"
         f"{''.join(rows) or _none_table_row(display_lang, 6)}</table>"
     )
     return _card_html(
