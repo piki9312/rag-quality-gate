@@ -1,0 +1,38 @@
+pack:
+  pack_id: demo_internal
+  name: internal-s1-demo
+  version: "0.1"
+  pack_name: Internal S1 Demo Pack
+  tenant_name: demo_internal
+  use_case: internal_s1_governance_demo
+  vertical: customer_support
+  risk_profile: internal_simulation
+  environment: demo
+  owner: proofgate-demo-owner
+  review_steward: proofgate-demo-reviewer
+  pack_version: "0.1.0"
+  source_pack: null
+  created_from_template: false
+  description: Internal simulation fixture for S1 governance tests.
+
+cases_file: casegen/cases.csv
+documents_dir: documents
+gate_file: gate.yml
+
+risk_domains:
+  - refund
+  - cancellation
+  - privacy
+
+s1_policy:
+  description: Internal simulation S1 cases that must remain human-reviewed.
+  required_action_on_fail: block
+  required_action_on_uncertain: needs_human_review
+
+common_failure_patterns:
+  - name: retrieval_fail
+    symptom: Required internal demo evidence was not retrieved.
+    first_action: Rebuild the demo fixture index and rerun.
+  - name: evidence_mismatch
+    symptom: Demo answer contradicts the approved simulation document.
+    first_action: Review the fixture document and expected answer.

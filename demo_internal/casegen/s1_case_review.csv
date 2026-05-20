@@ -1,0 +1,4 @@
+case_id,approval_status,reviewer,reviewed_at,notes
+DEMO-S1-REFUND-001,approved,proofgate-demo-reviewer,2026-05-11,simulation fixture only
+DEMO-S1-CANCEL-001,approved,proofgate-demo-reviewer,2026-05-11,simulation fixture only
+DEMO-S1-PRIVACY-001,approved,proofgate-demo-reviewer,2026-05-11,simulation fixture only
