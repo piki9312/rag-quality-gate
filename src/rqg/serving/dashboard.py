@@ -47,6 +47,16 @@ _DASHBOARD_JA_TEXT = {
     "Reasons": "理由",
     "Next Actions": "次の対応",
     "Decision Card": "判定",
+    "Delivery Review Summary": "納品判定サマリー",
+    "Review stage": "レビュー段階",
+    "Unresolved S1": "未解決S1",
+    "Unresolved S2": "未解決S2",
+    "Customer shareability": "顧客共有可否",
+    "Formal submission readiness": "正式提出の推奨度",
+    "Shareability": "共有安全性",
+    "S1/S2 Blocking List": "S1/S2ブロッカー一覧",
+    "Issue": "問題",
+    "Blocks delivery": "納品停止",
     "Summary Card": "検査サマリー",
     "Scope Card": "検査範囲",
     "Change Event Card": "変更内容",
@@ -192,6 +202,20 @@ _DASHBOARD_JA_VALUES = {
     "stale_reference": "旧情報参照",
     "business_rule_violation": "業務ルール違反",
     "human_review_required": "人間確認が必要",
+    "pre_delivery": "納品前レビュー",
+    "post_delivery_change": "納品後変更レビュー",
+    "monthly_review": "月次レビュー",
+    "deliverable": "納品可",
+    "needs_fix": "修正が必要",
+    "needs_approval": "承認が必要",
+    "not_deliverable": "納品不可",
+    "safe_to_share": "共有可",
+    "needs_review": "要確認",
+    "not_safe": "共有不可",
+    "shareable": "共有可",
+    "not_shareable": "共有不可",
+    "recommended": "正式提出を推奨",
+    "not_recommended": "正式提出は非推奨",
 }
 _DASHBOARD_JA_ISSUES = {
     "critical_failure_remaining": {
@@ -380,6 +404,28 @@ _DASHBOARD_JA_MESSAGES = {
     "Not ready for production.": "本番移行の準備は未完了です。",
     "PASS is scoped.": "今回の判定はこの検査範囲に限定されます。",
     "Not a complete guarantee.": "完全な保証ではありません。",
+    "Delivery is not recommended until blockers are fixed.": "ブロッカーが解消されるまで納品は推奨されません。",
+    "Delivery review indicates this safe packet is ready for customer submission.": (
+        "このsafe版パケットは顧客提出に進められる状態です。"
+    ),
+    "Fix production readiness blockers before treating this run as deliverable.": (
+        "納品可能と判断する前に、本番移行準備のブロッカーを解消してください。"
+    ),
+    "Delivery review status is unknown.": "納品判定ステータスは不明です。",
+    "Formal customer submission is not recommended.": "正式な顧客提出は推奨されません。",
+    "Formal customer submission is recommended for the scoped quality review.": (
+        "今回の検査範囲では、正式な顧客提出を推奨できます。"
+    ),
+    "Formal customer submission is conditional on PM approval and documented residual risk.": (
+        "正式な顧客提出には、PM承認と残存リスクの記録が必要です。"
+    ),
+    "Review the unresolved item before customer submission.": (
+        "顧客提出前に未解決項目を確認してください。"
+    ),
+    "Reviewer notes placeholder.": "レビュー担当者のメモ欄です。",
+    "Reviewer notes: record approval, rejection, accepted risk, or required fixes here.": (
+        "レビュー担当者メモ: 承認、差し戻し、許容リスク、必要な修正をここに記録してください。"
+    ),
 }
 
 
@@ -1892,34 +1938,37 @@ def _render_delivery_review_card(packet: dict[str, Any], *, lang: str) -> str:
     if not isinstance(actions, list):
         actions = []
     body = (
-        f"<p>{_esc(review.get('summary', '-') or '-')}</p>"
+        f"<p>{_esc(_translate_message(lang, review.get('summary', '-') or '-'))}</p>"
         "<div class='meta-grid'>"
-        + _meta_item_html("Review stage", _esc(packet.get("review_stage", "unknown")))
-        + _meta_item_html("Unresolved S1", _esc(review.get("unresolved_s1_count", 0)))
-        + _meta_item_html("Unresolved S2", _esc(review.get("unresolved_s2_count", 0)))
         + _meta_item_html(
-            "Customer shareability",
-            _badge_html(str(review.get("customer_submission_status", "needs_review")), tone="neutral", small=True),
+            _tr(lang, "Review stage"),
+            _value_badge(packet.get("review_stage", "unknown"), lang=lang, small=True),
+        )
+        + _meta_item_html(_tr(lang, "Unresolved S1"), _esc(review.get("unresolved_s1_count", 0)))
+        + _meta_item_html(_tr(lang, "Unresolved S2"), _esc(review.get("unresolved_s2_count", 0)))
+        + _meta_item_html(
+            _tr(lang, "Customer shareability"),
+            _value_badge(review.get("customer_submission_status", "needs_review"), lang=lang, small=True),
         )
         + _meta_item_html(
-            "Formal submission readiness",
-            _badge_html(str(submission.get("status", "not_recommended")), tone="neutral", small=True),
+            _tr(lang, "Formal submission readiness"),
+            _value_badge(submission.get("status", "not_recommended"), lang=lang, small=True),
         )
         + _meta_item_html(
-            "Shareability",
-            _badge_html(str(shareability.get("status", "needs_review")), tone="neutral", small=True),
+            _tr(lang, "Shareability"),
+            _value_badge(shareability.get("status", "needs_review"), lang=lang, small=True),
         )
         + "</div>"
-        f"<p>{_esc(submission.get('recommendation', '') or '')}</p>"
+        f"<p>{_esc(_translate_message(lang, submission.get('recommendation', '') or ''))}</p>"
         f"<p class='section-label'>{_esc(_tr(lang, 'Required actions'))}</p>"
-        f"<ul>{''.join(f'<li>{_esc(item)}</li>' for item in actions) or _none_list_item(lang)}</ul>"
-        f"<p class='muted'>{_esc(review.get('reviewer_notes_placeholder', '') or '')}</p>"
+        f"<ul>{''.join(f'<li>{_esc(_translate_message(lang, item))}</li>' for item in actions) or _none_list_item(lang)}</ul>"
+        f"<p class='muted'>{_esc(_translate_message(lang, review.get('reviewer_notes_placeholder', '') or ''))}</p>"
     )
     return _card_html(
         "Delivery Review Summary",
         body,
         lang=lang,
-        badge_html=_badge_html(str(review.get("status", "unknown")), tone="neutral", small=True),
+        badge_html=_value_badge(review.get("status", "unknown"), lang=lang, small=True),
         tone=_delivery_tone(review.get("status", "unknown")),
     )
 
@@ -1943,17 +1992,17 @@ def _render_blocking_items(packet: dict[str, Any], *, lang: str) -> str:
             continue
         rows.append(
             "<tr>"
-            f"<td>{_esc(item.get('severity', '-') or '-')}</td>"
-            f"<td>{_esc(item.get('issue', '-') or '-')}</td>"
-            f"<td>{_esc(item.get('category', '-') or '-')}</td>"
+            f"<td>{_esc(_translate_value(lang, item.get('severity', '-') or '-', show_raw=True))}</td>"
+            f"<td>{_esc(_translate_issue_label(item.get('issue'), item.get('issue', '-'), lang=lang, show_raw=True))}</td>"
+            f"<td>{_esc(_translate_issue_label(item.get('category'), item.get('category', '-'), lang=lang, show_raw=True))}</td>"
             f"<td>{_value_badge(item.get('blocks_delivery', False), lang=lang, small=True)}</td>"
-            f"<td>{_esc(item.get('required_action', '-') or '-')}</td>"
-            f"<td>{_esc(item.get('status', '-') or '-')}</td>"
+            f"<td>{_esc(_translate_message(lang, item.get('required_action', '-') or '-'))}</td>"
+            f"<td>{_esc(_translate_value(lang, item.get('status', '-') or '-'))}</td>"
             "</tr>"
         )
     body = (
-        "<table><tr><th>Severity</th><th>Issue</th><th>Category</th>"
-        "<th>Blocks delivery</th><th>Required action</th><th>Status</th></tr>"
+        f"<table><tr><th>{_esc(_tr(lang, 'Severity'))}</th><th>{_esc(_tr(lang, 'Issue'))}</th><th>{_esc(_tr(lang, 'Category'))}</th>"
+        f"<th>{_esc(_tr(lang, 'Blocks delivery'))}</th><th>{_esc(_tr(lang, 'Required actions'))}</th><th>{_esc(_tr(lang, 'Status'))}</th></tr>"
         f"{''.join(rows) or _none_table_row(lang, 6)}</table>"
     )
     return _card_html(
