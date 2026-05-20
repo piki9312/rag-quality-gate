@@ -143,3 +143,21 @@ def test_history_summary_policy_hashes_ids_and_denies_raw_content() -> None:
     assert policy.exposure_for("expected_answer") == FieldExposure.FORBIDDEN
     assert policy.exposure_for("raw_fail_reason") == FieldExposure.FORBIDDEN
     assert policy.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN
+
+
+def test_safe_gate_decision_history_policy_hashes_ids_and_denies_raw_content() -> None:
+    policy = resolve_artifact_exposure(ArtifactType.GATE_DECISION_HISTORY_SAFE, "full")
+
+    assert policy.exposure_for("run_id") == FieldExposure.ALLOWED
+    assert policy.exposure_for("model_name") == FieldExposure.ALLOWED
+    assert policy.exposure_for("adapter_config_hash") == FieldExposure.ALLOWED
+    assert policy.exposure_for("retrieval_config_hash") == FieldExposure.ALLOWED
+    assert policy.exposure_for("case_id") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("target_docs") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("source_doc") == FieldExposure.HASHED_ONLY
+    assert policy.exposure_for("question") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("answer") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("expected_answer") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("raw_fail_reason") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("review_steward") == FieldExposure.FORBIDDEN
+    assert policy.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN

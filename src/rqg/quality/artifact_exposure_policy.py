@@ -15,6 +15,7 @@ class ArtifactType(str, Enum):
     NOTIFICATION_PAYLOAD = "notification_payload"
     HISTORY_SUMMARY = "history_summary"
     GATE_DECISION_HISTORY = "gate_decision_history"
+    GATE_DECISION_HISTORY_SAFE = "gate_decision_history_safe"
 
 
 class FieldExposure(str, Enum):
@@ -213,6 +214,7 @@ _HISTORY_ALLOWED = frozenset(
         "action_deltas",
         "age_days",
         "aggregate_counts",
+        "adapter_config_hash",
         "baseline_runs",
         "case_id_hash",
         "case_id_hashes",
@@ -239,6 +241,7 @@ _HISTORY_ALLOWED = frozenset(
         "failure_type_code",
         "fresh_case_count",
         "fresh_case_review_rate",
+        "gate_status",
         "index_version",
         "judge_failure_types",
         "judge_fallback_count",
@@ -250,6 +253,7 @@ _HISTORY_ALLOWED = frozenset(
         "latest_run_id",
         "latest_status",
         "metric_deltas",
+        "model_name",
         "needs_human_review",
         "new_reason_codes",
         "overall_pass_rate",
@@ -265,7 +269,9 @@ _HISTORY_ALLOWED = frozenset(
         "reason_code",
         "reason_codes",
         "reliability",
+        "report_mode",
         "retrieval_reliability",
+        "retrieval_config_hash",
         "resolved_reason_codes",
         "review_steward",
         "run_id",
@@ -333,6 +339,12 @@ _HISTORY_FORBIDDEN = frozenset(
     }
 )
 
+_GATE_DECISION_HISTORY_SAFE_ALLOWED = _HISTORY_ALLOWED - frozenset({"review_steward"})
+
+_GATE_DECISION_HISTORY_SAFE_FORBIDDEN = _HISTORY_FORBIDDEN | frozenset(
+    {"review_owner", "review_steward", "steward"}
+)
+
 
 def resolve_artifact_exposure(
     artifact_type: ArtifactType | str,
@@ -349,6 +361,16 @@ def resolve_artifact_exposure(
             allowed_fields=_NOTIFICATION_ALLOWED,
             hashed_only_fields=frozenset({"case_id"}),
             forbidden_fields=_NOTIFICATION_FORBIDDEN,
+        )
+    if resolved_artifact_type == ArtifactType.GATE_DECISION_HISTORY_SAFE:
+        return ArtifactExposurePolicy(
+            artifact_type=resolved_artifact_type,
+            report_mode=normalized_report_mode,
+            allowed_fields=_GATE_DECISION_HISTORY_SAFE_ALLOWED,
+            hashed_only_fields=frozenset(
+                {"case_id", "change_event_id", "source_doc", "target_docs"}
+            ),
+            forbidden_fields=_GATE_DECISION_HISTORY_SAFE_FORBIDDEN,
         )
     if resolved_artifact_type in {
         ArtifactType.HISTORY_SUMMARY,

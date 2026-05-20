@@ -64,6 +64,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         GateReportArtifacts,
         HistorySummaryJsonReportAdapter,
         MarkdownFileReportAdapter,
+        SafeDecisionHistoryJsonlReportAdapter,
         safe_relative_artifact_path,
     )
 
@@ -233,6 +234,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         }
 
     decision_history_path = Path(args.log_dir) / "gate-decisions.jsonl"
+    safe_decision_history_path = Path(args.log_dir) / "gate-decisions-safe.jsonl"
     append_history = getattr(args, "append_history", True)
     notifications_enabled = getattr(args, "notifications_enabled", True)
     decision = build_gate_decision(
@@ -340,6 +342,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         decision_history_path,
         enabled=append_history,
     ).emit(artifacts)
+    appended_safe_history = SafeDecisionHistoryJsonlReportAdapter(
+        safe_decision_history_path,
+        enabled=append_history,
+    ).emit(artifacts)
     if report_mode == "ci":
         artifact_base_dir = bundle_path.parent
         artifact_refs = [
@@ -351,6 +357,8 @@ def cmd_check(args: argparse.Namespace) -> int:
         print(f"Artifact refs: {', '.join(artifact_refs)}")
     elif appended_history is not None:
         print(f"Appended gate decision JSONL to {appended_history}")
+        if appended_safe_history is not None:
+            print(f"Appended safe gate decision JSONL to {appended_safe_history}")
     else:
         print("Skipped gate decision JSONL append")
 

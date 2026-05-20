@@ -16,6 +16,7 @@ from rqg.quality.reporting import (
     build_ci_safe_gate_decision_payload,
     build_ci_safe_history_summary_payload,
     build_gate_report_bundle_payload,
+    build_safe_gate_decision_history_payload,
 )
 from rqg.quality.staleness import CaseStalenessItem
 
@@ -302,7 +303,9 @@ def test_check_command_writes_default_artifacts_to_log_dir() -> None:
     assert decision_path.exists()
     assert summary_path.exists()
     history_path = log_dir / "gate-decisions.jsonl"
+    safe_history_path = log_dir / "gate-decisions-safe.jsonl"
     assert history_path.exists()
+    assert safe_history_path.exists()
     assert report_path.read_text(encoding="utf-8") == "md-default"
     bundle_payload = json.loads(bundle_path.read_text(encoding="utf-8"))
     payload = decision_path.read_text(encoding="utf-8")
@@ -316,6 +319,14 @@ def test_check_command_writes_default_artifacts_to_log_dir() -> None:
     history_lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line]
     assert len(history_lines) == 1
     assert json.loads(history_lines[0])["run_id"] == "run-004"
+    safe_history_lines = [
+        line for line in safe_history_path.read_text(encoding="utf-8").splitlines() if line
+    ]
+    assert len(safe_history_lines) == 1
+    safe_history_payload = json.loads(safe_history_lines[0])
+    assert safe_history_payload["run_id"] == "run-004"
+    assert safe_history_payload["gate_status"] == "fail"
+    assert safe_history_payload["s1_failed_count"] == 1.0
 
 
 def test_gate_report_json_bundle_schema_contract() -> None:
@@ -682,6 +693,87 @@ def test_ci_gate_decision_preserves_known_reason_codes() -> None:
 
     assert payload["reason_codes"] == ["s1_case_failed", "overall_threshold_not_met"]
     assert payload["reasons"] == payload["reason_codes"]
+
+
+def test_safe_gate_decision_history_payload_omits_raw_customer_data_in_full_mode() -> None:
+    raw_case_id = "ACME-SECRET-CASE"
+    decision = GateDecision(
+        run_id="run-safe-history-jsonl",
+        status="fail",
+        policy_status="block",
+        reasons=[
+            "raw fail_reason question=How does ACME reset payroll? "
+            "answer=Use raw answer expected_answer=golden answer "
+            "source_doc=/customer/source/payroll.md"
+        ],
+        reason_codes=["retrieval_miss", "needs_human_review"],
+        metrics={
+            "overall_pass_rate": 25.0,
+            "s1_pass_rate": 0.0,
+            "s1_fail_count": 1.0,
+            "current_runs": 4.0,
+            "baseline_runs": 2.0,
+        },
+        execution_mode="external_real",
+        provenance={
+            "prompt_hash": "prompt-hash-123",
+            "index_version": "index-v7",
+            "case_set_version": "cases-v2",
+            "quality_pack_version": "pack-v3",
+            "adapter_config_hash": "adapter-hash-456",
+            "retrieval_config_hash": "retrieval-hash-789",
+            "model_name": "gpt-4.1-mini",
+            "endpoint": "https://rag.example.test/search",
+            "review_steward": "customer-owner@example.test",
+        },
+        next_actions=[
+            GateNextAction(
+                failure_category="retrieval_miss",
+                count=1,
+                action="Review raw answer",
+                owner="customer-owner@example.test",
+                affected_case_ids=[raw_case_id],
+            )
+        ],
+        needs_human_review=True,
+        judge_reliability="low",
+        retrieval_reliability="medium",
+        created_at=datetime.now(timezone.utc),
+    )
+
+    payload = build_safe_gate_decision_history_payload(decision, report_mode="full")
+    serialized = json.dumps(payload, ensure_ascii=False)
+
+    for forbidden in [
+        "How does ACME reset payroll?",
+        "Use raw answer",
+        "golden answer",
+        "/customer/source/payroll.md",
+        raw_case_id,
+        "raw fail_reason",
+        "https://rag.example.test/search",
+        "customer-owner@example.test",
+        "review_steward",
+    ]:
+        assert forbidden not in serialized
+
+    assert payload["run_id"] == "run-safe-history-jsonl"
+    assert payload["report_mode"] == "full"
+    assert payload["case_id_hash"]
+    assert payload["case_id_hashes"]
+    assert payload["safe_reason_codes"] == ["retrieval_fail", "needs_human_review"]
+    assert payload["failure_type_code"] == "retrieval_fail"
+    assert payload["overall_pass_rate"] == 25.0
+    assert payload["s1_pass_rate"] == 0.0
+    assert payload["total_cases"] == 4.0
+    assert payload["s1_failed_count"] == 1.0
+    assert payload["prompt_hash"] == "prompt-hash-123"
+    assert payload["index_version"] == "index-v7"
+    assert payload["case_set_version"] == "cases-v2"
+    assert payload["quality_pack_version"] == "pack-v3"
+    assert payload["adapter_config_hash"] == "adapter-hash-456"
+    assert payload["retrieval_config_hash"] == "retrieval-hash-789"
+    assert payload["model_name"] == "gpt-4.1-mini"
 
 
 def test_full_gate_decision_payload_preserves_detailed_reasons() -> None:
@@ -1340,9 +1432,15 @@ def test_check_command_appends_gate_decision_history_jsonl() -> None:
     assert first_exit == 1
     assert second_exit == 1
     history_path = log_dir / "gate-decisions.jsonl"
+    safe_history_path = log_dir / "gate-decisions-safe.jsonl"
     lines = [line for line in history_path.read_text(encoding="utf-8").splitlines() if line]
+    safe_lines = [
+        line for line in safe_history_path.read_text(encoding="utf-8").splitlines() if line
+    ]
     assert len(lines) == 2
+    assert len(safe_lines) == 2
     assert [json.loads(line)["run_id"] for line in lines] == ["run-101", "run-102"]
+    assert [json.loads(line)["run_id"] for line in safe_lines] == ["run-101", "run-102"]
 
 
 def test_check_command_gate_report_includes_recent_history_summary(monkeypatch) -> None:

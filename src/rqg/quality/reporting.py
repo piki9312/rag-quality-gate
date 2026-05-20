@@ -17,6 +17,7 @@ from rqg.domain import (
     ReviewPacket,
     map_customer_severity,
 )
+from rqg.quality.artifact_exposure_policy import ArtifactType, resolve_artifact_exposure
 from rqg.quality.review_stage import normalize_review_stage
 from rqg.security import sanitize_payload, sanitize_text
 
@@ -137,6 +138,23 @@ class DecisionHistoryJsonlReportAdapter:
         if not self.enabled:
             return None
         return _append_jsonl_output(self.path, artifacts.decision)
+
+
+class SafeDecisionHistoryJsonlReportAdapter:
+    def __init__(self, path: str | Path, *, enabled: bool = True):
+        self.path = Path(path)
+        self.enabled = enabled
+
+    def emit(self, artifacts: GateReportArtifacts) -> Path | None:
+        if not self.enabled:
+            return None
+        return _append_jsonl_data_output(
+            self.path,
+            build_safe_gate_decision_history_payload(
+                artifacts.decision,
+                report_mode=artifacts.report_mode,
+            ),
+        )
 
 
 class BundleJsonReportAdapter:
@@ -1749,6 +1767,143 @@ def build_ci_safe_gate_decision_payload(decision: GateDecision) -> dict[str, obj
     return payload
 
 
+def build_safe_gate_decision_history_payload(
+    decision: GateDecision,
+    *,
+    report_mode: str,
+) -> dict[str, object]:
+    """Return long-term-safe gate decision history JSONL payload."""
+    metrics = decision.metrics or {}
+    reason_codes = _ci_safe_reason_codes(decision.model_dump(mode="json"))
+    primary_reason = reason_codes[0] if reason_codes else CI_UNKNOWN_REASON_CODE
+    case_id_hashes = _safe_history_case_hashes(decision)
+    raw_payload: dict[str, object] = {
+        "run_id": decision.run_id,
+        "created_at": decision.created_at.isoformat(),
+        "gate_status": decision.status,
+        "policy_status": decision.policy_status,
+        "report_mode": report_mode,
+        "execution_mode": decision.execution_mode,
+        "overall_pass_rate": _coerce_float(metrics.get("overall_pass_rate")),
+        "s1_pass_rate": _coerce_float(metrics.get("s1_pass_rate")),
+        "total_cases": _coerce_float(metrics.get("current_runs")),
+        "failed_cases": _coerce_float(metrics.get("failed_cases"))
+        or _coerce_float(metrics.get("s1_fail_count")),
+        "s1_failed_count": _coerce_float(metrics.get("s1_fail_count")),
+        "needs_human_review": decision.needs_human_review,
+        "judge_reliability": decision.judge_reliability,
+        "retrieval_reliability": decision.retrieval_reliability,
+        "safe_reason_codes": reason_codes,
+        "reason_codes": reason_codes,
+        "failure_type_code": primary_reason,
+        "failure_category": primary_reason,
+        "case_id_hash": case_id_hashes[0] if case_id_hashes else "",
+        "case_id_hashes": case_id_hashes,
+        "aggregate_counts": {
+            "judge_fallback_count": decision.judge_fallback_count,
+            "embedding_fallback_count": decision.embedding_fallback_count,
+            "baseline_runs": _coerce_float(metrics.get("baseline_runs")),
+            "current_runs": _coerce_float(metrics.get("current_runs")),
+        },
+        "prompt_hash": _safe_provenance_value(decision.provenance, "prompt_hash"),
+        "index_version": _safe_provenance_value(decision.provenance, "index_version"),
+        "case_set_version": _safe_provenance_value(decision.provenance, "case_set_version"),
+        "quality_pack_version": _safe_provenance_value(
+            decision.provenance,
+            "quality_pack_version",
+        ),
+        "adapter_config_hash": _safe_provenance_value(
+            decision.provenance,
+            "adapter_config_hash",
+        ),
+        "retrieval_config_hash": _safe_provenance_value(
+            decision.provenance,
+            "retrieval_config_hash",
+        ),
+        "model_name": _safe_model_name(decision.provenance.get("model_name"))
+        or _safe_model_name(decision.provenance.get("model")),
+    }
+    return _project_safe_gate_decision_history_payload(raw_payload, report_mode=report_mode)
+
+
+def _project_safe_gate_decision_history_payload(
+    payload: dict[str, object],
+    *,
+    report_mode: str,
+) -> dict[str, object]:
+    policy = resolve_artifact_exposure(
+        ArtifactType.GATE_DECISION_HISTORY_SAFE,
+        report_mode,
+    )
+    safe_payload: dict[str, object] = {}
+    for key, value in payload.items():
+        if policy.allows(key):
+            safe_payload[key] = _project_safe_history_value(value, policy=policy)
+        elif policy.hashes_only(key):
+            safe_payload[f"{key}_hash"] = stable_case_ref(value)
+    return safe_payload
+
+
+def _project_safe_history_value(value: object, *, policy: object) -> object:
+    if isinstance(value, dict):
+        projected: dict[str, object] = {}
+        for key, item in value.items():
+            field_name = str(key)
+            if policy.allows(field_name):  # type: ignore[attr-defined]
+                projected[field_name] = _project_safe_history_value(item, policy=policy)
+            elif policy.hashes_only(field_name):  # type: ignore[attr-defined]
+                projected[f"{field_name}_hash"] = stable_case_ref(item)
+        return projected
+    if isinstance(value, list):
+        return [_project_safe_history_value(item, policy=policy) for item in value]
+    return value
+
+
+def _safe_history_case_hashes(decision: GateDecision) -> list[str]:
+    hashes: list[str] = []
+    for action in decision.next_actions:
+        for case_id in action.affected_case_ids:
+            if not str(case_id or "").strip():
+                continue
+            case_hash = stable_case_ref(case_id)
+            if case_hash not in hashes:
+                hashes.append(case_hash)
+    return hashes
+
+
+def _safe_provenance_value(provenance: dict[str, object], key: str) -> object | None:
+    value = provenance.get(key)
+    if value is None:
+        return None
+    if isinstance(value, (int, float, bool)):
+        return value
+    text = str(value).strip()
+    return text[:120] if _is_bounded_history_token(text) else None
+
+
+def _safe_model_name(value: object) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    return text[:120] if _is_bounded_history_token(text, allow_dot=True) else None
+
+
+def _is_bounded_history_token(value: str, *, allow_dot: bool = False) -> bool:
+    if not value or len(value) > 120:
+        return False
+    allowed_extra = {".", ":", "/"} if allow_dot else {".", "-", "_", ":"}
+    return all(ch.isalnum() or ch in allowed_extra or ch in {"-", "_"} for ch in value)
+
+
+def _coerce_float(value: object) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _ci_safe_reason_codes(payload: dict[str, object]) -> list[str]:
     """Convert CI decision reasons to bounded reason codes only."""
     codes: list[str] = []
@@ -2009,6 +2164,14 @@ def _append_jsonl_output(path: str | Path, model: GateDecision) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("a", encoding="utf-8") as handle:
         handle.write(model.model_dump_json() + "\n")
+    return output_path
+
+
+def _append_jsonl_data_output(path: str | Path, payload: dict[str, object]) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
     return output_path
 
 
