@@ -479,13 +479,16 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "hero hero--danger" in english_run_detail.text
     assert "No-Go" in english_run_detail.text
     assert "ReviewPacket is not available for this run." not in english_run_detail.text
-    assert "Delivery Review Summary" in english_run_detail.text
-    assert "Review stage" in english_run_detail.text
-    assert "post_delivery_change" in english_run_detail.text
+    assert "納品判定サマリー" in english_run_detail.text
+    assert "レビュー段階" in english_run_detail.text
+    assert "納品後変更レビュー" in english_run_detail.text
+    assert "正式提出の推奨度" in english_run_detail.text
+    assert "正式提出は非推奨" in english_run_detail.text
+    assert "Delivery Review Summary" not in english_run_detail.text
+    assert "Review stage" not in english_run_detail.text
     assert "Decision Card" in english_run_detail.text
     assert "Production Readiness Card" in english_run_detail.text
-    assert "Formal submission readiness" in english_run_detail.text
-    assert "not_recommended" in english_run_detail.text
+    assert "Formal submission readiness" not in english_run_detail.text
     assert "Critical case failed." in english_run_detail.text
     assert "Review the evidence alignment." in english_run_detail.text
     assert "Failure" in english_run_detail.text
