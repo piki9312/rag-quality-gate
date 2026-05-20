@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from ..quality.report_mode_policy import ReportModeContext, resolve_report_mode_policy
 from .check import cmd_check
 from .eval import cmd_eval
 from .helpers import (
@@ -17,30 +18,30 @@ from .helpers import (
 
 def cmd_gate(args: argparse.Namespace) -> int:
     """Run eval and check in one command."""
-    requested_report_mode = str(getattr(args, "report_mode", "") or "").strip().lower()
-    if getattr(args, "customer_facing", False) and getattr(args, "mock", False):
-        if not getattr(args, "allow_simulation_output", False):
-            print(
-                "[ERROR] --customer-facing cannot be used with --mock unless "
-                "--allow-simulation-output is set. "
-                "Mock output is simulation only and must not be treated as customer quality evidence.",
-                file=sys.stderr,
-            )
-            return 1
-        print(
-            "[WARN] customer-facing simulation output enabled; the resulting artifact will be marked "
-            "SIMULATION ONLY and must not be used as production quality evidence.",
-            file=sys.stderr,
-        )
-    if github_actions_enabled():
-        if requested_report_mode == "full":
-            print(
-                github_actions_fail_fast_message(
-                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+    try:
+        report_policy = resolve_report_mode_policy(
+            ReportModeContext(
+                requested_report_mode=getattr(args, "report_mode", None),
+                github_actions=github_actions_enabled(),
+                customer_facing=bool(getattr(args, "customer_facing", False)),
+                mock=bool(getattr(args, "mock", False)),
+                rag_endpoint=getattr(args, "rag_endpoint", None),
+                adapter_config=getattr(args, "adapter_config", None),
+                allow_simulation_output=bool(
+                    getattr(args, "allow_simulation_output", False)
                 ),
-                file=sys.stderr,
             )
-            return 1
+        )
+    except ValueError as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        return 1
+    if report_policy.blocked:
+        print(report_policy.error_message, file=sys.stderr)
+        return 1
+    if report_policy.simulation_warning:
+        print(f"[WARN] {report_policy.simulation_warning}", file=sys.stderr)
+
+    if github_actions_enabled():
         if getattr(args, "rag_endpoint", None) or getattr(args, "adapter_config", None):
             print(
                 github_actions_fail_fast_message(
@@ -79,9 +80,10 @@ def cmd_gate(args: argparse.Namespace) -> int:
             rag_endpoint=getattr(args, "rag_endpoint", None),
             rag_api_key_env=getattr(args, "rag_api_key_env", None),
             adapter_config=getattr(args, "adapter_config", None),
-            report_mode=getattr(args, "report_mode", None),
+            report_mode=report_policy.report_mode,
             verbose=args.verbose,
             customer_facing=getattr(args, "customer_facing", False),
+            allow_simulation_output=getattr(args, "allow_simulation_output", False),
         )
     )
 
@@ -106,7 +108,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
             output_file=args.output_file,
             decision_file=args.decision_file,
             bundle_file=getattr(args, "bundle_file", None),
-            report_mode=getattr(args, "report_mode", None),
+            report_mode=report_policy.report_mode,
             customer_facing=getattr(args, "customer_facing", False),
             allow_simulation_output=getattr(args, "allow_simulation_output", False),
             strict_s1_governance=getattr(args, "strict_s1_governance", False),

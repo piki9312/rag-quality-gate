@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from ..quality.notifications import send_gate_notifications
-from .helpers import github_actions_enabled, github_actions_fail_fast_message
+from .helpers import github_actions_enabled
 
 
 def _exit_code_for_gate_result(*, policy_status: str, gate_status: str, warn_exit_code: int) -> int:
@@ -37,7 +37,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         load_quality_pack_payload,
         load_review_steward_from_quality_pack,
         normalize_aggregation_policy,
-        normalize_report_mode,
         render_customer_summary_markdown,
         render_gate_markdown,
         run_check,
@@ -56,6 +55,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         load_yaml_or_json,
         load_manual_review_records,
     )
+    from ..quality.report_mode_policy import ReportModeContext, resolve_report_mode_policy
     from ..quality.review_stage import resolve_review_stage
     from ..quality.reporting import (
         BundleJsonReportAdapter,
@@ -70,19 +70,20 @@ def cmd_check(args: argparse.Namespace) -> int:
     try:
         github_actions = github_actions_enabled()
         requested_report_mode = getattr(args, "report_mode", None)
-        report_mode = normalize_report_mode(
-            "ci" if github_actions and requested_report_mode is None else requested_report_mode
-        )
-        if github_actions and requested_report_mode == "full":
-            print(
-                github_actions_fail_fast_message(
-                    "--report-mode full is not allowed when GITHUB_ACTIONS=true."
+        early_report_policy = resolve_report_mode_policy(
+            ReportModeContext(
+                requested_report_mode=requested_report_mode,
+                github_actions=github_actions,
+                customer_facing=bool(getattr(args, "customer_facing", False)),
+                mock=bool(getattr(args, "mock", False)),
+                allow_simulation_output=bool(
+                    getattr(args, "allow_simulation_output", False)
                 ),
-                file=sys.stderr,
             )
+        )
+        if early_report_policy.blocked:
+            print(early_report_policy.error_message, file=sys.stderr)
             return 1
-        if getattr(args, "customer_facing", False) and requested_report_mode is None:
-            report_mode = normalize_report_mode("redacted")
 
         if args.config and Path(args.config).exists():
             config = GateConfig.from_yaml(args.config)
@@ -135,6 +136,27 @@ def cmd_check(args: argparse.Namespace) -> int:
         baseline_days=args.baseline_days,
         cases_file=args.cases_file,
     )
+    try:
+        report_policy = resolve_report_mode_policy(
+            ReportModeContext(
+                requested_report_mode=requested_report_mode,
+                github_actions=github_actions,
+                customer_facing=bool(getattr(args, "customer_facing", False)),
+                execution_mode=result.execution_mode,
+                mock=bool(getattr(args, "mock", False)),
+                allow_simulation_output=bool(
+                    getattr(args, "allow_simulation_output", False)
+                ),
+            )
+        )
+    except ValueError as exc:
+        print(f"[ERROR] Failed to load gate config: {exc}", file=sys.stderr)
+        return 1
+    if report_policy.blocked:
+        print(report_policy.error_message, file=sys.stderr)
+        return 1
+    report_mode = report_policy.report_mode
+
     try:
         change_event = load_change_event(getattr(args, "change_event_file", None))
     except ValueError as exc:
