@@ -167,7 +167,7 @@ class TestReviewStageInputs:
         assert exit_code == 0
         assert payload["review_packet"]["review_stage"] == "pre_delivery"
         assert payload["customer_review_markdown"].startswith(
-            "# AI Answer Quality Diagnostic Report"
+            "# AI回答品質診断レポート"
         )
 
     def test_cli_review_stage_post_delivery_change_is_written_to_review_packet(
@@ -180,7 +180,7 @@ class TestReviewStageInputs:
 
         assert exit_code == 0
         assert payload["review_packet"]["review_stage"] == "post_delivery_change"
-        assert payload["customer_review_markdown"].startswith("# Change Impact Quality Review")
+        assert payload["customer_review_markdown"].startswith("# 変更後品質確認レポート")
 
     def test_pack_metadata_review_stage_is_used(self, tmp_path, capsys):
         exit_code, payload, _ = _run_cmd_check_for_stage(
@@ -190,7 +190,7 @@ class TestReviewStageInputs:
 
         assert exit_code == 0
         assert payload["review_packet"]["review_stage"] == "monthly_review"
-        assert payload["customer_review_markdown"].startswith("# Monthly Quality Review")
+        assert payload["customer_review_markdown"].startswith("# 月次AI回答品質レビュー")
 
     def test_cli_review_stage_overrides_pack_metadata(self, tmp_path, capsys):
         exit_code, payload, _ = _run_cmd_check_for_stage(

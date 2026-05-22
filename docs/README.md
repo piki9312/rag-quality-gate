@@ -1,5 +1,11 @@
 # Documentation Index
 
+## Strategy / Partner Platform
+
+- [AI Output Release Review Platform](strategy/ai-output-release-review-platform.md) - Proof Gate as an AI output release review layer, not just an evaluator.
+- [Partner Platform Model](strategy/partner-platform-model.md) - Partner asset boundary: what to give, show, and retain.
+- [Partner Operating Model](strategy/partner-operating-model.md) - Vendor-side roles, interfaces, source sharing, and distribution phases.
+
 このディレクトリは、Proof Gate のドキュメント入口です。現在のrepoは作業リポジトリでもあるため、資料を「正本」「顧客向け」「デモ」「技術契約」「運用」「archive」に分けて読む前提にします。
 
 短い製品入口は [README.md](../README.md) を参照してください。
@@ -8,8 +14,9 @@
 
 1. [Proof Gate Product Map](strategy/proof-gate-product-map.md) - 事業目的、対象範囲、現在の実装、やらないこと。
 2. [Current Working Set](strategy/current-working-set.md) - 今読む・使う資料だけを集めた入口。
-3. [Product positioning](strategy/product-positioning.md) - Proof Gate が何であり、何ではないか。
-4. [Logging and evidence policy](security/logging-and-evidence-policy.md) - 顧客データ、ログ、artifact、report-modeの境界。
+3. [Partner Kit Asset Inventory](strategy/partner-kit-asset-inventory.md) - ベンダーに渡すもの、見せるもの、保持するものの棚卸し。
+4. [Product positioning](strategy/product-positioning.md) - Proof Gate が何であり、何ではないか。
+5. [Logging and evidence policy](security/logging-and-evidence-policy.md) - 顧客データ、ログ、artifact、report-modeの境界。
 
 ## 顧客向け・営業
 

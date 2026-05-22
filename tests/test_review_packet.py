@@ -324,7 +324,7 @@ def test_gate_report_bundle_includes_review_packet_without_breaking_contract() -
     assert review_packet["packet_mode"] == "safe"
     assert review_packet["report_sections"]["executive_summary"]
     assert review_packet["report_sections"]["delivery_review"]
-    assert payload["customer_review_markdown"].startswith("# Change Impact Quality Review")
+    assert payload["customer_review_markdown"].startswith("# 変更後品質確認レポート")
     assert "Raw answer" not in payload["customer_review_markdown"]
     assert "Can a VIP customer" not in payload["customer_review_markdown"]
     assert "C:\\customer\\docs" not in payload["customer_review_markdown"]
@@ -342,10 +342,11 @@ def test_customer_review_markdown_contains_only_safe_delivery_information() -> N
     packet = build_review_packet_safe(_review_packet_artifacts(report_mode="ci"))
     markdown = build_customer_review_markdown(packet)
 
-    assert "Review stage: post_delivery_change" in markdown
-    assert "Delivery status: not_deliverable" in markdown
-    assert "Customer shareability status: safe_to_share" in markdown
-    assert "Customer submission readiness: not_recommended" in markdown
+    assert "レビュー種別: 納品後変更レビュー (`post_delivery_change`)" in markdown
+    assert "情報として共有可能か: shareable" in markdown
+    assert "正式提出として推奨されるか: not_recommended" in markdown
+    assert "このレポートは正式な顧客提出レポートとしては推奨されません。" in markdown
+    assert "リリース承認前に担当者レビューへ回してください。" in markdown
     assert "S1: evidence_mismatch" in markdown
     assert "Raw answer" not in markdown
     assert "Can a VIP customer" not in markdown

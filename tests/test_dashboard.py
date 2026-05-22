@@ -112,7 +112,7 @@ def test_dashboard_routes_render_old_report_fallback_and_monthly_summary(
     assert "run-001" in client.get("/packs/sample-pack/runs?lang=ja").text
     run_detail = client.get("/packs/sample-pack/runs/run-001?lang=ja")
     assert run_detail.status_code == 200
-    assert "hero hero--danger" in run_detail.text
+    assert "card--danger" in run_detail.text
     assert "Delivery Review Summary" not in run_detail.text
     assert "S1/S2 Blocking List" not in run_detail.text
     assert "Download Customer Review Markdown" not in run_detail.text
@@ -343,7 +343,17 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
                             }
                         ],
                         "customer_submission_status": "safe_to_share",
-                        "required_actions": ["Review the evidence alignment."],
+                        "required_actions": [
+                            "Route for human review before release approval.",
+                            "Fix the Critical failure(s) and rerun before production release.",
+                            "Resolve blocking issues and rerun the gate.",
+                            "Define the source of truth for the document corpus.",
+                            "Define how stale documents are rejected, flagged, or reviewed.",
+                            "Complete human review before treating this run as release evidence.",
+                            "Record affected documents or document count for the ChangeEvent.",
+                            "Review customer-facing export before submission.",
+                            "Review the evidence alignment.",
+                        ],
                         "reviewer_notes_placeholder": "Reviewer notes placeholder.",
                     },
                     "blocking_items": [
@@ -396,12 +406,11 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     client = TestClient(create_dashboard_app(workspace_dir=str(workspace)))
     run_detail = client.get("/runs/run-review?lang=ja")
     assert run_detail.status_code == 200
-    assert "hero hero--danger" in run_detail.text
+    assert "card--danger" in run_detail.text
     assert "判定" in run_detail.text
     assert "本番反映不可 (No-Go)" in run_detail.text
     assert "本番移行準備度" in run_detail.text
-    assert "本番反映不可です。リリースは見合わせてください。" in run_detail.text
-    assert "重大なケースが失敗しています。" in run_detail.text
+    assert "重大ケースが失敗しました" in run_detail.text
     assert "重大度サマリー" in run_detail.text
     assert "変更内容" in run_detail.text
     assert "文書更新 (document_update)" in run_detail.text
@@ -423,8 +432,6 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "Failure Pattern" not in run_detail.text
     assert "Evidence Status" not in run_detail.text
     assert "重大ケースが失敗しました (s1_case_failed)" in run_detail.text
-    assert "高リスクのケースが失敗しており、本番反映できません。" in run_detail.text
-    assert "重大なケースを修正して再検査してください。" in run_detail.text
     assert "根拠不一致 (evidence_mismatch)" in run_detail.text
     assert "根拠文書に沿って回答を修正し、再検査してください。" in run_detail.text
     assert (
@@ -433,21 +440,36 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     )
     assert "顧客提出レポートを開く" in run_detail.text
     assert "safeモードでは表示しません" in run_detail.text
-    assert "納品判定サマリー" in run_detail.text
     assert "レビュー段階" in run_detail.text
     assert "納品後変更レビュー" in run_detail.text
     assert "正式提出の推奨度" in run_detail.text
-    assert "正式提出は非推奨" in run_detail.text
+    assert "正式提出非推奨" in run_detail.text
+    assert "リリース承認前に担当者レビューへ回してください。" in run_detail.text
+    assert "本番リリース前にCriticalの失敗を修正し、再実行してください。" in run_detail.text
+    assert "ブロッカーを解消し、gateを再実行してください。" in run_detail.text
+    assert "文書コーパスの正本となる文書を定義してください。" in run_detail.text
+    assert "古い文書を拒否、警告、レビュー対象のいずれで扱うか定義してください。" in run_detail.text
+    assert "この実行結果をリリース判断の証跡として扱う前に、人間レビューを完了してください。" in run_detail.text
+    assert "ChangeEventに影響文書または文書件数を記録してください。" in run_detail.text
+    assert "顧客提出前に、顧客向けエクスポート内容を確認してください。" in run_detail.text
     assert "Delivery Review Summary" not in run_detail.text
     assert "Formal submission readiness" not in run_detail.text
+    assert "Route for human review before release approval." not in run_detail.text
+    assert "Fix the Critical failure(s) and rerun before production release." not in run_detail.text
+    assert "Resolve blocking issues and rerun the gate." not in run_detail.text
+    assert "Define the source of truth for the document corpus." not in run_detail.text
+    assert "Define how stale documents are rejected, flagged, or reviewed." not in run_detail.text
+    assert "Complete human review before treating this run as release evidence." not in run_detail.text
+    assert "Record affected documents or document count for the ChangeEvent." not in run_detail.text
+    assert "Review customer-facing export before submission." not in run_detail.text
     assert "RAW QUESTION SHOULD NOT RENDER" not in run_detail.text
     assert "RAW ANSWER SHOULD NOT RENDER" not in run_detail.text
 
     customer_review = client.get("/runs/run-review/customer-review.md")
     assert customer_review.status_code == 200
-    assert "# Change Impact Quality Review" in customer_review.text
-    assert "Review stage: post_delivery_change" in customer_review.text
-    assert "Delivery status: not_deliverable" in customer_review.text
+    assert "# 変更後品質確認レポート" in customer_review.text
+    assert "レビュー種別: 納品後変更レビュー (`post_delivery_change`)" in customer_review.text
+    assert "正式な顧客提出レポートとしては推奨されません" in customer_review.text
     assert "S1: evidence_mismatch" in customer_review.text
     assert "RAW QUESTION SHOULD NOT RENDER" not in customer_review.text
     assert "RAW ANSWER SHOULD NOT RENDER" not in customer_review.text
@@ -469,30 +491,41 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "本番反映不可です。" in report_preview.text
     assert "リリースは見合わせてください。" in report_preview.text
     assert "変更種別は 文書更新 (document_update) です。" in report_preview.text
-    assert "再検査理由: 文書更新により検索根拠が変わる可能性があります。" in report_preview.text
+    assert "文書更新により、検索される根拠や回答内容が変わる可能性があります。" in report_preview.text
     assert "根拠文書は 1 件で、バージョン情報あり=あり です。" in report_preview.text
     assert "本番移行準備度" in report_preview.text
     assert "本番移行準備度は 未準備 (not_ready) です。" in report_preview.text
-    assert "重大なケースを修正して再検査してください。" in report_preview.text
+    assert "重大ケースを修正し、再検査してください。" in report_preview.text
     assert "残留リスク: 根拠不一致 (evidence_mismatch)" in report_preview.text
     assert "主なポイント" in report_preview.text
 
     english_run_detail = client.get("/runs/run-review?lang=en")
     assert english_run_detail.status_code == 200
-    assert "hero hero--danger" in english_run_detail.text
+    assert "card--danger" in english_run_detail.text
     assert "No-Go" in english_run_detail.text
     assert "ReviewPacket is not available for this run." not in english_run_detail.text
-    assert "納品判定サマリー" in english_run_detail.text
-    assert "レビュー段階" in english_run_detail.text
-    assert "納品後変更レビュー" in english_run_detail.text
-    assert "正式提出の推奨度" in english_run_detail.text
-    assert "正式提出は非推奨" in english_run_detail.text
+    assert "Review Overview" in english_run_detail.text
+    assert "Prioritized Improvement Actions" in english_run_detail.text
+    assert "Customer Submission Status" in english_run_detail.text
+    assert english_run_detail.text.index("Review Overview") < english_run_detail.text.index(
+        "Prioritized Improvement Actions"
+    )
+    assert english_run_detail.text.index(
+        "Prioritized Improvement Actions"
+    ) < english_run_detail.text.index("Customer Submission Status")
+    assert english_run_detail.text.index("Customer Submission Status") < english_run_detail.text.index(
+        "Major Failures"
+    )
+    assert english_run_detail.text.index("Major Failures") < english_run_detail.text.index(
+        "Production Readiness Card"
+    )
+    assert "post_delivery_change" in english_run_detail.text
+    assert "not_recommended" in english_run_detail.text
     assert "Delivery Review Summary" not in english_run_detail.text
-    assert "Review stage" not in english_run_detail.text
-    assert "Decision Card" in english_run_detail.text
+    assert "Review stage" in english_run_detail.text
+    assert "Decision Card" not in english_run_detail.text
     assert "Production Readiness Card" in english_run_detail.text
-    assert "Formal submission readiness" not in english_run_detail.text
-    assert "Critical case failed." in english_run_detail.text
+    assert "Formal submission readiness" in english_run_detail.text
     assert "Review the evidence alignment." in english_run_detail.text
     assert "Failure" in english_run_detail.text
     assert "Impact" in english_run_detail.text
