@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -31,6 +32,9 @@ _TRACKED_HISTORY_METRICS: tuple[tuple[str, str, str], ...] = (
 _DEFAULT_NEXT_ACTION_HINT = "Define next action in weekly review issue"
 _UNKNOWN_REASON_CODE = "unknown_failure"
 _SAFE_CODE_RE = re.compile(r"^[a-z0-9_]{1,80}$")
+_SAFE_HISTORY_HASH_RE = re.compile(r"^[a-f0-9]{16}$")
+GATE_DECISION_HISTORY_FILENAME = "gate-decisions.jsonl"
+SAFE_GATE_DECISION_HISTORY_FILENAME = "gate-decisions-safe.jsonl"
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,8 +110,35 @@ def load_gate_decision_history(path: str | Path) -> list[GateDecision]:
             try:
                 decisions.append(GateDecision.model_validate_json(line))
             except (ValueError, ValidationError):
-                continue
+                decision = _load_safe_gate_decision_history_line(line)
+                if decision is not None:
+                    decisions.append(decision)
     return decisions
+
+
+def resolve_gate_decision_history_path(path: str | Path) -> Path:
+    """Resolve the preferred gate decision history path, favoring safe JSONL."""
+    history_path = Path(path)
+    if history_path.is_dir():
+        safe_path = history_path / SAFE_GATE_DECISION_HISTORY_FILENAME
+        raw_path = history_path / GATE_DECISION_HISTORY_FILENAME
+    elif history_path.name == GATE_DECISION_HISTORY_FILENAME:
+        safe_path = history_path.with_name(SAFE_GATE_DECISION_HISTORY_FILENAME)
+        raw_path = history_path
+    elif history_path.name == SAFE_GATE_DECISION_HISTORY_FILENAME:
+        safe_path = history_path
+        raw_path = history_path.with_name(GATE_DECISION_HISTORY_FILENAME)
+    else:
+        return history_path
+
+    if safe_path.exists():
+        return safe_path
+    return raw_path
+
+
+def load_gate_decision_history_prefer_safe(path: str | Path) -> list[GateDecision]:
+    """Load gate decision history, preferring the long-term safe JSONL when present."""
+    return load_gate_decision_history(resolve_gate_decision_history_path(path))
 
 
 def filter_gate_decision_history(
@@ -670,7 +701,9 @@ def _serialize_safe_action_coverage_item(item: GateActionCoverageItem) -> dict[s
         "total_count": item.total_count,
         "last_seen_run_id": item.last_seen_run_id,
         "covered": item.covered,
-        "case_id_hashes": [_stable_history_hash(case_id) for case_id in item.affected_case_ids],
+        "case_id_hashes": [
+            _stable_or_existing_history_hash(case_id) for case_id in item.affected_case_ids
+        ],
     }
 
 
@@ -949,6 +982,186 @@ def _stable_history_hash(value: object) -> str:
     return hashlib.sha256(str(value or "").encode("utf-8")).hexdigest()[:16]
 
 
+def _stable_or_existing_history_hash(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if _SAFE_HISTORY_HASH_RE.fullmatch(text):
+        return text
+    return _stable_history_hash(value)
+
+
 def _week_start_iso(value: datetime) -> str:
     timestamp = value.astimezone(timezone.utc)
     return (timestamp - timedelta(days=timestamp.weekday())).date().isoformat()
+
+
+def _load_safe_gate_decision_history_line(line: str) -> GateDecision | None:
+    try:
+        payload = json.loads(line)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    coerced = _coerce_safe_gate_decision_history_payload(payload)
+    if coerced is None:
+        return None
+    try:
+        return GateDecision.model_validate(coerced)
+    except ValidationError:
+        return None
+
+
+def _coerce_safe_gate_decision_history_payload(
+    payload: dict[str, object],
+) -> dict[str, object] | None:
+    status = _safe_status(payload.get("gate_status") or payload.get("status"))
+    if status is None:
+        return None
+
+    aggregate_counts = payload.get("aggregate_counts")
+    if not isinstance(aggregate_counts, dict):
+        aggregate_counts = {}
+
+    metrics = _safe_history_metrics(payload, aggregate_counts=aggregate_counts)
+    reason_codes = _safe_history_reason_codes(payload)
+    case_id_hashes = _safe_string_list(payload.get("case_id_hashes"))
+    case_id_hash = str(payload.get("case_id_hash") or "").strip()
+    if case_id_hash and case_id_hash not in case_id_hashes:
+        case_id_hashes.insert(0, case_id_hash)
+
+    judge_fallback_count = _safe_int(aggregate_counts.get("judge_fallback_count"))
+    embedding_fallback_count = _safe_int(aggregate_counts.get("embedding_fallback_count"))
+    created_at = str(payload.get("created_at") or payload.get("timestamp") or "").strip()
+    if not created_at:
+        return None
+
+    return {
+        "run_id": str(payload.get("run_id") or "unknown-run"),
+        "status": status,
+        "policy_status": _safe_policy_status(payload.get("policy_status")),
+        "reasons": reason_codes,
+        "reason_codes": reason_codes,
+        "metrics": metrics,
+        "execution_mode": str(payload.get("execution_mode") or "real"),
+        "provenance": _safe_history_reader_provenance(payload),
+        "next_actions": _safe_history_next_actions(
+            payload,
+            reason_codes=reason_codes,
+            case_id_hashes=case_id_hashes,
+        ),
+        "judge_fallback_used": judge_fallback_count > 0,
+        "judge_fallback_count": judge_fallback_count,
+        "judge_failure_types": {},
+        "judge_reliability": _safe_reliability(payload.get("judge_reliability")),
+        "embedding_fallback_used": embedding_fallback_count > 0,
+        "embedding_fallback_count": embedding_fallback_count,
+        "embedding_fallback_reason": None,
+        "retrieval_reliability": _safe_reliability(payload.get("retrieval_reliability")),
+        "fallback_summary": {},
+        "manual_review_summary": {},
+        "needs_human_review": bool(payload.get("needs_human_review")),
+        "pack": None,
+        "created_at": created_at,
+    }
+
+
+def _safe_history_metrics(
+    payload: dict[str, object],
+    *,
+    aggregate_counts: dict[object, object],
+) -> dict[str, float]:
+    metric_fields = {
+        "overall_pass_rate": payload.get("overall_pass_rate"),
+        "s1_pass_rate": payload.get("s1_pass_rate"),
+        "s1_fail_count": payload.get("s1_failed_count"),
+        "failed_cases": payload.get("failed_cases"),
+        "current_runs": payload.get("total_cases") or aggregate_counts.get("current_runs"),
+        "baseline_runs": aggregate_counts.get("baseline_runs"),
+        "judge_fallback_count": aggregate_counts.get("judge_fallback_count"),
+        "embedding_fallback_count": aggregate_counts.get("embedding_fallback_count"),
+    }
+    return {
+        key: float(value) for key, value in metric_fields.items() if isinstance(value, int | float)
+    }
+
+
+def _safe_history_reason_codes(payload: dict[str, object]) -> list[str]:
+    values = _safe_string_list(payload.get("safe_reason_codes"))
+    values.extend(_safe_string_list(payload.get("reason_codes")))
+    for key in ("failure_type_code", "failure_category", "reason_code"):
+        value = str(payload.get(key) or "").strip()
+        if value:
+            values.append(value)
+
+    deduped: list[str] = []
+    for value in values:
+        code = _safe_reason_code(value)
+        if code not in deduped:
+            deduped.append(code)
+    return deduped or [_UNKNOWN_REASON_CODE]
+
+
+def _safe_history_next_actions(
+    payload: dict[str, object],
+    *,
+    reason_codes: list[str],
+    case_id_hashes: list[str],
+) -> list[dict[str, object]]:
+    failure_category = _safe_reason_code(
+        payload.get("failure_category") or payload.get("failure_type_code") or reason_codes[0]
+    )
+    count = _safe_int(payload.get("failed_cases")) or len(case_id_hashes) or 1
+    return [
+        {
+            "failure_category": failure_category,
+            "count": count,
+            "action": _DEFAULT_NEXT_ACTION_HINT,
+            "owner": "T.B.D.",
+            "due": "T.B.D.",
+            "affected_case_ids": case_id_hashes,
+        }
+    ]
+
+
+def _safe_history_reader_provenance(payload: dict[str, object]) -> dict[str, object]:
+    allowed_keys = {
+        "adapter_config_hash",
+        "case_set_version",
+        "index_version",
+        "model_name",
+        "prompt_hash",
+        "quality_pack_version",
+        "retrieval_config_hash",
+    }
+    return {key: value for key in allowed_keys if (value := payload.get(key)) not in (None, "")}
+
+
+def _safe_string_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [text for item in value if (text := str(item or "").strip())]
+
+
+def _safe_status(value: object) -> str | None:
+    status = str(value or "").strip().lower()
+    return status if status in {"pass", "warn", "fail"} else None
+
+
+def _safe_policy_status(value: object) -> str:
+    status = str(value or "").strip().lower()
+    if status in {"pass", "warn", "block", "needs_human_review"}:
+        return status
+    return "pass"
+
+
+def _safe_reliability(value: object) -> str:
+    reliability = str(value or "").strip().lower()
+    if reliability in {"high", "medium", "low"}:
+        return reliability
+    return "high"
+
+
+def _safe_int(value: object) -> int:
+    try:
+        return max(0, int(float(value)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0
