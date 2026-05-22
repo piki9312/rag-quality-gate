@@ -1412,9 +1412,7 @@ def _customer_sentence_text(text: object) -> str:
         "Formal customer submission is not recommended. Use this only as an interim safe draft if the PoC agreement requires shared findings.": (
             "正式な顧客提出は推奨されません。PoC契約上共有が必要な場合のみ、暫定のsafeドラフトとして扱ってください。"
         ),
-        "Formal customer submission is not recommended.": (
-            "正式な顧客提出は推奨されません。"
-        ),
+        "Formal customer submission is not recommended.": ("正式な顧客提出は推奨されません。"),
         "Formal customer submission is recommended for the scoped quality review.": (
             "今回の検査範囲では、正式な顧客提出レポートとして利用できます。"
         ),
@@ -1481,7 +1479,9 @@ def build_customer_review_markdown(packet: ReviewPacket | dict[str, object]) -> 
         actions = []
     decision_status = str(decision.get("customer_status", decision.get("status", "unknown")))
     submission_status = str(submission.get("status", "not_recommended"))
-    shareability_status = str(shareability.get("status", delivery.get("customer_submission_status", "needs_review")))
+    shareability_status = str(
+        shareability.get("status", delivery.get("customer_submission_status", "needs_review"))
+    )
     stage_label = {
         "pre_delivery": "納品前品質診断",
         "post_delivery_change": "納品後変更レビュー",

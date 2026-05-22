@@ -449,7 +449,10 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "ブロッカーを解消し、gateを再実行してください。" in run_detail.text
     assert "文書コーパスの正本となる文書を定義してください。" in run_detail.text
     assert "古い文書を拒否、警告、レビュー対象のいずれで扱うか定義してください。" in run_detail.text
-    assert "この実行結果をリリース判断の証跡として扱う前に、人間レビューを完了してください。" in run_detail.text
+    assert (
+        "この実行結果をリリース判断の証跡として扱う前に、人間レビューを完了してください。"
+        in run_detail.text
+    )
     assert "ChangeEventに影響文書または文書件数を記録してください。" in run_detail.text
     assert "顧客提出前に、顧客向けエクスポート内容を確認してください。" in run_detail.text
     assert "Delivery Review Summary" not in run_detail.text
@@ -459,7 +462,9 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "Resolve blocking issues and rerun the gate." not in run_detail.text
     assert "Define the source of truth for the document corpus." not in run_detail.text
     assert "Define how stale documents are rejected, flagged, or reviewed." not in run_detail.text
-    assert "Complete human review before treating this run as release evidence." not in run_detail.text
+    assert (
+        "Complete human review before treating this run as release evidence." not in run_detail.text
+    )
     assert "Record affected documents or document count for the ChangeEvent." not in run_detail.text
     assert "Review customer-facing export before submission." not in run_detail.text
     assert "RAW QUESTION SHOULD NOT RENDER" not in run_detail.text
@@ -491,7 +496,9 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert "本番反映不可です。" in report_preview.text
     assert "リリースは見合わせてください。" in report_preview.text
     assert "変更種別は 文書更新 (document_update) です。" in report_preview.text
-    assert "文書更新により、検索される根拠や回答内容が変わる可能性があります。" in report_preview.text
+    assert (
+        "文書更新により、検索される根拠や回答内容が変わる可能性があります。" in report_preview.text
+    )
     assert "根拠文書は 1 件で、バージョン情報あり=あり です。" in report_preview.text
     assert "本番移行準備度" in report_preview.text
     assert "本番移行準備度は 未準備 (not_ready) です。" in report_preview.text
@@ -513,9 +520,9 @@ def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path)
     assert english_run_detail.text.index(
         "Prioritized Improvement Actions"
     ) < english_run_detail.text.index("Customer Submission Status")
-    assert english_run_detail.text.index("Customer Submission Status") < english_run_detail.text.index(
-        "Major Failures"
-    )
+    assert english_run_detail.text.index(
+        "Customer Submission Status"
+    ) < english_run_detail.text.index("Major Failures")
     assert english_run_detail.text.index("Major Failures") < english_run_detail.text.index(
         "Production Readiness Card"
     )

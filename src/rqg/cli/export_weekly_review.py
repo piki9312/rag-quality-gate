@@ -7,6 +7,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..quality.history import (
+    build_gate_history_summary_payload,
+    load_gate_decision_history_prefer_safe,
+    resolve_gate_decision_history_path,
+)
 from ..quality.weekly_review import (
     DEFAULT_WEEKLY_REVIEW_LABELS,
     build_weekly_review_issue_payload,
@@ -51,6 +56,13 @@ def _load_weekly_review_source(args: argparse.Namespace) -> tuple[dict[str, Any]
         if summary_payload is None:
             return None
         return summary_payload, bundle_path
+
+    if not getattr(args, "summary_file", None):
+        log_dir = Path(args.log_dir)
+        history_path = resolve_gate_decision_history_path(log_dir)
+        decisions = load_gate_decision_history_prefer_safe(log_dir)
+        if decisions:
+            return build_gate_history_summary_payload(decisions), history_path
 
     summary_path = (
         Path(args.summary_file)

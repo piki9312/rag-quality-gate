@@ -1178,7 +1178,9 @@ def _customer_report_title_for_stage(stage: object, *, lang: str) -> str:
 
 def _submission_status_reason(packet: dict[str, Any], *, lang: str) -> list[str]:
     decision = packet.get("decision", {}) if isinstance(packet.get("decision"), dict) else {}
-    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    delivery = (
+        packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    )
     submission = (
         packet.get("customer_submission_readiness", {})
         if isinstance(packet.get("customer_submission_readiness"), dict)
@@ -1253,9 +1255,13 @@ def _stage_improvement_steps(stage: object, *, lang: str) -> list[str]:
 
 def _action_priority(index: int, action: str) -> str:
     normalized = action.lower()
-    if index == 0 or any(token in normalized for token in ("critical", "blocking", "blocker", "s1", "no-go")):
+    if index == 0 or any(
+        token in normalized for token in ("critical", "blocking", "blocker", "s1", "no-go")
+    ):
         return "最優先"
-    if index <= 2 or any(token in normalized for token in ("source of truth", "stale", "human review", "changeevent")):
+    if index <= 2 or any(
+        token in normalized for token in ("source of truth", "stale", "human review", "changeevent")
+    ):
         return "高"
     return "中"
 
@@ -1270,7 +1276,9 @@ def _action_category(action: str, blocker: dict[str, Any] | None = None) -> str:
         return "cancellation"
     if "pricing" in normalized:
         return "pricing"
-    if any(token in normalized for token in ("document", "source of truth", "stale", "changeevent")):
+    if any(
+        token in normalized for token in ("document", "source of truth", "stale", "changeevent")
+    ):
         return "document_corpus"
     if "human review" in normalized:
         return "human_review"
@@ -2347,7 +2355,9 @@ def _run_href(run_id: object, lang: str, suffix: str = "") -> str:
 
 def _render_review_overview_card(packet: dict[str, Any], *, lang: str) -> str:
     decision = packet.get("decision", {}) if isinstance(packet.get("decision"), dict) else {}
-    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    delivery = (
+        packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    )
     readiness = (
         packet.get("production_readiness", {})
         if isinstance(packet.get("production_readiness"), dict)
@@ -2377,9 +2387,8 @@ def _render_review_overview_card(packet: dict[str, Any], *, lang: str) -> str:
         for action in delivery.get("required_actions", [])
         if str(action or "").strip()
     ][:2]
-    blockers_html = (
-        "".join(f"<li>{_esc(item)}</li>" for item in top_blockers)
-        or _none_list_item(lang)
+    blockers_html = "".join(f"<li>{_esc(item)}</li>" for item in top_blockers) or _none_list_item(
+        lang
     )
     actions_html = (
         "".join(f"<li>{_esc(item)}</li>" for item in next_actions)
@@ -2388,10 +2397,16 @@ def _render_review_overview_card(packet: dict[str, Any], *, lang: str) -> str:
     body = (
         f"<p>{_esc(_review_stage_description(review_stage, lang=lang))}</p>"
         "<div class='meta-grid'>"
-        + _meta_item_html(_tr(lang, "Review stage"), _value_badge(review_stage, lang=lang, show_raw=True))
+        + _meta_item_html(
+            _tr(lang, "Review stage"), _value_badge(review_stage, lang=lang, show_raw=True)
+        )
         + _meta_item_html(
             _tr(lang, "Decision"),
-            _value_badge(decision.get("customer_status", decision.get("status", "unknown")), lang=lang, show_raw=True),
+            _value_badge(
+                decision.get("customer_status", decision.get("status", "unknown")),
+                lang=lang,
+                show_raw=True,
+            ),
         )
         + _meta_item_html(
             _tr(lang, "Formal submission readiness"),
@@ -2423,7 +2438,9 @@ def _render_review_overview_card(packet: dict[str, Any], *, lang: str) -> str:
 
 
 def _action_guidance_rows(packet: dict[str, Any], *, lang: str) -> list[str]:
-    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    delivery = (
+        packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    )
     actions = delivery.get("required_actions", [])
     if not isinstance(actions, list):
         actions = []
@@ -2435,7 +2452,9 @@ def _action_guidance_rows(packet: dict[str, Any], *, lang: str) -> list[str]:
         action_text = str(action or "").strip()
         if not action_text:
             continue
-        blocker = blockers[index] if index < len(blockers) and isinstance(blockers[index], dict) else None
+        blocker = (
+            blockers[index] if index < len(blockers) and isinstance(blockers[index], dict) else None
+        )
         category = _action_category(action_text, blocker)
         translated_action = _translate_message(lang, action_text)
         rows.append(
@@ -2453,9 +2472,7 @@ def _action_guidance_rows(packet: dict[str, Any], *, lang: str) -> list[str]:
 
 def _render_action_guidance_card(packet: dict[str, Any], *, lang: str) -> str:
     rows = _action_guidance_rows(packet, lang=lang)
-    empty_row = (
-        f"<tr><td colspan='6'>{_esc(_label_text(lang, '現時点で追加対応は検出されていません。', 'No additional action is detected at this point.'))}</td></tr>"
-    )
+    empty_row = f"<tr><td colspan='6'>{_esc(_label_text(lang, '現時点で追加対応は検出されていません。', 'No additional action is detected at this point.'))}</td></tr>"
     body = (
         f"<table><tr><th>{_esc(_tr(lang, 'Priority'))}</th><th>{_esc(_tr(lang, 'Action'))}</th>"
         f"<th>{_esc(_tr(lang, 'Reason'))}</th><th>{_esc(_tr(lang, 'Category'))}</th>"
@@ -2478,7 +2495,9 @@ def _render_action_guidance_card(packet: dict[str, Any], *, lang: str) -> str:
 
 def _render_improvement_order_card(packet: dict[str, Any], *, lang: str) -> str:
     steps = _stage_improvement_steps(packet.get("review_stage", "unknown"), lang=lang)
-    body = "<ol class='ordered-list'>" + "".join(f"<li>{_esc(step)}</li>" for step in steps) + "</ol>"
+    body = (
+        "<ol class='ordered-list'>" + "".join(f"<li>{_esc(step)}</li>" for step in steps) + "</ol>"
+    )
     return _card_html(
         "Improvement Order",
         body,
@@ -2509,7 +2528,9 @@ def _render_customer_submission_card(run: dict[str, Any], *, lang: str) -> str:
     packet = run.get("review_packet")
     if not isinstance(packet, dict):
         return ""
-    delivery = packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    delivery = (
+        packet.get("delivery_review", {}) if isinstance(packet.get("delivery_review"), dict) else {}
+    )
     shareability = (
         packet.get("customer_shareability", {})
         if isinstance(packet.get("customer_shareability"), dict)
@@ -2535,14 +2556,25 @@ def _render_customer_submission_card(run: dict[str, Any], *, lang: str) -> str:
             "Use as conditional submission and document residual risks.",
         )
     else:
-        next_text = _label_text(lang, "正式提出レポートとして利用できます。", "Ready for formal customer submission.")
+        next_text = _label_text(
+            lang, "正式提出レポートとして利用できます。", "Ready for formal customer submission."
+        )
     body = (
         f"<p>{_esc(_label_text(lang, 'これはsafe情報のみで構成される顧客共有向けの成果物です。', 'This customer-facing artifact is built from safe information only.'))}</p>"
         "<div class='meta-grid'>"
-        + _meta_item_html(_tr(lang, "Report title"), _esc(_customer_report_title_for_stage(packet.get("review_stage"), lang=lang)))
+        + _meta_item_html(
+            _tr(lang, "Report title"),
+            _esc(_customer_report_title_for_stage(packet.get("review_stage"), lang=lang)),
+        )
         + _meta_item_html(
             _tr(lang, "Customer shareability"),
-            _value_badge(shareability.get("status", delivery.get("customer_submission_status", "needs_review")), lang=lang, show_raw=True),
+            _value_badge(
+                shareability.get(
+                    "status", delivery.get("customer_submission_status", "needs_review")
+                ),
+                lang=lang,
+                show_raw=True,
+            ),
         )
         + _meta_item_html(
             _tr(lang, "Formal submission readiness"),

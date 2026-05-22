@@ -9,15 +9,14 @@ from .helpers import write_json_data_output, write_text_output
 
 
 def cmd_monthly_summary(args: argparse.Namespace) -> int:
-    from ..quality.history import load_gate_decision_history
+    from ..quality.history import load_gate_decision_history_prefer_safe
     from ..quality.monthly_summary import (
         build_monthly_summary_payload,
         render_monthly_summary_markdown,
     )
 
     log_dir = _resolve_log_dir(args)
-    history_path = log_dir / "gate-decisions.jsonl"
-    decisions = load_gate_decision_history(history_path)
+    decisions = load_gate_decision_history_prefer_safe(log_dir)
     summary = build_monthly_summary_payload(decisions, month=args.month)
     markdown = render_monthly_summary_markdown(summary)
     print(markdown, end="")
