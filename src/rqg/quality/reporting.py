@@ -260,10 +260,13 @@ def build_gate_report_bundle_payload(artifacts: GateReportArtifacts) -> dict[str
             "manual_review_summary": decision_payload.get("manual_review_summary", {}),
         }
     )
-    payload["review_packet"] = build_review_packet(artifacts).model_dump(mode="json")
-    payload["customer_review_markdown"] = build_customer_review_markdown(
-        build_review_packet_safe(artifacts)
-    )
+    safe_review_packet = build_review_packet_safe(artifacts)
+    payload["review_packet"] = safe_review_packet.model_dump(mode="json")
+    if report_mode == "full":
+        payload["internal_review_packet"] = build_review_packet_full(artifacts).model_dump(
+            mode="json"
+        )
+    payload["customer_review_markdown"] = build_customer_review_markdown(safe_review_packet)
     return payload
 
 
@@ -284,10 +287,24 @@ def build_review_packet_full(artifacts: GateReportArtifacts) -> ReviewPacket:
     return _build_review_packet(artifacts, packet_mode="full")
 
 
+def _review_packet_policy(*, packet_mode: str, report_mode: str) -> object:
+    artifact_type = (
+        ArtifactType.INTERNAL_REVIEW_PACKET
+        if packet_mode == "full"
+        else ArtifactType.SAFE_REVIEW_PACKET
+    )
+    return resolve_artifact_exposure(artifact_type, report_mode)
+
+
+def _review_packet_allows(policy: object, field_name: str) -> bool:
+    return bool(getattr(policy, "allows")(field_name))
+
+
 def _build_review_packet(artifacts: GateReportArtifacts, *, packet_mode: str) -> ReviewPacket:
     from rqg.quality.check import build_customer_report_summary, normalize_report_mode
 
     report_mode = normalize_report_mode(artifacts.report_mode)
+    policy = _review_packet_policy(packet_mode=packet_mode, report_mode=report_mode)
     decision = artifacts.decision
     check_result = artifacts.check_result
     summary = (
@@ -301,15 +318,21 @@ def _build_review_packet(artifacts: GateReportArtifacts, *, packet_mode: str) ->
     pass_rate = float(
         summary.get("overall_pass_rate") or decision.metrics.get("overall_pass_rate", 0.0) or 0.0
     )
-    failures = _build_review_failures(artifacts, packet_mode=packet_mode)
+    failures = _build_review_failures(artifacts, packet_mode=packet_mode, policy=policy)
     decision_explanation = _build_decision_explanation(decision, failures)
-    scope = _build_review_scope(artifacts, packet_mode=packet_mode, report_mode=report_mode)
-    change_summary = _build_change_summary(artifacts, packet_mode=packet_mode)
+    scope = _build_review_scope(
+        artifacts,
+        packet_mode=packet_mode,
+        report_mode=report_mode,
+        policy=policy,
+    )
+    change_summary = _build_change_summary(artifacts, packet_mode=packet_mode, policy=policy)
     review_stage = _infer_review_stage(decision, change_summary)
     document_corpus = _build_document_corpus(
         artifacts,
         packet_mode=packet_mode,
         report_mode=report_mode,
+        policy=policy,
     )
     evidence_policy = _build_evidence_policy(packet_mode=packet_mode)
     production_readiness = _build_production_readiness(
@@ -389,6 +412,7 @@ def _build_review_failures(
     artifacts: GateReportArtifacts,
     *,
     packet_mode: str,
+    policy: object,
 ) -> list[Failure]:
     check_result = artifacts.check_result
     if check_result is None:
@@ -434,19 +458,21 @@ def _build_review_failures(
         safe_reason_code = _safe_ci_reason_code(failure_category or record.failure_type)
         exposed_failure_category = (
             failure_category
-            if packet_mode == "full"
+            if _review_packet_allows(policy, "failure_category") and packet_mode == "full"
             else safe_reason_code or CI_UNKNOWN_REASON_CODE
         )
-        exposed_business_category = business_category if packet_mode == "full" else ""
+        exposed_business_category = (
+            business_category if _review_packet_allows(policy, "business_category") else ""
+        )
         rows.append(
             Failure(
                 failure_id=f"failure-{stable_case_ref(record.case_id)}",
-                case_id=record.case_id if packet_mode == "full" else "",
+                case_id=record.case_id if _review_packet_allows(policy, "case_id") else "",
                 case_id_hash=stable_case_ref(record.case_id),
                 customer_severity=customer_severity,
                 internal_severity=str(record.severity or ""),
                 failure_category=exposed_failure_category,
-                failure_pattern=pattern if packet_mode == "full" else "",
+                failure_pattern=pattern if _review_packet_allows(policy, "failure_pattern") else "",
                 business_category=exposed_business_category,
                 go_no_go_impact=_failure_go_no_go_impact(
                     record=record,
@@ -455,12 +481,20 @@ def _build_review_failures(
                 ),
                 human_review_required=human_review_required,
                 question_summary=(
-                    str(getattr(case, "question", "") or "") if packet_mode == "full" else ""
+                    str(getattr(case, "question", "") or "")
+                    if _review_packet_allows(policy, "question_summary")
+                    else ""
                 ),
                 expected_summary=(
-                    str(getattr(case, "expected_answer", "") or "") if packet_mode == "full" else ""
+                    str(getattr(case, "expected_answer", "") or "")
+                    if _review_packet_allows(policy, "expected_summary")
+                    else ""
                 ),
-                actual_summary=str(record.answer or "") if packet_mode == "full" else "",
+                actual_summary=(
+                    str(record.answer or "")
+                    if _review_packet_allows(policy, "actual_summary")
+                    else ""
+                ),
                 evidence_status=_evidence_status(record),
                 safe_reason_code=safe_reason_code or CI_UNKNOWN_REASON_CODE,
                 next_action=_failure_next_action(
@@ -471,7 +505,7 @@ def _build_review_failures(
                 suggested_fix=_failure_suggested_fix(failure_category),
                 full_detail_ref=(
                     f"case:{record.case_id}"
-                    if packet_mode == "full"
+                    if _review_packet_allows(policy, "case_id")
                     else f"case:{stable_case_ref(record.case_id)}"
                 ),
             )
@@ -682,21 +716,22 @@ def _build_review_scope(
     *,
     packet_mode: str,
     report_mode: str,
+    policy: object,
 ) -> dict[str, object]:
     decision = artifacts.decision
     provenance = decision.provenance or {}
-    if packet_mode == "safe":
-        target_docs: list[str] = []
-        change_event: object | None = None
-    else:
+    if _review_packet_allows(policy, "target_documents"):
         target_docs = _target_docs_from_check_result(
             artifacts.check_result,
             report_mode=report_mode,
         )
-        change_event = _extract_change_event(decision) or provenance.get("change_event")
-    if packet_mode == "safe":
-        document_versions: list[str] = []
     else:
+        target_docs = []
+    if _review_packet_allows(policy, "change_event"):
+        change_event = _extract_change_event(decision) or provenance.get("change_event")
+    else:
+        change_event = None
+    if _review_packet_allows(policy, "document_versions"):
         document_versions = [
             str(value)
             for value in (
@@ -705,8 +740,14 @@ def _build_review_scope(
             )
             if str(value).strip()
         ]
+    else:
+        document_versions = []
     return {
-        "target_name": "" if packet_mode == "safe" else (_resolve_app_name(decision) or ""),
+        "target_name": (
+            _resolve_app_name(decision) or ""
+            if _review_packet_allows(policy, "target_name")
+            else ""
+        ),
         "target_type": "customer_facing_ai",
         "target_documents": target_docs,
         "document_versions": document_versions,
@@ -741,6 +782,7 @@ def _build_change_summary(
     artifacts: GateReportArtifacts,
     *,
     packet_mode: str,
+    policy: object,
 ) -> dict[str, object]:
     decision = artifacts.decision
     provenance = decision.provenance or {}
@@ -764,7 +806,7 @@ def _build_change_summary(
         or provenance.get("change_event_id")
         or ""
     ).strip()
-    if packet_mode != "full":
+    if not _review_packet_allows(policy, "change_id"):
         return {
             "change_type": change_type,
             "change_id": "",
@@ -883,6 +925,7 @@ def _build_document_corpus(
     *,
     packet_mode: str,
     report_mode: str,
+    policy: object,
 ) -> dict[str, object]:
     decision = artifacts.decision
     provenance = decision.provenance or {}
@@ -894,13 +937,15 @@ def _build_document_corpus(
     source_docs = _unique_non_empty(
         [str(getattr(case, "source_doc", "") or "") for case in active_cases]
     )
-    document_count = len(target_docs) if packet_mode == "full" else len(source_docs)
+    document_count = (
+        len(target_docs) if _review_packet_allows(policy, "target_documents") else len(source_docs)
+    )
     version_values = _document_version_values(provenance)
     stale_policy = str(provenance.get("stale_doc_policy") or "").strip()
     source_of_truth = str(provenance.get("source_of_truth") or "").strip()
     source_of_truth_type = _source_of_truth_type(provenance, source_of_truth)
     has_source_of_truth = _has_declared_source_of_truth(provenance, source_of_truth)
-    if packet_mode != "full":
+    if not _review_packet_allows(policy, "source_path"):
         return {
             "document_count": document_count,
             "source_of_truth_type": source_of_truth_type,

@@ -85,19 +85,26 @@ def test_release_review_demo_gate_produces_no_go_review_packet(tmp_path, monkeyp
 
     bundle = json.loads((log_dir / "gate-report.json").read_text(encoding="utf-8"))
     review_packet = bundle["review_packet"]
+    internal_review_packet = bundle["internal_review_packet"]
 
     assert bundle["decision"]["policy_status"] == "block"
+    assert review_packet["packet_mode"] == "safe"
+    assert internal_review_packet["packet_mode"] == "full"
     assert review_packet["decision"]["customer_status"] == "No-Go"
     assert review_packet["change_summary"]["change_type"] == "document_update"
     assert review_packet["production_readiness"]["status"] == "not_ready"
     assert review_packet["document_corpus"]["document_count"] >= 3
     assert review_packet["report_sections"]["change_summary"]
     assert review_packet["report_sections"]["production_readiness"]
+    assert review_packet["document_corpus"]["target_documents"] == []
+    assert all(not item["case_id"] for item in review_packet["major_failures"])
 
-    titles = {item["title"] for item in review_packet["document_corpus"]["target_documents"]}
+    titles = {
+        item["title"] for item in internal_review_packet["document_corpus"]["target_documents"]
+    }
     assert {"pricing_policy.md", "refund_policy.md", "cancellation_policy.md"} <= titles
 
-    failures = review_packet["major_failures"]
+    failures = internal_review_packet["major_failures"]
     assert failures
     assert any(item["customer_severity"] in {"Critical", "High"} for item in failures)
     assert any(

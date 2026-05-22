@@ -338,6 +338,32 @@ def test_gate_report_bundle_includes_review_packet_without_breaking_contract() -
     assert "ACME May release" not in serialized
 
 
+def test_gate_report_bundle_uses_safe_review_packet_even_in_full_mode() -> None:
+    payload = build_gate_report_bundle_payload(_review_packet_artifacts(report_mode="full"))
+    review_packet = payload["review_packet"]
+    internal_packet = payload["internal_review_packet"]
+    serialized = json.dumps(review_packet, ensure_ascii=False)
+
+    assert review_packet["packet_mode"] == "safe"
+    assert internal_packet["packet_mode"] == "full"
+    assert "Can a VIP customer" not in serialized
+    assert "Raw answer" not in serialized
+    assert "Refunds after the deadline are not allowed." not in serialized
+    assert "refund_policy.md#sec-1" not in serialized
+    assert r"C:\customer\docs\VIP refund policy.md" not in serialized
+    assert "VIP_REFUND_CASE" not in serialized
+    assert "evidence_mismatch" in serialized
+    assert review_packet["major_failures"][0]["case_id"] == ""
+    assert review_packet["major_failures"][0]["case_id_hash"]
+    assert review_packet["major_failures"][0]["safe_reason_code"] == "evidence_mismatch"
+    assert internal_packet["major_failures"][0]["case_id"] == "VIP_REFUND_CASE"
+    assert internal_packet["major_failures"][0]["question_summary"].startswith("Can a VIP customer")
+    assert "Raw answer" in internal_packet["major_failures"][0]["actual_summary"]
+    assert internal_packet["document_corpus"]["target_documents"][0]["source_path"] == (
+        r"C:\customer\docs\VIP refund policy.md"
+    )
+
+
 def test_customer_review_markdown_contains_only_safe_delivery_information() -> None:
     packet = build_review_packet_safe(_review_packet_artifacts(report_mode="ci"))
     markdown = build_customer_review_markdown(packet)

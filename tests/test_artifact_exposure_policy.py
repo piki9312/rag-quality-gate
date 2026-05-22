@@ -164,3 +164,29 @@ def test_safe_gate_decision_history_policy_hashes_ids_and_denies_raw_content() -
     assert policy.exposure_for("raw_fail_reason") == FieldExposure.FORBIDDEN
     assert policy.exposure_for("review_steward") == FieldExposure.FORBIDDEN
     assert policy.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN
+
+
+def test_review_packet_policies_separate_internal_and_safe_exposure() -> None:
+    internal = resolve_artifact_exposure(ArtifactType.INTERNAL_REVIEW_PACKET, "full")
+    safe = resolve_artifact_exposure(ArtifactType.SAFE_REVIEW_PACKET, "full")
+
+    assert internal.exposure_for("case_id") == FieldExposure.ALLOWED
+    assert internal.exposure_for("question") == FieldExposure.ALLOWED
+    assert internal.exposure_for("expected_answer") == FieldExposure.ALLOWED
+    assert internal.exposure_for("source_doc") == FieldExposure.ALLOWED
+    assert internal.exposure_for("fail_reason") == FieldExposure.ALLOWED
+    assert internal.exposure_for("endpoint_url") == FieldExposure.FORBIDDEN
+    assert internal.exposure_for("api_key") == FieldExposure.FORBIDDEN
+
+    assert safe.exposure_for("run_id") == FieldExposure.ALLOWED
+    assert safe.exposure_for("case_id") == FieldExposure.HASHED_ONLY
+    assert safe.exposure_for("source_doc") == FieldExposure.HASHED_ONLY
+    assert safe.exposure_for("target_docs") == FieldExposure.HASHED_ONLY
+    assert safe.exposure_for("safe_reason_code") == FieldExposure.ALLOWED
+    assert safe.exposure_for("failure_type_code") == FieldExposure.ALLOWED
+    assert safe.exposure_for("question") == FieldExposure.FORBIDDEN
+    assert safe.exposure_for("answer") == FieldExposure.FORBIDDEN
+    assert safe.exposure_for("expected_answer") == FieldExposure.FORBIDDEN
+    assert safe.exposure_for("expected_evidence") == FieldExposure.FORBIDDEN
+    assert safe.exposure_for("raw_fail_reason") == FieldExposure.FORBIDDEN
+    assert safe.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN
