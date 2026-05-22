@@ -190,3 +190,32 @@ def test_review_packet_policies_separate_internal_and_safe_exposure() -> None:
     assert safe.exposure_for("expected_evidence") == FieldExposure.FORBIDDEN
     assert safe.exposure_for("raw_fail_reason") == FieldExposure.FORBIDDEN
     assert safe.exposure_for("unknown_future_field") == FieldExposure.FORBIDDEN
+
+
+def test_external_and_long_term_policies_deny_raw_customer_fields_even_in_full_mode() -> None:
+    external_or_long_term_policies = [
+        resolve_artifact_exposure(ArtifactType.NOTIFICATION_PAYLOAD, "full"),
+        resolve_artifact_exposure(ArtifactType.HISTORY_SUMMARY, "full"),
+        resolve_artifact_exposure(ArtifactType.GATE_DECISION_HISTORY_SAFE, "full"),
+        resolve_artifact_exposure(ArtifactType.SAFE_REVIEW_PACKET, "full"),
+    ]
+    raw_fields = [
+        "question",
+        "answer",
+        "expected_answer",
+        "expected_evidence",
+        "retrieved_evidence",
+        "raw_fail_reason",
+        "endpoint_url",
+        "api_key",
+        "unknown_future_field",
+    ]
+
+    for policy in external_or_long_term_policies:
+        for field_name in raw_fields:
+            assert policy.exposure_for(field_name) == FieldExposure.FORBIDDEN
+
+    hashed_identifier_fields = ["case_id", "source_doc", "target_docs"]
+    for policy in external_or_long_term_policies[1:]:
+        for field_name in hashed_identifier_fields:
+            assert policy.exposure_for(field_name) == FieldExposure.HASHED_ONLY
