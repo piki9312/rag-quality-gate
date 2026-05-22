@@ -166,9 +166,7 @@ class TestReviewStageInputs:
 
         assert exit_code == 0
         assert payload["review_packet"]["review_stage"] == "pre_delivery"
-        assert payload["customer_review_markdown"].startswith(
-            "# AI回答品質診断レポート"
-        )
+        assert payload["customer_review_markdown"].startswith("# AI回答品質診断レポート")
 
     def test_cli_review_stage_post_delivery_change_is_written_to_review_packet(
         self, tmp_path, capsys
