@@ -5,6 +5,7 @@
 ## まず読む
 
 - [Proof Gate Product Map](proof-gate-product-map.md) - 現時点の製品正本。
+- [Partner Kit Asset Inventory](partner-kit-asset-inventory.md) - ベンダーに渡すもの、見せるもの、保持するものの棚卸し。
 - [Product positioning](product-positioning.md) - Proof Gate が何であり、何ではないか。
 - [Documentation Index](../README.md) - docs全体の置き場。
 - [Logging and evidence policy](../security/logging-and-evidence-policy.md) - 顧客データ、ログ、artifact、report-mode境界。
