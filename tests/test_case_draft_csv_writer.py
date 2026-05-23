@@ -91,6 +91,23 @@ def test_rejects_non_needs_review_row() -> None:
         draft_case_rows_to_csv_text([row])
 
 
+@pytest.mark.parametrize("severity", ["S3", "S4", "", "unknown"])
+def test_rejects_unsupported_severity(severity: str) -> None:
+    row = dict(_rows()[0])
+    row["severity"] = severity
+
+    with pytest.raises(ValueError, match="severity"):
+        draft_case_rows_to_csv_text([row])
+
+
+def test_rejects_missing_severity() -> None:
+    row = dict(_rows()[0])
+    row.pop("severity")
+
+    with pytest.raises(ValueError, match="severity"):
+        draft_case_rows_to_csv_text([row])
+
+
 def test_rejects_empty_question() -> None:
     row = dict(_rows()[0])
     row["question"] = ""
