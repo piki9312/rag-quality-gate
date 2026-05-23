@@ -4,6 +4,7 @@ from rqg.case_draft.draft_case import DraftCaseCandidate, SourceSection
 from rqg.case_draft.engine import CaseDraftEngine
 from rqg.case_draft.planner import CaseDraftPlanner
 from rqg.case_draft.pipeline import PatternDraftPipeline, create_pattern_draft_case_rows
+from rqg.case_draft.preview import DraftCasePreviewArtifact, write_pattern_draft_preview_csv
 from rqg.case_draft.row_adapter import (
     draft_candidate_to_case_row,
     draft_candidates_to_case_rows,
@@ -20,6 +21,7 @@ from rqg.case_draft.validators import validate_draft_case_candidate
 __all__ = [
     "CaseDraftEngine",
     "CaseDraftPlanner",
+    "DraftCasePreviewArtifact",
     "DraftCaseCandidate",
     "PatternDraftPipeline",
     "SourceSectionMatcher",
@@ -32,4 +34,5 @@ __all__ = [
     "validate_draft_case_rows",
     "validate_draft_case_candidate",
     "write_draft_case_rows_csv",
+    "write_pattern_draft_preview_csv",
 ]
