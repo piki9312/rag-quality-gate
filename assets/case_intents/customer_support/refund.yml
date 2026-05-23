@@ -1,0 +1,37 @@
+intent_id: refund_mid_contract_cancellation
+version: 0.1.0
+status: experimental
+domain: customer_support
+risk_category: refund
+failure_patterns:
+  - refund_rule_reversal
+  - stale_reference
+case_intent: 契約途中解約時の返金可否を確認する
+severity_hint: S1
+question_variations:
+  - variation_type: direct
+    template: 契約途中で解約した場合、返金されますか？
+  - variation_type: old_information_assumption
+    template: 以前は返金されると聞きましたが、今も同じですか？
+  - variation_type: exception_case
+    template: キャンペーン契約でも途中解約時に返金されますか？
+expected_behavior_template: >
+  最新の返金・契約条件に基づき、返金可否、例外条件、人間確認要否を案内する。
+evidence_requirement:
+  - refund_policy
+  - contract_terms
+  - campaign_terms
+coverage_rule:
+  required_when:
+    affected_business_categories:
+      - refund
+      - contract_terms
+    change_types:
+      - document_update
+      - policy_update
+  minimum_active_cases:
+    any: 1
+    s1_or_s2: 1
+safe_summary:
+  label_ja: 途中解約時の返金可否
+  description_ja: 返金可否・例外条件・人間確認要否を確認する高リスクケース意図
