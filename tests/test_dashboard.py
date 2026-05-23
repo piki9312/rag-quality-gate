@@ -160,6 +160,33 @@ def test_dashboard_global_failures_include_demo_block_and_review() -> None:
     assert "judge_fallback_used" in failures.text
 
 
+def test_dashboard_translates_case_coverage_warning() -> None:
+    from rqg.serving.dashboard import _render_readiness_issue_table
+
+    html = _render_readiness_issue_table(
+        [
+            {
+                "code": "case_coverage_missing",
+                "label": "Case coverage is missing",
+                "reason": (
+                    "Affected category 'cancellation' has no active "
+                    "approved-for-run case."
+                ),
+                "recommended_action": (
+                    "Add or approve an active case for affected category "
+                    "'cancellation'."
+                ),
+            }
+        ],
+        issue_type="warning",
+        lang="ja",
+    )
+
+    assert "case_coverage_missing" in html
+    assert "ケースカバレッジ不足" in html
+    assert "変更影響カテゴリに対応する承認済み実行ケースがありません。" in html
+
+
 def test_dashboard_run_detail_renders_review_packet_safe_payload(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     runs_dir = workspace / "runs" / "sample-pack"
