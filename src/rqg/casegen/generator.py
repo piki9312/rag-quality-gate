@@ -47,6 +47,11 @@ _QUESTION_SUFFIXES = (
     "when should ",
     "how should ",
 )
+_GENERATED_NOTE_MARKERS = (
+    "generated_by:gen_cases",
+    "case_type:generated-draft",
+    "source:document_section",
+)
 
 
 @dataclass
@@ -91,10 +96,24 @@ def _build_eval_case(
         expected_evidence=[section.section_id],
         expected_keywords=suggest_keywords(section),
         risk_level="S2",
+        status="needs_review",
         doc_snapshot_id=snapshot.snapshot_id,
         category=category,
-        notes="; ".join(part for part in notes_parts if part),
+        notes=_merge_generated_notes(*notes_parts),
     )
+
+
+def _merge_generated_notes(*notes: str) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for note in (*notes, *_GENERATED_NOTE_MARKERS):
+        for part in str(note or "").split(";"):
+            clean = part.strip()
+            if not clean or clean in seen:
+                continue
+            seen.add(clean)
+            parts.append(clean)
+    return "; ".join(parts)
 
 
 def _annotate_question_note(question: str, note: str) -> str:

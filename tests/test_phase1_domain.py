@@ -47,6 +47,7 @@ def test_eval_case_valid() -> None:
     )
 
     assert case.risk_level == "S1"
+    assert case.status == "active"
     assert '"case_id":"case-001"' in case.model_dump_json()
 
 
@@ -68,6 +69,18 @@ def test_eval_case_rejects_invalid_risk_level() -> None:
             question="What is the reimbursement limit?",
             expected_evidence=["The reimbursement limit is 10,000 JPY."],
             risk_level="S3",
+            doc_snapshot_id="snapshot-001",
+        )
+
+
+def test_eval_case_rejects_invalid_status() -> None:
+    with pytest.raises(ValidationError):
+        EvalCase(
+            case_id="case-001",
+            question="What is the reimbursement limit?",
+            expected_evidence=["The reimbursement limit is 10,000 JPY."],
+            risk_level="S2",
+            status="approved",
             doc_snapshot_id="snapshot-001",
         )
 

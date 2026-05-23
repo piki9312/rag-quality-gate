@@ -16,6 +16,7 @@ class EvalCase(BaseModel):
     expected_evidence: list[str] = Field(..., min_length=1)
     expected_keywords: list[str] = Field(default_factory=list)
     risk_level: Literal["S1", "S2"]
+    status: Literal["draft", "active", "needs_review", "deprecated"] = "active"
     doc_snapshot_id: str
     category: str = Field(default="general", min_length=1)
     notes: str | None = None
