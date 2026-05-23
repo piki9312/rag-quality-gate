@@ -6,6 +6,10 @@ This document defines the target trace from a change event to a release or submi
 
 The goal is to explain not just that an AI answer failed, but why the failure matters for delivery or release.
 
+For the case management layer between change events and gate execution, see [Change-Aware Case Management](change-aware-case-management.md).
+
+Future trace rows may reference Case Intent and generated draft provenance. See [Case Intent Library Design](case-intent-library-design.md) and [gen_cases Redesign](gen-cases-redesign.md).
+
 Proof Gate should help a PM answer:
 
 - What changed?

@@ -1,5 +1,15 @@
 # Proof Gate Product Map
 
+> Historical product map:
+> This document is useful as product history, but current canonical positioning and case-generation policy live in:
+> [AI Output Release Review Platform](ai-output-release-review-platform.md),
+> [AI Quality Management DX Model](ai-quality-management-dx-model.md),
+> [Case Intent Library Design](case-intent-library-design.md),
+> [gen_cases Redesign](gen-cases-redesign.md), and
+> [Change-Aware Case Management](change-aware-case-management.md).
+>
+> `gen_cases` output is `draft` / `needs_review` by default. Generated cases are not approved-for-run. Vendor approval is required before generated cases become `active`, and only `active` cases are used by Gate execution.
+
 ## 1. 事業定義
 
 Proof Gate は、RAG / AIチャットボットの導入・納品・変更運用に対して、重大誤回答の有無を検査し、顧客提出用レポートまで揃えて本番判断を支援する Release Gate です。

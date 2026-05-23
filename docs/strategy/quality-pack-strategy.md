@@ -6,6 +6,10 @@ This document defines the asset and responsibility model for Quality Packs, Fail
 
 The goal is to keep Proof Gate useful to partners without giving away the full standard evaluation asset base or mixing customer-specific data into Proof Gate-owned assets.
 
+For change-event-aware coverage and case lifecycle policy, see [Change-Aware Case Management](change-aware-case-management.md).
+
+For the reusable case asset model, see [Case Intent Library Design](case-intent-library-design.md). For the draft-generation role of `gen_cases`, see [gen_cases Redesign](gen-cases-redesign.md).
+
 ## Core Principle
 
 Customer-specific cases belong to the vendor or customer.

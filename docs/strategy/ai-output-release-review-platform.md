@@ -8,6 +8,10 @@ Proof Gate is for AI/RAG delivery organizations that need to decide whether AI a
 
 The operating model is role-separated: CLI / Runner handles execution, Dashboard supports PM release review decisions, and customer-facing safe reports are the external submission artifact. See [Partner Operating Model](partner-operating-model.md) for the vendor-side workflow.
 
+For the future link between change events, affected categories, Failure Patterns, and approved-for-run cases, see [Change-Aware Case Management](change-aware-case-management.md).
+
+For the broader quality-management workflow view, see [AI Quality Management DX Model](ai-quality-management-dx-model.md). For reusable case assets and draft generation direction, see [Case Intent Library Design](case-intent-library-design.md) and [gen_cases Redesign](gen-cases-redesign.md).
+
 ## Core Positioning
 
 Proof Gate is not just an evaluator.

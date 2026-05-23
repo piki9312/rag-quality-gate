@@ -1,5 +1,11 @@
 # Data Management Policy
 
+## Current Terminology Note
+
+In current Proof Gate design, `case templates` in shared assets means reusable Case Intent / Question Variation / Expected Behavior Template assets. It does not mean customer-specific answer-key cases.
+
+Customer-specific `expected_answer`, customer-specific `expected_behavior`, raw question, raw answer, and raw evidence are client-specific full/private data by default. They should remain in vendor-controlled or customer-controlled environments unless a separate agreement explicitly permits sharing.
+
 ## データ分類
 
 Proof Gate の内部運用では、データを次の 3 区分で扱う。

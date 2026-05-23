@@ -1,5 +1,23 @@
 # Quality Pack Spec
 
+## Current Terminology Note
+
+This document predates the Case Intent Library wording. Interpret "test cases" in a standard Proof Gate Quality Pack as sample/demo cases, case templates, or reusable Case Intents, not as a Proof Gate-owned database of customer-specific answer-key cases.
+
+Customer-specific `cases.csv` files with approved `expected_answer` / `expected_behavior` are vendor-owned or customer-specific assets. They should not be treated as Proof Gate standard assets or returned to the shared pack by default.
+
+A standard Proof Gate Quality Pack should be understood as a reusable package of:
+
+- Failure Patterns
+- Case Intents
+- Question Variations
+- Expected Behavior Templates
+- Severity Hints
+- Evidence Requirements
+- Coverage Rules
+- Gate Policy
+- Report Template
+
 ## 定義
 
 Quality Pack とは、**特定業務領域に対する failure patterns、test cases、Gate Policy、report template をまとめた再利用可能パッケージ** である。

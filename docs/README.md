@@ -5,6 +5,12 @@
 - [AI Output Release Review Platform](strategy/ai-output-release-review-platform.md) - Proof Gate as an AI output release review layer, not just an evaluator.
 - [Partner Platform Model](strategy/partner-platform-model.md) - Partner asset boundary: what to give, show, and retain.
 - [Partner Operating Model](strategy/partner-operating-model.md) - Vendor-side roles, interfaces, source sharing, and distribution phases.
+- [Change-Aware Case Management](strategy/change-aware-case-management.md) - Change-event-aware case lifecycle, coverage warning, and draft proposal direction.
+- [AI Quality Management DX Model](strategy/ai-quality-management-dx-model.md) - Proof Gate as a DX platform for AI quality management workflows.
+- [Case Intent Library Design](strategy/case-intent-library-design.md) - Reusable Case Intent, Failure Pattern, and Question Variation asset model.
+- [gen_cases Redesign](strategy/gen-cases-redesign.md) - `gen_cases` as a customer-specific draft case generator.
+- [Pattern-Based gen_cases Implementation Plan](strategy/pattern-based-gen-cases-implementation-plan.md) - Developer plan for Case Intent Registry and Case Draft Engine.
+- [Current Design Brief](strategy/current-design-brief.md) - Short contributor-facing design summary.
 
 このディレクトリは、Proof Gate のドキュメント入口です。現在のrepoは作業リポジトリでもあるため、資料を「正本」「顧客向け」「デモ」「技術契約」「運用」「archive」に分けて読む前提にします。
 
