@@ -125,23 +125,23 @@ Full/private detail remains in vendor or customer-controlled environments.
 
 ## Implementation Roadmap
 
-Phase 3 preparation:
+Planned follow-up preparation before pattern-based `gen_cases`:
 
-- a minimal `CaseDraftEngine` skeleton can create `needs_review` `DraftCaseCandidate` objects from Case Intents
-- the skeleton is template/mock-based and does not use an LLM
+- a minimal `CaseDraftEngine` skeleton should create `needs_review` `DraftCaseCandidate` objects from Case Intents
+- the skeleton should be template/mock-based and should not use an LLM
 - it is a preparation step for future pattern-based `gen_cases`
-- it is not connected to the existing `gen_cases` CLI yet
-- `CaseDraftPlanner` can combine affected business category candidate selection with the skeleton engine
-- planner output remains `needs_review` and is not an approved-for-run case
-- `SourceSectionMatcher` can connect Case Intents to document-section-like inputs through deterministic `evidence_requirement` matching
-- source matching is a pre-generation support layer, not full retrieval and not a `gen_cases` CLI integration
-- a row adapter can convert `CaseDraftPlanner` output to merge-compatible review candidate rows
-- adapter rows remain `needs_review` and mark generated answers as `answer_status:unapproved-draft`
-- `PatternDraftPipeline` can combine these internal pieces into affected categories + registry + sections -> `needs_review` review candidates
-- a future pattern-based `gen_cases` CLI can call this pipeline, but the current CLI remains unchanged
-- the internal CSV writer can render pipeline output as a `review.csv`-style artifact before any CLI connection
-- CSV writer output remains vendor-review-only until the existing review/merge flow adopts it
-- a preview artifact writer can produce a vendor-review CSV and row-count metadata
+- it should not be connected to the existing `gen_cases` CLI at first
+- `CaseDraftPlanner` should combine affected business category candidate selection with the skeleton engine
+- planner output should remain `needs_review` and should not be an approved-for-run case
+- `SourceSectionMatcher` should connect Case Intents to document-section-like inputs through deterministic `evidence_requirement` matching
+- source matching should remain a pre-generation support layer, not full retrieval and not a `gen_cases` CLI integration
+- a row adapter should convert `CaseDraftPlanner` output to merge-compatible review candidate rows
+- adapter rows should remain `needs_review` and should mark generated answers as `answer_status:unapproved-draft`
+- `PatternDraftPipeline` should combine these internal pieces into affected categories + registry + sections -> `needs_review` review candidates
+- a future pattern-based `gen_cases` CLI can call this pipeline, but the current CLI should remain unchanged
+- an internal CSV writer should render pipeline output as a `review.csv`-style artifact before any CLI connection
+- CSV writer output should remain vendor-review-only until the existing review/merge flow adopts it
+- a preview artifact writer should produce a vendor-review CSV and row-count metadata
 - this is the likely first boundary a future pattern-based `gen_cases` CLI should call
 
 Alignment with the existing review flow:
