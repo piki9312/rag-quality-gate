@@ -4,6 +4,10 @@
 
 This short brief is for contributors aligning on the current Proof Gate product design.
 
+Implementation status note: this brief summarizes the target design. Some items
+may be delivered by follow-up PRs; confirm the actual implementation status in
+code and tests before relying on a module or artifact.
+
 ## Current Position
 
 Proof Gate should be understood as an AI quality management DX platform.
@@ -32,7 +36,7 @@ which risks, Failure Patterns, Case Intents, and Coverage Rules should be consid
 The vendor is responsible for customer-specific correctness:
 whether the `expected_answer` / `expected_behavior` is correct for the customer business.
 
-日本語では、Proof Gateはカバーすべきリスク観点・Failure Pattern・Case Intent・Coverage Ruleを支援する。ベンダーは顧客固有の `expected_answer` / `expected_behavior` が業務上正しいかを承認する。
+日本語では、Proof Gateは確認すべきリスク観点、Failure Pattern、Case Intent、Coverage Ruleの整理を支援する。ベンダーは顧客固有の `expected_answer` / `expected_behavior` が業務上正しいかを承認する。
 
 ## gen_cases Principle
 
