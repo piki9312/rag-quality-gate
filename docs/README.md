@@ -12,6 +12,8 @@
 - [Pattern-Based gen_cases Implementation Plan](strategy/pattern-based-gen-cases-implementation-plan.md) - Developer plan for Case Intent Registry and Case Draft Engine.
 - [Current Design Brief](strategy/current-design-brief.md) - Short contributor-facing design summary.
 
+Implementation status note: strategy documents describe target design and staged follow-up work. Check the corresponding code, tests, and PRs before treating a planned module or artifact as implemented.
+
 このディレクトリは、Proof Gate のドキュメント入口です。現在のrepoは作業リポジトリでもあるため、資料を「正本」「顧客向け」「デモ」「技術契約」「運用」「archive」に分けて読む前提にします。
 
 短い製品入口は [README.md](../README.md) を参照してください。

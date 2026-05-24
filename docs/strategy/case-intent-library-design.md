@@ -8,17 +8,21 @@ Proof Gate's core asset should not be a customer-specific answer-key database. I
 
 For how these assets should be loaded and applied by a future Case Draft Engine, see [Pattern-Based gen_cases Implementation Plan](pattern-based-gen-cases-implementation-plan.md).
 
-Phase 1 implementation note:
+Implementation status note: this document describes the planned design and
+follow-up implementation sequence. A docs-only PR should not be read as proving
+that the referenced source modules or asset files already exist.
 
-- Case Intent assets are loaded from YAML.
-- The initial loader and validator live under `src/rqg/case_assets/`.
-- The sample intent under `assets/case_intents/` is a minimal schema validation sample, not a full operational library.
+Phase 1 planned implementation note:
+
+- Case Intent assets will be loaded from YAML.
+- Planned source location: `src/rqg/case_assets/`.
+- Planned sample location: `assets/case_intents/`. The sample should be a minimal schema validation sample, not a full operational library.
 - Case Intent YAML must not include customer-specific `expected_answer`.
 
-Phase 2 implementation note:
+Phase 2 planned implementation note:
 
-- YAML-loaded Case Intents are indexed by `CaseIntentRegistry`.
-- Registry lookup supports `intent_id`, `risk_category`, `failure_pattern`, `severity_hint`, and `coverage_rule.required_when.affected_business_categories`.
+- YAML-loaded Case Intents should be indexed by `CaseIntentRegistry`.
+- Registry lookup should support `intent_id`, `risk_category`, `failure_pattern`, `severity_hint`, and `coverage_rule.required_when.affected_business_categories`.
 - Registry candidate selection is the prerequisite for pattern-based `gen_cases` and future coverage warnings.
 - Initial registry matching uses exact string matching; normalization or alias mapping can be added later.
 
