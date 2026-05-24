@@ -18,6 +18,8 @@ from rqg.quality.case_schema import (
 REVIEW_FLOW_VERSION = 1
 REVIEW_FLOW_GENERATOR = "proof_gate_review_flow"
 VALID_REVIEW_DECISIONS = {"pending", "approve", "reject"}
+UNAPPROVED_DRAFT_MARKER = "answer_status:unapproved-draft"
+VENDOR_APPROVED_MARKER = "answer_status:vendor-approved"
 
 
 def export_case_review_artifacts(
@@ -288,9 +290,10 @@ def _apply_review_case(
         review_case.get("suggestion") if isinstance(review_case.get("suggestion"), dict) else {}
     )
     row["notes"] = _merge_notes(
-        row["notes"],
+        _remove_note_markers(row["notes"], {UNAPPROVED_DRAFT_MARKER}),
         _clean(vendor_review.get("notes")),
         "review_decision:approve",
+        VENDOR_APPROVED_MARKER,
         f"approved_by:{reviewed_by}" if reviewed_by else "",
         f"intent:{_clean(suggestion.get('intent'))}" if _clean(suggestion.get("intent")) else "",
         (
@@ -365,6 +368,15 @@ def _merge_notes(*values: str) -> str:
             marker = part.strip()
             if marker and marker not in parts:
                 parts.append(marker)
+    return "; ".join(parts)
+
+
+def _remove_note_markers(notes: str, markers_to_remove: set[str]) -> str:
+    parts = [
+        part.strip()
+        for part in _clean(notes).split(";")
+        if part.strip() and part.strip() not in markers_to_remove
+    ]
     return "; ".join(parts)
 
 
