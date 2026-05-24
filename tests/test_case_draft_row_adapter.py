@@ -15,11 +15,11 @@ from rqg.case_draft import (
 from rqg.quality.case_schema import FORMAL_CASE_FIELDS, validate_case_row
 
 
-def _candidate(status: str = "needs_review") -> DraftCaseCandidate:
+def _candidate(status: str = "needs_review", severity: str = "S1") -> DraftCaseCandidate:
     return DraftCaseCandidate(
         case_id="DRAFT-refund_mid_contract_cancellation",
         status=status,
-        severity="S1",
+        severity=severity,
         category="refund",
         question="契約途中で解約した場合、返金されますか？",
         expected_answer="最新の返金・契約条件に基づき案内する。",
@@ -56,6 +56,12 @@ def test_status_remains_needs_review() -> None:
 def test_does_not_allow_active_candidate() -> None:
     with pytest.raises(ValueError, match="status=needs_review"):
         draft_candidate_to_case_row(_candidate(status="active"))
+
+
+@pytest.mark.parametrize("severity", ["S3", "S4", "", "unknown"])
+def test_rejects_unsupported_severity(severity: str) -> None:
+    with pytest.raises(ValueError, match="severity"):
+        draft_candidate_to_case_row(_candidate(severity=severity))
 
 
 def test_preserves_notes_markers() -> None:
