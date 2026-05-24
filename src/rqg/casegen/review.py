@@ -9,9 +9,36 @@ from rqg.domain import EvalCase
 from rqg.presentation.markdown import render_eval_case_review_markdown
 from rqg.quality.case_schema import REVIEW_OUTPUT_FIELDS, infer_source_doc
 
+_UNAPPROVED_DRAFT_MARKER = "answer_status:unapproved-draft"
+
+
+def _append_note_marker(notes: str | None, marker: str) -> str:
+    parts = [part.strip() for part in (notes or "").split(";") if part.strip()]
+    if marker not in parts:
+        parts.append(marker)
+    return "; ".join(parts)
+
+
+def _review_notes(case: EvalCase) -> str:
+    notes = case.notes or ""
+    if case.expected_answer.strip():
+        return _append_note_marker(notes, _UNAPPROVED_DRAFT_MARKER)
+    return notes
+
+
+def _cases_with_review_markers(cases: list[EvalCase]) -> list[EvalCase]:
+    marked_cases: list[EvalCase] = []
+    for case in cases:
+        notes = _review_notes(case)
+        if notes != (case.notes or ""):
+            marked_cases.append(case.model_copy(update={"notes": notes}))
+        else:
+            marked_cases.append(case)
+    return marked_cases
+
 
 def render_cases_markdown(cases: list[EvalCase]) -> str:
-    return render_eval_case_review_markdown(cases)
+    return render_eval_case_review_markdown(_cases_with_review_markers(cases))
 
 
 def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
@@ -43,7 +70,7 @@ def write_review_output(path: str | Path, cases: list[EvalCase]) -> Path:
                         ),
                         "severity": case.risk_level,
                         "category": case.category,
-                        "notes": case.notes or "",
+                        "notes": _review_notes(case),
                     }
                 )
         return output_path

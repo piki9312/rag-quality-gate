@@ -123,6 +123,13 @@ Customer raw data should not be stored on the Proof Gate side by default.
 
 Full/private detail remains in vendor or customer-controlled environments.
 
+Existing document-based `gen_cases` review output follows the same rule. Its
+`review.csv` and review markdown are review candidate artifacts, not formal
+`cases.csv` assets. When a generated `expected_answer` is shown for reviewer
+convenience, the review artifact should keep the marker
+`answer_status:unapproved-draft` in `notes` so reviewers do not mistake it for
+a customer-approved answer.
+
 ## Implementation Roadmap
 
 Planned follow-up preparation before pattern-based `gen_cases`:
