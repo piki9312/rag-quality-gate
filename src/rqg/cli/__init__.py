@@ -20,7 +20,9 @@ from pathlib import Path
 from rqg.quality.review_stage import VALID_REVIEW_STAGES
 
 from .casegen import (
+    cmd_approve_cases,
     cmd_build_poc_set,
+    cmd_export_case_review,
     cmd_gen_cases,
     cmd_impact,
     cmd_merge_cases,
@@ -803,6 +805,48 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional gate.yml used for staleness-related validation (default: sibling gate.yml when present)",
     )
 
+    # --- export-case-review ---
+    p_export_case_review = sub.add_parser(
+        "export-case-review",
+        help="Export review_cases.yaml and review_cases.md from needs_review draft cases",
+    )
+    p_export_case_review.add_argument(
+        "--draft",
+        required=True,
+        help="Path to cases_draft.csv with status=needs_review rows",
+    )
+    p_export_case_review.add_argument(
+        "--output-yaml",
+        required=True,
+        help="Output review_cases.yaml path",
+    )
+    p_export_case_review.add_argument(
+        "--output-md",
+        required=True,
+        help="Output review_cases.md path",
+    )
+
+    # --- approve-cases ---
+    p_approve_cases = sub.add_parser(
+        "approve-cases",
+        help="Apply approved review_cases.yaml entries to a Gate-ready cases.csv",
+    )
+    p_approve_cases.add_argument(
+        "--draft",
+        required=True,
+        help="Path to cases_draft.csv used as the draft source",
+    )
+    p_approve_cases.add_argument(
+        "--review",
+        required=True,
+        help="Path to review_cases.yaml edited by the vendor",
+    )
+    p_approve_cases.add_argument(
+        "--output",
+        required=True,
+        help="Output cases.csv path",
+    )
+
     # --- validate-pack ---
     p_validate_pack = sub.add_parser(
         "validate-pack",
@@ -983,6 +1027,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_build_poc_set(args)
     elif args.command == "validate-cases":
         return cmd_validate_cases(args)
+    elif args.command == "export-case-review":
+        return cmd_export_case_review(args)
+    elif args.command == "approve-cases":
+        return cmd_approve_cases(args)
     elif args.command == "validate-pack":
         return cmd_validate_pack(args)
     elif args.command == "validate-connection":

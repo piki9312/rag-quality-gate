@@ -205,6 +205,41 @@ def _resolve_validate_cases_gate_config(
     return None
 
 
+def cmd_export_case_review(args: argparse.Namespace) -> int:
+    from ..case_draft import export_case_review_artifacts
+
+    try:
+        yaml_path, md_path = export_case_review_artifacts(
+            args.draft,
+            output_yaml=args.output_yaml,
+            output_md=args.output_md,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] Failed to export case review artifacts: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Saved review YAML to {yaml_path}")
+    print(f"Saved review Markdown to {md_path}")
+    return 0
+
+
+def cmd_approve_cases(args: argparse.Namespace) -> int:
+    from ..case_draft import approve_reviewed_cases
+
+    try:
+        output_path = approve_reviewed_cases(
+            draft_path=args.draft,
+            review_path=args.review,
+            output_path=args.output,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"[ERROR] Failed to approve cases: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Saved approved cases CSV to {output_path}")
+    return 0
+
+
 def cmd_merge_cases(args: argparse.Namespace) -> int:
     from ..quality.case_merge import (
         load_csv_rows,

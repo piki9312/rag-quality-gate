@@ -11,6 +11,15 @@ from rqg.case_draft.engine import CaseDraftEngine
 from rqg.case_draft.pipeline import PatternDraftPipeline, create_pattern_draft_case_rows
 from rqg.case_draft.planner import CaseDraftPlanner
 from rqg.case_draft.preview import DraftCasePreviewArtifact, write_pattern_draft_preview_csv
+from rqg.case_draft.review_flow import (
+    approve_reviewed_cases,
+    build_review_cases_payload,
+    export_case_review_artifacts,
+    load_review_cases_yaml,
+    render_review_cases_markdown,
+    write_review_cases_markdown,
+    write_review_cases_yaml,
+)
 from rqg.case_draft.row_adapter import (
     draft_candidate_to_case_row,
     draft_candidates_to_case_rows,
@@ -35,4 +44,11 @@ __all__ = [
     "validate_draft_case_candidate",
     "write_draft_case_rows_csv",
     "write_pattern_draft_preview_csv",
+    "approve_reviewed_cases",
+    "build_review_cases_payload",
+    "export_case_review_artifacts",
+    "load_review_cases_yaml",
+    "render_review_cases_markdown",
+    "write_review_cases_markdown",
+    "write_review_cases_yaml",
 ]
