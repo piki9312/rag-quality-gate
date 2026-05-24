@@ -113,6 +113,8 @@ def _ready_review_packet_artifacts(
     change_type: str = "document_update",
     include_changed_assets: bool = True,
     include_affected_documents: bool = True,
+    affected_business_categories: list[str] | None = None,
+    active_cases: list[QATestCase] | None = None,
     review_stage: str | None = None,
 ) -> GateReportArtifacts:
     record = QARunRecord(
@@ -141,6 +143,7 @@ def _ready_review_packet_artifacts(
         source_doc="refund_policy.md",
         updated_at="2026-05-01",
     )
+    cases = active_cases if active_cases is not None else [case]
     provenance = {
         "source_of_truth_type": "approved_policy" if include_source_of_truth else "",
         "source_of_truth": "approved refund policy" if include_source_of_truth else "",
@@ -156,7 +159,7 @@ def _ready_review_packet_artifacts(
             "change_type": change_type,
             "changed_assets": ["refund_policy.md"] if include_changed_assets else [],
             "affected_documents": ["refund_policy.md"] if include_affected_documents else [],
-            "affected_business_categories": ["refund_policy"],
+            "affected_business_categories": affected_business_categories or ["refund_policy"],
             "change_summary": "Refund FAQ update",
             "target_release": "2026-05-release",
         }
@@ -174,7 +177,7 @@ def _ready_review_packet_artifacts(
         failure_categories={},
         failure_case_ids={},
         current_records=[record],
-        active_cases=[case],
+        active_cases=cases,
         run_provenance=provenance,
     )
     decision = build_gate_decision(
@@ -430,6 +433,75 @@ def test_production_readiness_ready_when_required_inputs_are_present() -> None:
     assert packet.production_readiness.warnings == []
     assert packet.delivery_review.status == "deliverable"
     assert packet.customer_submission_readiness.status == "recommended"
+
+
+def test_production_readiness_warns_when_affected_category_has_no_active_case() -> None:
+    artifacts = _ready_review_packet_artifacts(
+        report_mode="ci",
+        affected_business_categories=["refund_policy", "cancellation"],
+    )
+    packet = build_review_packet_safe(artifacts)
+    warning_codes = {item.code for item in packet.production_readiness.warnings}
+    warning_reasons = [item.reason for item in packet.production_readiness.warnings]
+
+    assert packet.decision.status == "pass"
+    assert packet.production_readiness.status == "conditional"
+    assert "case_coverage_missing" in warning_codes
+    assert any("cancellation" in reason for reason in warning_reasons)
+    assert not any("Can a customer request a refund" in reason for reason in warning_reasons)
+    assert not any("Refunds are allowed" in reason for reason in warning_reasons)
+
+
+def test_production_readiness_does_not_warn_when_affected_category_has_active_case() -> None:
+    packet = build_review_packet_safe(
+        _ready_review_packet_artifacts(
+            report_mode="ci",
+            affected_business_categories=["refund_policy"],
+        )
+    )
+    warning_codes = {item.code for item in packet.production_readiness.warnings}
+
+    assert "case_coverage_missing" not in warning_codes
+
+
+def test_pre_delivery_does_not_emit_case_coverage_warning() -> None:
+    packet = build_review_packet_safe(
+        _ready_review_packet_artifacts(
+            report_mode="ci",
+            affected_business_categories=["cancellation"],
+            review_stage="pre_delivery",
+        )
+    )
+    warning_codes = {item.code for item in packet.production_readiness.warnings}
+
+    assert packet.review_stage == "pre_delivery"
+    assert "case_coverage_missing" not in warning_codes
+
+
+def test_production_readiness_warns_when_affected_category_lacks_s1_s2_case() -> None:
+    low_priority_case = QATestCase(
+        case_id="REFUND_LOW_PRIORITY_CASE",
+        name="Refund low priority case",
+        question="Can a customer ask a refund status question?",
+        severity="S3",
+        expected_answer="Share the refund status workflow.",
+        expected_evidence=["refund_policy.md#sec-3"],
+        category="refund_policy",
+        risk_domain="refund_policy",
+        source_doc="refund_policy.md",
+        updated_at="2026-05-01",
+    )
+    packet = build_review_packet_safe(
+        _ready_review_packet_artifacts(
+            report_mode="ci",
+            affected_business_categories=["refund_policy"],
+            active_cases=[low_priority_case],
+        )
+    )
+    warning_codes = {item.code for item in packet.production_readiness.warnings}
+
+    assert "case_coverage_missing" not in warning_codes
+    assert "high_priority_case_coverage_missing" in warning_codes
 
 
 def test_pre_delivery_accepts_missing_change_event_without_change_warning() -> None:

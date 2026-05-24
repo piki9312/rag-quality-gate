@@ -297,6 +297,16 @@ _DASHBOARD_JA_ISSUES = {
         "reason": "なぜこの変更で再検査が必要なのかが説明できない状態です。",
         "action": "change-event.yml に retest_reason を記載してください。",
     },
+    "case_coverage_missing": {
+        "label": "ケースカバレッジ不足",
+        "reason": "変更影響カテゴリに対応する承認済み実行ケースがありません。",
+        "action": "該当カテゴリのケースを追加または承認し、再検査してください。",
+    },
+    "high_priority_case_coverage_missing": {
+        "label": "重要ケースカバレッジ不足",
+        "reason": "変更影響カテゴリに対応するS1/S2の承認済みケースがありません。",
+        "action": "該当カテゴリのS1/S2ケースを追加または承認し、再検査してください。",
+    },
     "s1_case_failed": {
         "label": "重大ケースが失敗しました",
         "reason": "高リスクのケースが失敗しており、本番反映できません。",

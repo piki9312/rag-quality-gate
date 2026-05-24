@@ -342,6 +342,7 @@ def _build_review_packet(artifacts: GateReportArtifacts, *, packet_mode: str) ->
         review_stage=review_stage,
         document_corpus=document_corpus,
         evidence_policy=evidence_policy,
+        check_result=artifacts.check_result,
     )
     blocking_items = _build_delivery_blocking_items(failures)
     customer_shareability = _build_customer_shareability(packet_mode=packet_mode)
@@ -1640,6 +1641,7 @@ def _build_production_readiness(
     review_stage: str,
     document_corpus: dict[str, object],
     evidence_policy: dict[str, object],
+    check_result: object | None = None,
 ) -> dict[str, object]:
     blockers: list[dict[str, str]] = []
     warnings: list[dict[str, str]] = []
@@ -1730,6 +1732,12 @@ def _build_production_readiness(
         )
     if review_stage == "post_delivery_change":
         warnings.extend(_change_event_readiness_warnings(change_summary))
+        warnings.extend(
+            _case_coverage_readiness_warnings(
+                decision=decision,
+                check_result=check_result,
+            )
+        )
 
     if blockers:
         status = "not_ready"
@@ -1825,6 +1833,83 @@ def _change_event_readiness_warnings(change_summary: dict[str, object]) -> list[
             )
         )
     return warnings
+
+
+def _case_coverage_readiness_warnings(
+    *,
+    decision: GateDecision,
+    check_result: object | None,
+) -> list[dict[str, str]]:
+    provenance = decision.provenance or {}
+    raw_change_event = _raw_change_event(decision, provenance)
+    if not isinstance(raw_change_event, dict):
+        return []
+
+    affected_categories = _string_list(raw_change_event.get("affected_business_categories"))
+    if not affected_categories:
+        return []
+
+    active_cases = [
+        case
+        for case in list(getattr(check_result, "active_cases", []) or [])
+        if str(getattr(case, "status", "active") or "active").strip().lower() == "active"
+    ]
+    warnings: list[dict[str, str]] = []
+    for category in affected_categories:
+        matched_cases = [
+            case for case in active_cases if _case_matches_business_category(case, category)
+        ]
+        if not matched_cases:
+            warnings.append(
+                _readiness_warning(
+                    code="case_coverage_missing",
+                    label="Case coverage is missing",
+                    reason=(
+                        f"Affected category '{category}' has no active "
+                        "approved-for-run case."
+                    ),
+                    action=(
+                        f"Add or approve an active case for affected category '{category}'."
+                    ),
+                )
+            )
+            continue
+
+        if not any(_case_is_high_priority(case) for case in matched_cases):
+            warnings.append(
+                _readiness_warning(
+                    code="high_priority_case_coverage_missing",
+                    label="High-priority case coverage is missing",
+                    reason=(
+                        f"Affected category '{category}' has active cases, "
+                        "but no active S1/S2 case."
+                    ),
+                    action=(
+                        "Add or approve an S1/S2 active case for affected "
+                        f"category '{category}'."
+                    ),
+                )
+            )
+    return warnings
+
+
+def _case_matches_business_category(case: object, affected_category: str) -> bool:
+    target = _normalized_case_category(affected_category)
+    if not target:
+        return False
+    candidates = {
+        _normalized_case_category(getattr(case, "category", "")),
+        _normalized_case_category(getattr(case, "risk_domain", "")),
+    }
+    return target in candidates
+
+
+def _case_is_high_priority(case: object) -> bool:
+    return str(getattr(case, "severity", "") or "").strip().upper() in {"S1", "S2"}
+
+
+def _normalized_case_category(value: object) -> str:
+    return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
 
 
 def _readiness_summary(
