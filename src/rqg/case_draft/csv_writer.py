@@ -12,7 +12,7 @@ from io import StringIO
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from rqg.quality.case_schema import FORMAL_CASE_FIELDS
+from rqg.quality.case_schema import FORMAL_CASE_FIELDS, VALID_SEVERITIES
 
 
 _REQUIRED_NOTE_MARKERS = (
@@ -56,6 +56,15 @@ def validate_draft_case_row(row: Mapping[str, str]) -> dict[str, str]:
         raise ValueError("Draft CSV writer refuses active rows")
     if status != "needs_review":
         raise ValueError("Draft CSV writer only accepts status=needs_review rows")
+    severity = normalized["severity"].strip().upper()
+    if not severity:
+        raise ValueError("Draft CSV writer requires severity")
+    if severity not in VALID_SEVERITIES:
+        allowed = ", ".join(sorted(VALID_SEVERITIES))
+        raise ValueError(
+            f"Draft CSV writer only accepts severity values {allowed}; got {normalized['severity']!r}"
+        )
+    normalized["severity"] = severity
     if not normalized["question"].strip():
         raise ValueError("Draft CSV writer requires non-empty question")
     if not normalized["expected_answer"].strip():
