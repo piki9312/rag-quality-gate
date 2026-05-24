@@ -8,7 +8,6 @@ import pytest
 
 from rqg.case_assets import CaseIntentLibraryError, load_case_intents
 
-
 SAMPLE_INTENT = """\
 intent_id: refund_mid_contract_cancellation
 version: 0.1.0
@@ -71,12 +70,14 @@ def test_valid_sample_yaml_loads() -> None:
 def test_directory_loads_yaml_recursively_in_stable_order() -> None:
     root = _workspace_tmp()
     try:
-        _write_intent(root / "z" / "second.yml", SAMPLE_INTENT.replace(
-            "refund_mid_contract_cancellation", "z_refund_case"
-        ))
-        _write_intent(root / "a" / "first.yaml", SAMPLE_INTENT.replace(
-            "refund_mid_contract_cancellation", "a_refund_case"
-        ))
+        _write_intent(
+            root / "z" / "second.yml",
+            SAMPLE_INTENT.replace("refund_mid_contract_cancellation", "z_refund_case"),
+        )
+        _write_intent(
+            root / "a" / "first.yaml",
+            SAMPLE_INTENT.replace("refund_mid_contract_cancellation", "a_refund_case"),
+        )
 
         first_load = [intent.intent_id for intent in load_case_intents(root)]
         second_load = [intent.intent_id for intent in load_case_intents(root)]
@@ -102,9 +103,9 @@ def test_duplicate_intent_id_rejected() -> None:
 def test_invalid_status_rejected() -> None:
     root = _workspace_tmp()
     try:
-        path = _write_intent(root / "invalid.yml", SAMPLE_INTENT.replace(
-            "status: experimental", "status: approved"
-        ))
+        path = _write_intent(
+            root / "invalid.yml", SAMPLE_INTENT.replace("status: experimental", "status: approved")
+        )
 
         with pytest.raises(CaseIntentLibraryError, match="status"):
             load_case_intents(path)
@@ -115,9 +116,10 @@ def test_invalid_status_rejected() -> None:
 def test_invalid_severity_rejected() -> None:
     root = _workspace_tmp()
     try:
-        path = _write_intent(root / "invalid.yml", SAMPLE_INTENT.replace(
-            "severity_hint: S1", "severity_hint: critical"
-        ))
+        path = _write_intent(
+            root / "invalid.yml",
+            SAMPLE_INTENT.replace("severity_hint: S1", "severity_hint: critical"),
+        )
 
         with pytest.raises(CaseIntentLibraryError, match="severity_hint"):
             load_case_intents(path)
@@ -128,12 +130,15 @@ def test_invalid_severity_rejected() -> None:
 def test_missing_question_variations_rejected() -> None:
     root = _workspace_tmp()
     try:
-        path = _write_intent(root / "invalid.yml", SAMPLE_INTENT.replace(
-            "question_variations:\n"
-            "  - variation_type: direct\n"
-            "    template: 契約途中で解約した場合、返金されますか？",
-            "question_variations: []",
-        ))
+        path = _write_intent(
+            root / "invalid.yml",
+            SAMPLE_INTENT.replace(
+                "question_variations:\n"
+                "  - variation_type: direct\n"
+                "    template: 契約途中で解約した場合、返金されますか？",
+                "question_variations: []",
+            ),
+        )
 
         with pytest.raises(CaseIntentLibraryError, match="question_variations"):
             load_case_intents(path)

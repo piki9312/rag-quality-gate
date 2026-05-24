@@ -14,7 +14,6 @@ from typing import Mapping, Sequence
 
 from rqg.quality.case_schema import FORMAL_CASE_FIELDS, VALID_SEVERITIES
 
-
 _REQUIRED_NOTE_MARKERS = (
     "generated_by:case_draft_engine",
     "case_type:generated-draft",

@@ -169,12 +169,10 @@ def test_dashboard_translates_case_coverage_warning() -> None:
                 "code": "case_coverage_missing",
                 "label": "Case coverage is missing",
                 "reason": (
-                    "Affected category 'cancellation' has no active "
-                    "approved-for-run case."
+                    "Affected category 'cancellation' has no active " "approved-for-run case."
                 ),
                 "recommended_action": (
-                    "Add or approve an active case for affected category "
-                    "'cancellation'."
+                    "Add or approve an active case for affected category " "'cancellation'."
                 ),
             }
         ],

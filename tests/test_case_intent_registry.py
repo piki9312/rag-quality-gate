@@ -13,7 +13,6 @@ from rqg.case_assets import (
     load_case_intents,
 )
 
-
 SAMPLE_INTENT = """\
 intent_id: {intent_id}
 version: 0.1.0
@@ -121,9 +120,9 @@ def test_registry_rejects_duplicate_intent_id_when_constructed_directly() -> Non
 def test_find_by_risk_category() -> None:
     registry = load_case_intent_registry(Path("assets/case_intents"))
 
-    assert [
-        intent.intent_id for intent in registry.find_by_risk_category("refund")
-    ] == ["refund_mid_contract_cancellation"]
+    assert [intent.intent_id for intent in registry.find_by_risk_category("refund")] == [
+        "refund_mid_contract_cancellation"
+    ]
     assert registry.find_by_risk_category("pricing") == []
 
 
@@ -133,18 +132,18 @@ def test_find_by_failure_pattern() -> None:
     assert [
         intent.intent_id for intent in registry.find_by_failure_pattern("refund_rule_reversal")
     ] == ["refund_mid_contract_cancellation"]
-    assert [
-        intent.intent_id for intent in registry.find_by_failure_pattern("stale_reference")
-    ] == ["refund_mid_contract_cancellation"]
+    assert [intent.intent_id for intent in registry.find_by_failure_pattern("stale_reference")] == [
+        "refund_mid_contract_cancellation"
+    ]
     assert registry.find_by_failure_pattern("unknown_pattern") == []
 
 
 def test_find_by_severity_hint() -> None:
     registry = load_case_intent_registry(Path("assets/case_intents"))
 
-    assert [
-        intent.intent_id for intent in registry.find_by_severity_hint("S1")
-    ] == ["refund_mid_contract_cancellation"]
+    assert [intent.intent_id for intent in registry.find_by_severity_hint("S1")] == [
+        "refund_mid_contract_cancellation"
+    ]
     assert registry.find_by_severity_hint("S4") == []
     assert registry.find_by_severity_hint("critical") == []
 
@@ -153,12 +152,10 @@ def test_find_by_affected_business_category() -> None:
     registry = load_case_intent_registry(Path("assets/case_intents"))
 
     assert [
-        intent.intent_id
-        for intent in registry.find_by_affected_business_category("refund")
+        intent.intent_id for intent in registry.find_by_affected_business_category("refund")
     ] == ["refund_mid_contract_cancellation"]
     assert [
-        intent.intent_id
-        for intent in registry.find_by_affected_business_category("contract_terms")
+        intent.intent_id for intent in registry.find_by_affected_business_category("contract_terms")
     ] == ["refund_mid_contract_cancellation"]
     assert registry.find_by_affected_business_category("pricing") == []
 

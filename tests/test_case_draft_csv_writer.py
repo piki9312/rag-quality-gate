@@ -53,9 +53,7 @@ def test_writes_csv_file() -> None:
         write_draft_case_rows_csv(_rows(), output_path)
 
         assert output_path.exists()
-        assert "DRAFT-refund_mid_contract_cancellation" in output_path.read_text(
-            encoding="utf-8"
-        )
+        assert "DRAFT-refund_mid_contract_cancellation" in output_path.read_text(encoding="utf-8")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
