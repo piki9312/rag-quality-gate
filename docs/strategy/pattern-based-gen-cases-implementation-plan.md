@@ -227,14 +227,14 @@ Validation should fail closed for activation-related mistakes. A generated row t
 - validation tests
 - optional generated registry JSON
 
-Phase 2 starts with a minimal Case Intent Library foundation:
+Phase 2 should start with a minimal Case Intent Library foundation:
 
-- `src/rqg/case_assets/` provides the schema, loader, and validation boundary
-- `assets/case_intents/` contains only small validation samples at first
+- planned source location: `src/rqg/case_assets/`
+- planned sample location: `assets/case_intents/`
 - sample intents are not customer-approved `cases.csv`
 - customer-specific `expected_answer` is rejected from Case Intent YAML
 
-Before the Case Draft Engine generates anything, relevant Case Intents must be selected in a deterministic way. `CaseIntentRegistry` provides that selection layer:
+Before the Case Draft Engine generates anything, relevant Case Intents must be selected in a deterministic way. `CaseIntentRegistry` is the planned selection layer:
 
 - look up intents by id, risk category, Failure Pattern, severity hint, or affected business category
 - select candidates from `coverage_rule.required_when.affected_business_categories`
@@ -247,66 +247,66 @@ Before the Case Draft Engine generates anything, relevant Case Intents must be s
 - no full LLM dependency required
 - template/mock-based draft generation is acceptable
 
-Phase 3 implementation note:
+Phase 3 planned implementation note:
 
-- `src/rqg/case_draft/` contains a minimal `CaseDraftEngine`
-- the engine creates `DraftCaseCandidate` from a `CaseIntent`
-- output status is `needs_review`, never `active`
-- initial generation is template-based and does not call an LLM
-- existing `gen_cases` is not connected yet
+- planned source location: `src/rqg/case_draft/`
+- the engine should create `DraftCaseCandidate` from a `CaseIntent`
+- output status should be `needs_review`, never `active`
+- initial generation should be template-based and should not call an LLM
+- existing `gen_cases` should not be connected yet
 
-Planner implementation note:
+Planner planned implementation note:
 
-- `CaseDraftPlanner` connects `CaseIntentRegistry` candidate selection to `CaseDraftEngine`
-- affected business categories are mapped to candidate Case Intents through `coverage_rule.required_when.affected_business_categories`
-- candidate intents are converted to `needs_review` `DraftCaseCandidate` objects
-- duplicate intent hits do not create duplicate drafts
-- this planner is still internal and is not connected to the existing `gen_cases` CLI
-- it does not use LLMs, retrieval, or automatic activation
+- `CaseDraftPlanner` should connect `CaseIntentRegistry` candidate selection to `CaseDraftEngine`
+- affected business categories should be mapped to candidate Case Intents through `coverage_rule.required_when.affected_business_categories`
+- candidate intents should be converted to `needs_review` `DraftCaseCandidate` objects
+- duplicate intent hits should not create duplicate drafts
+- this planner should remain internal and should not be connected to the existing `gen_cases` CLI at first
+- it should not use LLMs, retrieval, or automatic activation
 
-Source matching implementation note:
+Source matching planned implementation note:
 
-- `SourceSectionMatcher` deterministically selects a candidate `SourceSection` for a `CaseIntent`
-- matching uses `evidence_requirement` against section id, source ref, and text
+- `SourceSectionMatcher` should deterministically select a candidate `SourceSection` for a `CaseIntent`
+- matching should use `evidence_requirement` against section id, source ref, and text
 - this is not full retrieval and does not use LLMs, embeddings, BM25, vector DB, or RAG endpoints
 - the matcher can be replaced by a future retrieval layer
 - drafts remain `needs_review` even when a source section is matched
 
-Row adapter implementation note:
+Row adapter planned implementation note:
 
-- `DraftCaseCandidate` can be converted to a formal `cases.csv` compatible draft row
+- `DraftCaseCandidate` should be convertible to a formal `cases.csv` compatible draft row
 - this adapter is the boundary before future `gen_cases` CLI integration
-- adapter output status remains `needs_review`
-- adapter output adds `answer_status:unapproved-draft`
+- adapter output status should remain `needs_review`
+- adapter output should add `answer_status:unapproved-draft`
 - generated `expected_answer` remains an unapproved draft until vendor approval
 - active promotion remains a separate vendor approval step
 
-Internal pipeline implementation note:
+Internal pipeline planned implementation note:
 
-- `PatternDraftPipeline` combines registry selection, source matching, draft generation, and row adaptation
-- input is affected categories, a `CaseIntentRegistry`, and optional `SourceSection` candidates
-- output is `cases.csv` compatible `needs_review` draft rows
-- the pipeline is still internal and is not connected to the existing `gen_cases` CLI
-- it does not use LLMs, embeddings, BM25, vector DB, RAG endpoints, or automatic activation
+- `PatternDraftPipeline` should combine registry selection, source matching, draft generation, and row adaptation
+- input should be affected categories, a `CaseIntentRegistry`, and optional `SourceSection` candidates
+- output should be `cases.csv` compatible `needs_review` draft rows
+- the pipeline should remain internal and should not be connected to the existing `gen_cases` CLI at first
+- it should not use LLMs, embeddings, BM25, vector DB, RAG endpoints, or automatic activation
 
-CSV preview/writer implementation note:
+CSV preview/writer planned implementation note:
 
-- internal draft rows can be rendered as review CSV artifact text
-- the current writer uses formal-schema fields because the existing `merge-cases` flow accepts those rows as review input
+- internal draft rows should be renderable as review CSV artifact text
+- the writer should use formal-schema fields because the existing `merge-cases` flow accepts those rows as review input
 - this output is not the governed source-of-truth `cases.csv`
 - field order follows `FORMAL_CASE_FIELDS` for merge compatibility
-- writer output is limited to `needs_review` candidate rows
-- active rows are rejected
+- writer output should be limited to `needs_review` candidate rows
+- active rows should be rejected
 - generated answers remain marked as `answer_status:unapproved-draft`
 - this is still not connected to the existing `gen_cases` CLI
 
-Preview artifact implementation note:
+Preview artifact planned implementation note:
 
-- pattern draft rows can be written as a review CSV artifact for vendor review
-- the artifact writer combines `PatternDraftPipeline` and the draft CSV writer
-- input is affected categories, a `CaseIntentRegistry`, optional source sections, and an output path
-- output is a `needs_review` review artifact plus metadata such as row count
-- zero-row output writes a header-only CSV so missing candidates can still be inspected
+- pattern draft rows should be writable as a review CSV artifact for vendor review
+- the artifact writer should combine `PatternDraftPipeline` and the draft CSV writer
+- input should be affected categories, a `CaseIntentRegistry`, optional source sections, and an output path
+- output should be a `needs_review` review artifact plus metadata such as row count
+- zero-row output should write a header-only CSV so missing candidates can still be inspected
 - this is still not connected to the existing `gen_cases` CLI
 
 Existing review flow alignment:
