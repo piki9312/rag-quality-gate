@@ -1308,7 +1308,13 @@ class TestPhase1CLI:
         assert exit_code == 0
         assert output_file.exists()
         assert review_file.exists()
-        assert "leave_policy_001" in output_file.read_text(encoding="utf-8")
+        output_rows = json.loads(output_file.read_text(encoding="utf-8"))
+        assert output_rows[0]["case_id"] == "leave_policy_001"
+        assert output_rows[0]["status"] == "needs_review"
+        assert output_rows[0]["status"] != "active"
+        assert "generated_by:gen_cases" in output_rows[0]["notes"]
+        assert "case_type:generated-draft" in output_rows[0]["notes"]
+        assert "source:document_section" in output_rows[0]["notes"]
         review_content = review_file.read_text(encoding="utf-8")
         assert "# Eval Case Review" in review_content
         assert "## Case: leave_policy_001" in review_content
@@ -1350,6 +1356,9 @@ class TestPhase1CLI:
         assert exit_code == 0
         assert output_file.exists()
         assert not review_file.exists()
+        output_rows = json.loads(output_file.read_text(encoding="utf-8"))
+        assert output_rows[0]["status"] == "needs_review"
+        assert "generated_by:gen_cases" in output_rows[0]["notes"]
 
     def test_gen_cases_writes_ops_ready_review_csv(self):
         source_doc = Path("tests/.tmp") / f"{uuid.uuid4()}-rules-review-csv.md"
@@ -1401,6 +1410,8 @@ class TestPhase1CLI:
         assert row["expected_evidence"].endswith("#sec-1")
         assert row["expected_keywords"]
         assert row["source_doc"] == "snapshot-001"
+        assert "generated_by:gen_cases" in row["notes"]
+        assert "case_type:generated-draft" in row["notes"]
 
     def test_merge_cases_writes_merged_csv_and_report(self):
         base_file = Path("tests/.tmp") / f"{uuid.uuid4()}-cases-base.csv"

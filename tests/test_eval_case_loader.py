@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import csv
+import uuid
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -14,12 +16,15 @@ from rqg.quality.models import QATestCase
 
 
 @pytest.fixture()
-def eval_cases_csv(tmp_path):
-    path = tmp_path / "eval_cases.csv"
+def eval_cases_csv():
+    tmp_dir = Path("tests/.tmp")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    path = tmp_dir / f"{uuid.uuid4()}-eval-cases.csv"
     fieldnames = [
         "case_id",
         "question",
         "risk_level",
+        "status",
         "severity",
         "expected_evidence",
         "expected_chunks",
@@ -33,6 +38,7 @@ def eval_cases_csv(tmp_path):
             "case_id": "EC001",
             "question": "What is the leave policy?",
             "risk_level": "S1",
+            "status": "active",
             "severity": "",
             "expected_evidence": "chunk_A;chunk_B",
             "expected_chunks": "",
@@ -45,6 +51,7 @@ def eval_cases_csv(tmp_path):
             "case_id": "EC002",
             "question": "What is the reimbursement policy?",
             "risk_level": "",
+            "status": "needs_review",
             "severity": "s2",
             "expected_evidence": "",
             "expected_chunks": "chunk_C",
@@ -66,16 +73,20 @@ def test_load_eval_cases_reads_existing_csv_shape(eval_cases_csv):
 
     assert len(cases) == 2
     assert cases[0].risk_level == "S1"
+    assert cases[0].status == "active"
     assert cases[0].expected_evidence == ["chunk_A", "chunk_B"]
     assert cases[0].category == "policy"
     assert cases[0].expected_answer == ""
     assert cases[1].risk_level == "S2"
+    assert cases[1].status == "needs_review"
     assert cases[1].category == "procedure"
     assert cases[1].doc_snapshot_id == "unlinked-snapshot"
 
 
-def test_load_eval_cases_requires_non_empty_expected_evidence(tmp_path):
-    path = tmp_path / "invalid.csv"
+def test_load_eval_cases_requires_non_empty_expected_evidence():
+    tmp_dir = Path("tests/.tmp")
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    path = tmp_dir / f"{uuid.uuid4()}-invalid.csv"
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
@@ -119,6 +130,7 @@ def test_eval_case_to_qa_test_case_maps_fields():
 
     assert qa_case.case_id == "EC001"
     assert qa_case.severity == "S1"
+    assert qa_case.status == "active"
     assert qa_case.expected_evidence == ["chunk_A"]
     assert qa_case.category == "policy"
 
@@ -139,6 +151,7 @@ def test_qa_test_case_to_eval_case_maps_fields():
 
     assert eval_case.case_id == "QA001"
     assert eval_case.risk_level == "S2"
+    assert eval_case.status == "active"
     assert eval_case.expected_answer == "Apply 5 business days in advance."
     assert eval_case.expected_evidence == ["chunk_A"]
     assert eval_case.category == "procedure"

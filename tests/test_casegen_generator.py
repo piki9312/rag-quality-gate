@@ -37,11 +37,18 @@ def test_generate_eval_cases_from_snapshot_rule_mode():
     assert bundle.cases[0].doc_snapshot_id == "snapshot-001"
     assert bundle.cases[0].question == "When should paid leave requests be submitted?"
     assert bundle.cases[0].category == "deadline"
+    assert bundle.cases[0].status == "needs_review"
+    assert bundle.cases[0].status != "active"
     assert (
         bundle.cases[0].expected_answer
         == "Paid leave requests must be submitted 5 business days in advance."
     )
-    assert "auto_expected_answer:extract" in (bundle.cases[0].notes or "")
+    notes = bundle.cases[0].notes or ""
+    assert "auto-generated from docs/leave_policy.md#sec-1" in notes
+    assert "auto_expected_answer:extract" in notes
+    assert "generated_by:gen_cases" in notes
+    assert "case_type:generated-draft" in notes
+    assert "source:document_section" in notes
 
 
 def test_generate_eval_cases_hybrid_uses_rule_when_llm_fails():
@@ -191,10 +198,14 @@ def test_generate_eval_cases_marks_mixed_question_notes():
 
     assert len(bundle.cases) == 3
     assert bundle.cases[0].notes is not None
+    assert all(case.status == "needs_review" for case in bundle.cases)
     assert bundle.cases[0].question == "締め日と提出方法はいつまでに対応する必要がありますか？"
     assert bundle.cases[0].category == "general"
     assert "mixed_question:deadline,procedure" in bundle.cases[0].notes
     assert "manual_review_priority:high" in bundle.cases[0].notes
+    assert "generated_by:gen_cases" in bundle.cases[0].notes
+    assert "case_type:generated-draft" in bundle.cases[0].notes
+    assert "source:document_section" in bundle.cases[0].notes
     split_questions = {case.question for case in bundle.cases[1:]}
     assert "締め日はいつですか？" in split_questions
     assert "経費精算の提出方法は何ですか？" in split_questions
@@ -203,6 +214,7 @@ def test_generate_eval_cases_marks_mixed_question_notes():
     assert by_question["経費精算の提出方法は何ですか？"].category == "procedure"
     assert all(case.notes is not None for case in bundle.cases[1:])
     assert all("split_candidate_from:" in (case.notes or "") for case in bundle.cases[1:])
+    assert all("generated_by:gen_cases" in (case.notes or "") for case in bundle.cases[1:])
 
 
 def test_generate_eval_cases_from_english_snapshot_emits_multiple_questions():
