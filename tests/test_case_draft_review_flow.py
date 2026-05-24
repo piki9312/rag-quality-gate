@@ -193,9 +193,46 @@ def test_approve_cases_promotes_only_approved_cases_and_reflects_vendor_review()
         assert "failure_pattern:deadline_or_period_mismatch" in approved["notes"]
         assert "generated_by:proof_gate_review_flow" in approved["notes"]
         assert "approved_by:vendor-reviewer" in approved["notes"]
+        assert "answer_status:unapproved-draft" not in approved["notes"]
+        assert "answer_status:vendor-approved" in approved["notes"]
 
         assert by_id["draft_hr_pending_002"]["status"] == "needs_review"
         assert by_id["draft_hr_reject_003"]["status"] == "deprecated"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_pending_and_reject_keep_unapproved_draft_marker_when_not_active() -> None:
+    root = _workspace_tmp()
+    try:
+        draft_rows = _draft_rows()
+        draft_rows[1]["notes"] = "answer_status:unapproved-draft"
+        draft_rows[2]["notes"] = "answer_status:unapproved-draft"
+        draft_path = root / "cases_draft.csv"
+        review_path = root / "review_cases.yaml"
+        output_path = root / "cases.csv"
+        _write_csv(draft_path, draft_rows)
+        review_path.write_text(
+            yaml.safe_dump(_review_payload(), sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
+        )
+
+        approve_reviewed_cases(
+            draft_path=draft_path,
+            review_path=review_path,
+            output_path=output_path,
+        )
+
+        by_id = {row["case_id"]: row for row in _read_csv(output_path)}
+        pending = by_id["draft_hr_pending_002"]
+        rejected = by_id["draft_hr_reject_003"]
+
+        assert pending["status"] == "needs_review"
+        assert "answer_status:unapproved-draft" in pending["notes"]
+        assert "answer_status:vendor-approved" not in pending["notes"]
+        assert rejected["status"] == "deprecated"
+        assert "answer_status:unapproved-draft" in rejected["notes"]
+        assert "answer_status:vendor-approved" not in rejected["notes"]
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
