@@ -146,6 +146,48 @@ def _init_snapshot_from_doc(
     return output_path
 
 
+def _append_note_marker(notes: object, marker: str) -> str:
+    parts: list[str] = []
+    seen: set[str] = set()
+    for part in str(notes or "").split(";"):
+        clean = part.strip()
+        if clean and clean not in seen:
+            seen.add(clean)
+            parts.append(clean)
+    if marker not in seen:
+        parts.append(marker)
+    return "; ".join(parts)
+
+
+def _write_onboarding_approved_cases_fixture(
+    generated_cases_path: Path,
+    approved_cases_path: Path,
+) -> Path:
+    """Create an explicit active fixture for the automated onboarding smoke.
+
+    gen-cases output remains a vendor-review draft artifact. The smoke flow uses a
+    separate approved fixture so Gate execution still reads only active cases.
+    """
+    payload = json.loads(generated_cases_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError(f"Generated cases must be a list: {generated_cases_path}")
+
+    approved_cases: list[dict[str, object]] = []
+    for idx, item in enumerate(payload):
+        if not isinstance(item, dict):
+            raise ValueError(f"Generated case at index {idx} must be an object")
+        approved = dict(item)
+        approved["status"] = "active"
+        approved["notes"] = _append_note_marker(
+            approved.get("notes"),
+            "approved_fixture:onboarding_smoke",
+        )
+        approved_cases.append(approved)
+
+    approved_cases_path.write_text(json.dumps(approved_cases, indent=2), encoding="utf-8")
+    return approved_cases_path
+
+
 def run_demo(profile: str = "demo_cycle") -> tuple[QuickstartSummary, Path]:
     config = PROFILE_CONFIGS[profile]
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -209,10 +251,14 @@ def run_demo(profile: str = "demo_cycle") -> tuple[QuickstartSummary, Path]:
     )
 
     # 3) eval
+    approved_cases = _write_onboarding_approved_cases_fixture(
+        generated_cases,
+        artifacts_dir / "approved_eval_cases.json",
+    )
     _run_cli(
         [
             "eval",
-            str(generated_cases),
+            str(approved_cases),
             "--docs",
             str(pack_dir / "documents"),
             "--mock",
