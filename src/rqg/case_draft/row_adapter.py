@@ -13,7 +13,6 @@ from rqg.quality.case_schema import (
     infer_source_doc,
 )
 
-
 _UNAPPROVED_DRAFT_MARKER = "answer_status:unapproved-draft"
 
 

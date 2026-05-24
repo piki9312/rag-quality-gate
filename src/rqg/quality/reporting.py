@@ -1865,12 +1865,9 @@ def _case_coverage_readiness_warnings(
                     code="case_coverage_missing",
                     label="Case coverage is missing",
                     reason=(
-                        f"Affected category '{category}' has no active "
-                        "approved-for-run case."
+                        f"Affected category '{category}' has no active " "approved-for-run case."
                     ),
-                    action=(
-                        f"Add or approve an active case for affected category '{category}'."
-                    ),
+                    action=(f"Add or approve an active case for affected category '{category}'."),
                 )
             )
             continue

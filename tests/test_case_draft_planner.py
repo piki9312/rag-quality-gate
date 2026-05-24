@@ -11,7 +11,6 @@ from rqg.case_draft import (
 )
 from rqg.case_draft.planner import create_drafts_for_affected_categories
 
-
 SAMPLE_INTENT = """\
 intent_id: {intent_id}
 version: 0.1.0

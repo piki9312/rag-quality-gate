@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-
 IntentStatus = Literal["experimental", "validated", "deprecated"]
 SeverityHint = Literal["S1", "S2", "S3", "S4"]
 

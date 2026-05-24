@@ -42,35 +42,22 @@ class CaseIntentRegistry:
 
     def find_by_risk_category(self, risk_category: str) -> list[CaseIntent]:
         """Find intents whose risk category exactly matches."""
-        return [
-            intent
-            for intent in self._intents
-            if intent.risk_category == risk_category
-        ]
+        return [intent for intent in self._intents if intent.risk_category == risk_category]
 
     def find_by_failure_pattern(self, failure_pattern: str) -> list[CaseIntent]:
         """Find intents that contain the given failure pattern."""
-        return [
-            intent
-            for intent in self._intents
-            if failure_pattern in intent.failure_patterns
-        ]
+        return [intent for intent in self._intents if failure_pattern in intent.failure_patterns]
 
     def find_by_severity_hint(self, severity_hint: str) -> list[CaseIntent]:
         """Find intents whose severity hint exactly matches."""
-        return [
-            intent
-            for intent in self._intents
-            if intent.severity_hint == severity_hint
-        ]
+        return [intent for intent in self._intents if intent.severity_hint == severity_hint]
 
     def find_by_affected_business_category(self, category: str) -> list[CaseIntent]:
         """Find intents whose coverage rule applies to an affected category."""
         return [
             intent
             for intent in self._intents
-            if category
-            in intent.coverage_rule.required_when.affected_business_categories
+            if category in intent.coverage_rule.required_when.affected_business_categories
         ]
 
     def find_candidates_for_affected_categories(
