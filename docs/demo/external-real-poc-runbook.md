@@ -403,7 +403,10 @@ python -m rqg.cli gate --pack . \
 - usage log
 - seen_count
 - failure pattern parser
-- `gen-cases` から S1 active 生成
+- Do not auto-promote `gen-cases` output to S1 active cases.
+- Generated cases must remain `draft` / `needs_review` until vendor approval.
+- `gen-cases` の出力を S1 active へ自動昇格しない。
+- 生成ケースはベンダー承認まで `draft` / `needs_review` として扱う。
 
 ## 13. 推奨運用メモ
 

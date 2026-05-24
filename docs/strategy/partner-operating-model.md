@@ -8,6 +8,10 @@ This document defines the operating model for vendors using Proof Gate as a Part
 
 Partner Operating Model defines who uses which interface, when they use it, and what operational responsibility each role owns.
 
+When a change event affects case coverage, the operating model should follow [Change-Aware Case Management](change-aware-case-management.md): Proof Gate may propose or warn, but vendors approve customer-specific runnable cases.
+
+For the workflow-level DX model and case approval split, see [AI Quality Management DX Model](ai-quality-management-dx-model.md) and [Case Intent Library Design](case-intent-library-design.md).
+
 This is a strategy and operations document. It does not change CLI, Dashboard, ReviewPacket, `gate-report.json`, safe/full implementation, schemas, Docker packaging, authentication, database, or multi-tenant behavior.
 
 ## Operating Principle
