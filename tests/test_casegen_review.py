@@ -151,6 +151,35 @@ def test_write_review_output_csv_writes_expected_answer_draft():
         row = next(csv.DictReader(f))
 
     assert row["expected_answer"] == "年次有給休暇は5営業日前までに申請します。"
+    assert "answer_status:unapproved-draft" in row["notes"]
+
+
+def test_write_review_output_csv_preserves_notes_when_marking_unapproved_answer():
+    output = Path("tests/.tmp") / f"{uuid.uuid4()}-review-answer-notes.csv"
+    case = _sample_case().model_copy(
+        update={
+            "expected_answer": "年次有給休暇は5営業日前までに申請します。",
+            "notes": "source:document_section",
+        }
+    )
+    write_review_output(output, [case])
+
+    with open(output, "r", encoding="utf-8", newline="") as f:
+        row = next(csv.DictReader(f))
+
+    assert "source:document_section" in row["notes"]
+    assert "answer_status:unapproved-draft" in row["notes"]
+
+
+def test_render_cases_markdown_marks_expected_answer_as_unapproved_draft():
+    case = _sample_case().model_copy(
+        update={"expected_answer": "年次有給休暇は5営業日前までに申請します。"}
+    )
+
+    markdown = render_cases_markdown([case])
+
+    assert "- Expected Answer: 年次有給休暇は5営業日前までに申請します。" in markdown
+    assert "answer_status:unapproved-draft" in markdown
 
 
 def test_write_review_output_csv_preserves_s1_severity():
