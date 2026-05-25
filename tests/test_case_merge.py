@@ -87,6 +87,38 @@ def test_merge_adds_new_case_from_review_rows():
     assert summary.updated_case_ids == []
 
 
+def test_merge_currently_rounds_unsupported_severity_to_s2():
+    """Characterize current behavior before deciding stricter validation."""
+    base_rows = [
+        {"case_id": "BASE_S1", "question": "q?", "severity": "S1"},
+        {"case_id": "BASE_S2_LOWER", "question": "q?", "severity": "s2"},
+        {"case_id": "BASE_S3", "question": "q?", "severity": "S3"},
+        {"case_id": "BASE_UNKNOWN", "question": "q?", "severity": "unknown"},
+        {"case_id": "BASE_EMPTY", "question": "q?", "severity": ""},
+    ]
+    review_rows = [
+        {"case_id": "REVIEW_S1_LOWER", "question": "q1?", "severity": "s1"},
+        {"case_id": "REVIEW_S4", "question": "q2?", "severity": "S4"},
+        {"case_id": "REVIEW_HIGH", "question": "q3?", "severity": "high"},
+        {"case_id": "REVIEW_MISSING", "question": "q4?"},
+        {"case_id": "REVIEW_RISK_S3", "question": "q5?", "risk_level": "S3"},
+    ]
+
+    merged_rows, _ = merge_cases_rows(base_rows, review_rows)
+
+    by_id = {row["case_id"]: row for row in merged_rows}
+    assert by_id["BASE_S1"]["severity"] == "S1"
+    assert by_id["BASE_S2_LOWER"]["severity"] == "S2"
+    assert by_id["BASE_S3"]["severity"] == "S2"
+    assert by_id["BASE_UNKNOWN"]["severity"] == "S2"
+    assert by_id["BASE_EMPTY"]["severity"] == "S2"
+    assert by_id["REVIEW_S1_LOWER"]["severity"] == "S1"
+    assert by_id["REVIEW_S4"]["severity"] == "S2"
+    assert by_id["REVIEW_HIGH"]["severity"] == "S2"
+    assert by_id["REVIEW_MISSING"]["severity"] == "S2"
+    assert by_id["REVIEW_RISK_S3"]["severity"] == "S2"
+
+
 def test_merge_accepts_review_title_when_case_id_is_missing():
     merged_rows, summary = merge_cases_rows(
         base_rows=[],
