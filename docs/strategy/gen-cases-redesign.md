@@ -130,6 +130,14 @@ convenience, the review artifact should keep the marker
 `answer_status:unapproved-draft` in `notes` so reviewers do not mistake it for
 a customer-approved answer.
 
+For the operational vendor review boundary across old `review.csv`, PatternDraft
+review artifacts, and `review_cases.yaml`, see
+[Vendor Review Guide for Case Artifacts](../quality/vendor-review-guide.md).
+The old `review.csv` path is still a review candidate artifact: it can be used
+by existing review and merge workflows, but it is not itself an approved
+`cases.csv` and must not be treated as release evidence until vendor review is
+complete.
+
 ## Implementation Roadmap
 
 Planned follow-up preparation before pattern-based `gen_cases`:
