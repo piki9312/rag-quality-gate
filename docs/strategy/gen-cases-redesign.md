@@ -130,6 +130,11 @@ convenience, the review artifact should keep the marker
 `answer_status:unapproved-draft` in `notes` so reviewers do not mistake it for
 a customer-approved answer.
 
+ベンダーが `review_cases.yaml` をどう確認し、`decision`,
+`expected_answer`, `expected_evidence`, `severity`, `eval_mode` をどう扱うべきかは
+[Vendor Review Guide](../quality/vendor-review-guide.md) を参照してください。
+承認してよい case だけを `status=active` に進めるための確認手順をまとめています。
+
 ## Implementation Roadmap
 
 Planned follow-up preparation before pattern-based `gen_cases`:
