@@ -528,9 +528,7 @@ class TestValidation:
         errors = validate_case_row(row)
 
         assert any(
-            error.field == "notes"
-            and error.level == "warn"
-            and "failure pattern" in error.message
+            error.field == "notes" and error.level == "warn" and "failure pattern" in error.message
             for error in errors
         )
 
