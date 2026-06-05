@@ -22,6 +22,27 @@ from rqg.quality.case_schema import (
 )
 
 
+def _notes_marker_base_row(notes: str, *, severity: str = "S1") -> dict[str, str]:
+    return {
+        "case_id": "TEST001",
+        "name": "Notes marker compatibility",
+        "status": "active",
+        "severity": severity,
+        "eval_mode": "evidence_keyword",
+        "question": "When should this policy be applied?",
+        "expected_answer": "Follow the approved policy.",
+        "expected_evidence": "policy.md#sec-1",
+        "expected_keywords": "approved policy;policy",
+        "category": "policy",
+        "source_doc": "policy.md",
+        "owner": "qa",
+        "min_case_score": "100" if severity == "S1" else "85",
+        "updated_at": "2026-05-31",
+        "last_reviewed_at": "2026-05-31",
+        "notes": notes,
+    }
+
+
 class TestReviewCaseToFormalRow:
     def test_basic_mapping(self):
         rc = ReviewCase(
@@ -466,6 +487,64 @@ class TestValidation:
         errors = validate_case_row(row)
 
         assert not any("failure pattern" in e.message for e in errors)
+
+    def test_notes_marker_extensions_are_compatible_with_validation(self):
+        row = _notes_marker_base_row(
+            (
+                "pattern:FP-VALID-001; intent:refund_overpromise_check; "
+                "design:boundary_value; claim_template:refund_is_conditional; "
+                "release:block; source_type:template; poc_band:S1; "
+                "answer_status:vendor-approved; manual_review_required"
+            )
+        )
+
+        errors = validate_case_row(row, strict_s1_governance=True)
+
+        assert errors == []
+
+    def test_unknown_notes_marker_does_not_error(self):
+        row = _notes_marker_base_row(
+            "pattern:FP-VALID-001; unknown_marker:anything; manual_review_required"
+        )
+
+        errors = validate_case_row(row, strict_s1_governance=True)
+
+        assert not any(error.level == "error" for error in errors)
+
+    def test_invalid_failure_pattern_marker_warns_only(self):
+        row = _notes_marker_base_row("pattern:bad; manual_review_required")
+
+        errors = validate_case_row(row, strict_s1_governance=True)
+
+        assert any(
+            error.field == "notes" and error.level == "warn" and "pattern:bad" in error.message
+            for error in errors
+        )
+        assert not any(error.level == "error" for error in errors)
+
+    def test_s1_active_case_without_pattern_still_warns(self):
+        row = _notes_marker_base_row("manual_review_required")
+
+        errors = validate_case_row(row)
+
+        assert any(
+            error.field == "notes"
+            and error.level == "warn"
+            and "failure pattern" in error.message
+            for error in errors
+        )
+
+    def test_s1_active_case_with_valid_pattern_does_not_warn_for_missing_pattern(self):
+        row = _notes_marker_base_row("pattern:FP-VALID-001; manual_review_required")
+
+        errors = validate_case_row(row)
+
+        assert not any(
+            error.field == "notes"
+            and "S1 active case" in error.message
+            and "failure pattern" in error.message
+            for error in errors
+        )
 
 
 class TestExpectedAnswerValidationByStatus:
