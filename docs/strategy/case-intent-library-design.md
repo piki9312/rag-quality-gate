@@ -8,6 +8,10 @@ Proof Gate's core asset should not be a customer-specific answer-key database. I
 
 For how these assets should be loaded and applied by a future Case Draft Engine, see [Pattern-Based gen_cases Implementation Plan](pattern-based-gen-cases-implementation-plan.md).
 
+For the data boundary that keeps customer raw data and customer-specific answer
+keys out of the library, see
+[Case Intent Library Data Boundary](case-intent-library-data-boundary.md).
+
 Implementation status note: this document describes the planned design and
 follow-up implementation sequence. A docs-only PR should not be read as proving
 that the referenced source modules or asset files already exist.
@@ -168,6 +172,12 @@ Proof Gateは、どのリスク観点を確認すべきか、どのFailure Patte
 ベンダーは、顧客固有の`expected_answer`が正しいかを確認する。
 
 This division is important for Partner Platform operation. Proof Gate can improve reusable coverage assets without owning customer-private answer keys.
+
+Operationally, this means Case Intent Library entries should carry abstract
+intent, design, failure pattern, evidence type, and coverage information only.
+Customer-specific `expected_answer`, `required_claims`, `forbidden_claims`, and
+raw evidence belong in vendor/customer-controlled review artifacts and approved
+customer `cases.csv` files.
 
 ## Growth Strategy
 

@@ -96,3 +96,6 @@ cases:
 `review_cases.md` はレビューしやすくするための補助資料です。表示ラベルは日本語ですが、
 `expected_answer` や `decision` などのキー名・値は YAML と同じ英語表記を維持します。
 Markdown を編集しても `approve-cases` には反映されません。
+> For the vendor-facing responsibility boundary across old `review.csv`,
+> PatternDraft review artifacts, and `review_cases.yaml`, see
+> [Vendor Review Guide for Case Artifacts](vendor-review-guide.md).

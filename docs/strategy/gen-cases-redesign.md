@@ -130,6 +130,21 @@ convenience, the review artifact should keep the marker
 `answer_status:unapproved-draft` in `notes` so reviewers do not mistake it for
 a customer-approved answer.
 
+For the operational vendor review boundary across old `review.csv`, PatternDraft
+review artifacts, and `review_cases.yaml`, see
+[Vendor Review Guide for Case Artifacts](../quality/vendor-review-guide.md).
+The old `review.csv` path is still a review candidate artifact: it can be used
+by existing review and merge workflows, but it is not itself an approved
+`cases.csv` and must not be treated as release evidence until vendor review is
+complete.
+
+For the data boundary behind this design, see
+[Case Intent Library Data Boundary](case-intent-library-data-boundary.md). The
+library should hold abstract intents, failure patterns, claim templates, and
+test design types. Customer-specific `expected_answer`, `required_claims`,
+`forbidden_claims`, raw evidence, and source document body stay in
+vendor/customer-controlled artifacts.
+
 ## Implementation Roadmap
 
 Planned follow-up preparation before pattern-based `gen_cases`:
