@@ -12,6 +12,11 @@ drafts until a vendor or customer-side reviewer confirms them.
 Proof Gate supports coverage and draft generation. The vendor is responsible for
 customer-specific correctness approval.
 
+For the underlying Case Intent Library raw-data boundary, see
+[Case Intent Library Data Boundary](../strategy/case-intent-library-data-boundary.md).
+For the bounded `notes` marker contract, see
+[Case Notes Marker Spec](case-notes-marker-spec.md).
+
 ## Artifact Types
 
 | Artifact | Role | Approval state | Next step |
@@ -69,6 +74,10 @@ Approved active cases must not retain `answer_status:unapproved-draft`.
 
 Pending and rejected cases may retain `answer_status:unapproved-draft` because
 they are not approved-for-run.
+
+Markers should contain abstract IDs and review state only. Do not put customer
+raw FAQ text, inquiry logs, contract wording, pricing details, or full
+customer-specific expected answers in `notes`.
 
 ## How To Review Expected Answers
 

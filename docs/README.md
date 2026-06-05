@@ -14,6 +14,16 @@
 
 Implementation status note: strategy documents describe target design and staged follow-up work. Check the corresponding code, tests, and PRs before treating a planned module or artifact as implemented.
 
+## AI vendor boundary reading guide
+
+For AI vendor / RAG vendor use cases, read these documents in order:
+
+1. [Case Intent Library Data Boundary](strategy/case-intent-library-data-boundary.md) - Defines the customer raw-data boundary and why the library stores abstract intents, failure patterns, claim templates, and coverage rules instead of customer-specific data.
+2. [Vendor Review Guide for Case Artifacts](quality/vendor-review-guide.md) - Defines why `review.csv`, `pattern-draft-review.csv`, and `review_cases.yaml` are vendor-owned candidate artifacts, not formal release evidence.
+3. [Case Notes Marker Spec](quality/case-notes-marker-spec.md) - Defines compatible `notes` markers such as `pattern`, `intent`, `design`, `claim_template`, `release`, `answer_status`, `source_type`, and `poc_band`.
+4. [gen_cases Redesign](strategy/gen-cases-redesign.md) - Explains how generated cases remain review candidates and must not be auto-promoted to active cases.
+5. [Case Intent Library Design](strategy/case-intent-library-design.md) - Explains the longer-term design of Case Intent Library as a reusable abstract case asset.
+
 このディレクトリは、Proof Gate のドキュメント入口です。現在のrepoは作業リポジトリでもあるため、資料を「正本」「顧客向け」「デモ」「技術契約」「運用」「archive」に分けて読む前提にします。
 
 短い製品入口は [README.md](../README.md) を参照してください。
