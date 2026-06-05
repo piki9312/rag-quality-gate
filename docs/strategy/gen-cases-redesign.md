@@ -138,6 +138,13 @@ by existing review and merge workflows, but it is not itself an approved
 `cases.csv` and must not be treated as release evidence until vendor review is
 complete.
 
+For the data boundary behind this design, see
+[Case Intent Library Data Boundary](case-intent-library-data-boundary.md). The
+library should hold abstract intents, failure patterns, claim templates, and
+test design types. Customer-specific `expected_answer`, `required_claims`,
+`forbidden_claims`, raw evidence, and source document body stay in
+vendor/customer-controlled artifacts.
+
 ## Implementation Roadmap
 
 Planned follow-up preparation before pattern-based `gen_cases`:
