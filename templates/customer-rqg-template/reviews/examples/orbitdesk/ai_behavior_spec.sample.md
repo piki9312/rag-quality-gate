@@ -14,7 +14,7 @@ Proof Gateは顧客固有の正解を確定しません。生成された回答�
 | customer / project | OrbitDesk株式会社 / OrbitDesk FAQ RAG導入支援 |
 | system name | OrbitDesk FAQ RAG chatbot |
 | related_scope_sheet | `ai_scope_sheet.sample.md` |
-| related_gate_run_id | orbitdesk-pre-release-2026-06-001 |
+| related_gate_run_id | orbit_release_review_2026_06_001 |
 | updated_at | 2026-06-16 |
 
 ## Basic Answer Policy

@@ -15,7 +15,7 @@ Proof Gateは本番反映の最終判断を自動化しません。このサン�
 | vendor owner | Example AI Vendor PM |
 | customer owner | OrbitDesk Customer Support Lead |
 | review_stage | release_gate |
-| related_gate_run_id | orbitdesk-pre-release-2026-06-001 |
+| related_gate_run_id | orbit_release_review_2026_06_001 |
 | related_report | `artifacts/orbitdesk/2026-06-pre-release/gate-report.json` |
 | updated_at | 2026-06-16 |
 

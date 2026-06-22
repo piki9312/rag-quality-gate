@@ -12,7 +12,7 @@ Proof Gateが本番反映を最終決定するものではありません。今�
 |---|---|
 | review_id | ORBIT-RELEASE-2026-06-001 |
 | review_stage | release_gate |
-| gate_run_id | orbitdesk-pre-release-2026-06-001 |
+| gate_run_id | orbit_release_review_2026_06_001 |
 | gate_report_ref | `artifacts/orbitdesk/2026-06-pre-release/gate-report.json` |
 | review_packet_ref | `artifacts/orbitdesk/2026-06-pre-release/review-packet.json` |
 | review_artifact_ref | `reviews/orbitdesk/review_cases.yaml` |
