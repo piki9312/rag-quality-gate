@@ -25,10 +25,14 @@ The product value is not just running tests. The value is turning repeated AI de
 Proof Gate should digitize and standardize the following workflows:
 
 - test perspective design
+- AI scope review
+- AI behavior boundary review
+- data / IP boundary review
 - customer-specific draft case creation
 - approval of `expected_answer` / `expected_behavior`
 - AI answer evaluation
 - Go / No-Go decision support
+- release risk review
 - customer-facing safe report generation
 - post-delivery change review
 - monthly quality review
@@ -89,7 +93,7 @@ This keeps human accountability in the right places: business correctness, relea
 Do not build or claim these in the current phase:
 
 - removing human approval completely
-- Proof Gate guaranteeing customer-specific `expected_answer`
+- Proof Gate deciding customer-specific `expected_answer`
 - collecting customer raw data on the Proof Gate side
 - SaaS tenant workspaces
 - database-backed platform operation

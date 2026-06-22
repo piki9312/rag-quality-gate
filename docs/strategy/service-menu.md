@@ -11,6 +11,8 @@ Goal: add a repeatable quality gate to an existing RAG or FAQ PoC.
 Typical scope:
 
 - Review customer documents and risk areas.
+- Fill the AI案件レビューキット scope and behavior templates when the PoC needs
+  explicit delivery assumptions before case creation.
 - Create an initial `cases.csv` with S1/S2 split.
 - Configure `gate.yml` thresholds.
 - Run `rqg gate` in mock or real mode.
@@ -68,6 +70,9 @@ Typical scope:
 - Track stale cases and missing next actions.
 - Maintain Gate Reviews, Investigations, and Action Items as the human-facing
   operating record.
+- Use the AI案件レビューキット release risk, data/IP boundary, and legal review
+  checkpoint templates when monthly operation includes customer-facing
+  production or change review.
 
 Best fit:
 
