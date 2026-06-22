@@ -73,3 +73,25 @@
 - CI-safe artifact に raw path や顧客名を出しません。
 - full metadata は local / private / customer-controlled 前提です。
 - `change-event.yml` は bounded な名前と hash だけを使っています。
+
+## Case Intent Library derived active cases
+
+This synthetic demo pack includes a small number of manually reviewed S1 active
+cases that were derived from the S1 Case Intent Library seed. They are active
+only inside this fictional demo pack to verify that Case Intent derived drafts
+can move through the existing runtime flow after human review.
+
+These rows are marked with `s1_case_intent_seed`, `intent:<intent_id>`, and
+`answer_status:vendor-approved` in `cases.csv`.
+
+In real customer PoC work, S1 candidates must remain `needs_review` until human
+review confirms question, expected_answer, expected_evidence, severity,
+eval_mode, and block_reason. Case Intent Library remains non-runtime; active
+formal `cases.csv` remains the runtime source of truth.
+
+日本語補足:
+
+これらのcaseは架空demo pack内でのみactive化された検証用caseです。
+実顧客PoCでは、S1 candidateは人間レビューで question / expected_answer /
+expected_evidence / severity / eval_mode / block_reason を確認するまで
+active化しません。
