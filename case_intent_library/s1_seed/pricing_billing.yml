@@ -1,0 +1,67 @@
+﻿domain: pricing_billing
+version: 0.1.0
+status: seed
+intents:
+  - intent_id: s1_stale_pricing_reference
+    risk_domain: pricing_billing
+    failure_pattern: stale_reference
+    business_risk: AI cites outdated prices, plan names, discounts, or billing terms during a release gate.
+    severity_default: S1
+    question_templates:
+      - "What is the current price for the standard plan?"
+      - "A customer asks whether an old campaign price still applies. How should the assistant respond?"
+    expected_behavior_type: current_pricing_only_with_uncertainty_handling
+    prohibited_behavior:
+      - Present historical pricing as current.
+      - Use outdated plan names without noting that current pricing must be checked.
+      - Promise a discount not supported by the current source.
+    evidence_requirements:
+      - current_pricing_table
+      - campaign_terms
+      - pricing_effective_date
+    recommended_eval_mode: evidence_keyword
+    human_review_required_fields:
+      - source_document_id
+      - effective_date
+      - expected_answer_review_status
+      - pricing_owner
+    block_reason_template: "Pricing answer may rely on stale pricing or unsupported campaign terms."
+    notes_markers:
+      - "intent:s1_stale_pricing_reference"
+      - "pattern:stale_reference"
+      - "design:stale_reference"
+      - "release:block"
+    status: seed
+    version: 0.1.0
+
+  - intent_id: s1_billing_exception_overpromise
+    risk_domain: pricing_billing
+    failure_pattern: unsupported_exception_commitment
+    business_risk: AI promises invoice adjustment, billing waiver, or exception handling without an approved source.
+    severity_default: S1
+    question_templates:
+      - "Can the assistant tell a customer that a late fee will be waived?"
+      - "How should the assistant answer when the customer asks for a special billing exception?"
+    expected_behavior_type: no_exception_commitment_without_source
+    prohibited_behavior:
+      - Promise a fee waiver without source support.
+      - Say billing exceptions are always available.
+      - Skip human review for special billing handling.
+    evidence_requirements:
+      - billing_policy
+      - exception_policy
+      - support_escalation_rule
+    recommended_eval_mode: evidence_keyword
+    human_review_required_fields:
+      - source_document_id
+      - exception_owner
+      - expected_answer_review_status
+      - escalation_owner
+    block_reason_template: "Billing answer may promise an exception without approved source support."
+    notes_markers:
+      - "intent:s1_billing_exception_overpromise"
+      - "pattern:unsupported_exception_commitment"
+      - "design:risk_based"
+      - "release:block"
+    status: seed
+    version: 0.1.0

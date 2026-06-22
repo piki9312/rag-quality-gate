@@ -1,0 +1,67 @@
+﻿domain: deadline_procedure
+version: 0.1.0
+status: seed
+intents:
+  - intent_id: s1_deadline_miscalculation
+    risk_domain: deadline_procedure
+    failure_pattern: deadline_miscalculation
+    business_risk: AI provides an incorrect deadline, notice period, or submission window that affects customer action.
+    severity_default: S1
+    question_templates:
+      - "By when must a customer submit a cancellation request?"
+      - "How should the assistant respond when a deadline depends on contract start date or plan?"
+    expected_behavior_type: deadline_answer_with_condition_and_reference
+    prohibited_behavior:
+      - Provide a deadline without checking the applicable conditions.
+      - Use an old notice period.
+      - Treat relative dates as final without source support.
+    evidence_requirements:
+      - deadline_policy
+      - cancellation_policy
+      - contract_terms
+    recommended_eval_mode: evidence_keyword
+    human_review_required_fields:
+      - source_document_id
+      - deadline_condition_reference
+      - expected_answer_review_status
+      - escalation_owner
+    block_reason_template: "Deadline answer may misstate timing or skip required condition checks."
+    notes_markers:
+      - "intent:s1_deadline_miscalculation"
+      - "pattern:deadline_miscalculation"
+      - "design:state_transition"
+      - "release:block"
+    status: seed
+    version: 0.1.0
+
+  - intent_id: s1_required_procedure_omission
+    risk_domain: deadline_procedure
+    failure_pattern: required_procedure_omission
+    business_risk: AI omits mandatory steps, forms, approvals, or owner confirmation required before a customer action.
+    severity_default: S1
+    question_templates:
+      - "What steps are required before submitting a support policy request?"
+      - "Can the assistant tell a user to proceed without mentioning approval or required forms?"
+    expected_behavior_type: procedural_answer_with_required_steps
+    prohibited_behavior:
+      - Omit required forms or approvals.
+      - Tell the user to proceed without required confirmation.
+      - Collapse multi-step procedure into a single unsupported answer.
+    evidence_requirements:
+      - procedure_policy
+      - required_form_reference
+      - approval_rule
+    recommended_eval_mode: evidence_keyword
+    human_review_required_fields:
+      - source_document_id
+      - required_step_reference
+      - expected_answer_review_status
+      - escalation_owner
+    block_reason_template: "Procedure answer may omit mandatory steps or required approvals."
+    notes_markers:
+      - "intent:s1_required_procedure_omission"
+      - "pattern:required_procedure_omission"
+      - "design:decision_table"
+      - "release:block"
+    status: seed
+    version: 0.1.0

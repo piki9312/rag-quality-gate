@@ -44,6 +44,13 @@ Engineers and QA run validation, gates, retests, adapters, and artifact generati
 | Sales / CS | customer-facing safe report | Customer explanation, report submission, residual risk explanation |
 | Vendor Admin / Tech Lead | local/private environment | Manage customer documents, `cases.csv`, `change-event.yml`, and full/private details |
 
+PMs and delivery leads may also use the AI案件レビューキット templates under
+`templates/customer-rqg-template/reviews/templates/` to record scope,
+behavior boundaries, release risk, and customer/vendor confirmation items.
+Sales / CS may use the same kit to understand which safe report and residual
+risk notes are ready for customer explanation. These templates are review
+materials, not terminal workflows.
+
 ## Proof Gate-Side Roles
 
 | Role | Responsibility |
