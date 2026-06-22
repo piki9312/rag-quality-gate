@@ -39,6 +39,7 @@ WS1 (Onboarding/Ops bottleneck reduction) の baseline 計測を、同じ条件�
 | --- | --- | --- | ---: | ---: | --- | --- |
 | YYYY-MM-DD | owner-name | org/repo | 0.00 | 0.00 | run URL / log path | monthly customer track evidence |
 | 2026-05-03 | piki9312 | piki9312/rag-quality-gate | 0.25 | 1.57 | https://github.com/piki9312/rag-quality-gate/actions/runs/23701914227 | customer track pilot seed for monthly comparison |
+| 2026-06-22 | piki9312 | piki9312/rag-quality-gate | 0.25 | 1.57 | https://github.com/piki9312/rag-quality-gate/actions/runs/27990331687 | monthly customer track refresh for Phase2.5 risk closure |
 
 ## 5. Target Reference
 
